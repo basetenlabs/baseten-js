@@ -316,8 +316,13 @@ export class ApiClient {
 
   if (hasTypedResp) {
     src += `
+  // TODO(https://github.com/basetenlabs/baseten-js/issues/2): support non-JSON response content types
   private async _doJson<T>(request: ApiRequest): Promise<T> {
     const response = await this._do(request);
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new ResponseError(response.status, \`non-JSON response content type not currently supported, got \${contentType}\`);
+    }
     return (await response.json()) as T;
   }
 `;

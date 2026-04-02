@@ -43,3 +43,19 @@ jobs:
           BASETEN_E2E_TEST_DOMAIN: ${{ secrets.BASETEN_E2E_TEST_DOMAIN }}
           BASETEN_E2E_TEST_MODEL_ID: ${{ secrets.BASETEN_E2E_TEST_MODEL_ID }}
         run: pnpm test
+
+  test-bun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install
+
+      - name: Test
+        env:
+          BASETEN_E2E_TEST_API_KEY: ${{ secrets.BASETEN_E2E_TEST_API_KEY }}
+          BASETEN_E2E_TEST_DOMAIN: ${{ secrets.BASETEN_E2E_TEST_DOMAIN }}
+          BASETEN_E2E_TEST_MODEL_ID: ${{ secrets.BASETEN_E2E_TEST_MODEL_ID }}
+        run: bun run vitest run

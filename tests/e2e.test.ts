@@ -69,7 +69,7 @@ describe.runIf(ensureE2EEnv())("e2e", () => {
     expect(deployments.deployments.length).toBeGreaterThan(0);
   });
 
-  it("runs inference", async () => {
+  it("runs inference", { timeout: 30_000 }, async () => {
     const result = await inferenceClient().api.predictProduction({
       body: { prompt: "hello" },
     });

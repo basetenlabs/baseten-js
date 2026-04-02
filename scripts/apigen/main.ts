@@ -81,7 +81,7 @@ async function generateApi(specFile: string, outDir: string): Promise<void> {
   console.log(`  -> ${clientFile}`);
 
   // Format generated files
-  await execFileAsync("npx", ["biome", "check", "--fix", modelsFile, clientFile]);
+  await execFileAsync("npx", ["oxfmt", "--write", modelsFile, clientFile]);
 
   await rm(tmpSpec);
 }
