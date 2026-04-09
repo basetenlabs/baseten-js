@@ -1539,7 +1539,7 @@ export class ApiClient {
       /\{\}/g,
       (() => {
         let i = 0;
-        return () => encodeURIComponent(request.pathArgs[i++]);
+        return () => encodeURIComponent(request.pathArgs[i++]!);
       })(),
     );
     const init: RequestInit = {

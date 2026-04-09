@@ -605,7 +605,7 @@ export class ApiClient {
       /\{\}/g,
       (() => {
         let i = 0;
-        return () => encodeURIComponent(request.pathArgs[i++]);
+        return () => encodeURIComponent(request.pathArgs[i++]!);
       })(),
     );
     const init: RequestInit = {
@@ -619,7 +619,7 @@ export class ApiClient {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (response.status !== request.successCode) {
       if (request.errorCodes?.[response.status]) {
-        const ErrorClass = ERROR_TYPES[request.errorCodes[response.status]];
+        const ErrorClass = ERROR_TYPES[request.errorCodes[response.status]!];
         if (ErrorClass) {
           try {
             const data = await response.json();

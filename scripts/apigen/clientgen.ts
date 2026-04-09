@@ -52,7 +52,7 @@ function extractOperations(spec: Record<string, unknown>): Operation[] {
       name,
       httpMethod: httpMethod.toUpperCase(),
       path,
-      pathParams: [...path.matchAll(PATH_PARAM_RE)].map((m) => m[1]),
+      pathParams: [...path.matchAll(PATH_PARAM_RE)].map((m) => m[1]!),
       hasBody: "requestBody" in opData,
       reqBodyRef: bodySchemaRef(spec, opData),
       respRef: responseSchemaRef(spec, opData),
@@ -75,7 +75,7 @@ function extractSuccessCode(op: Record<string, unknown>, httpMethod: string, pat
       `expected exactly one 2xx response for ${httpMethod.toUpperCase()} ${path}, got [${codes}]`,
     );
   }
-  return codes[0];
+  return codes[0]!;
 }
 
 function deriveMethodName(
@@ -92,13 +92,14 @@ function deriveMethodName(
     .split("/");
   const result: string[] = [];
   for (let i = 0; i < segments.length; i++) {
-    const m = PATH_PARAM_FULL_RE.exec(segments[i]);
+    const seg = segments[i]!;
+    const m = PATH_PARAM_FULL_RE.exec(seg);
     if (m) {
       if (keepTrailingParam && i === segments.length - 1) {
-        result.push(m[1]);
+        result.push(m[1]!);
       }
     } else {
-      result.push(segments[i]);
+      result.push(seg);
     }
   }
   return snakeToCamel(`${httpMethod.toLowerCase()}_${result.join("_").replace(/-/g, "_")}`);
@@ -278,7 +279,7 @@ export class ApiClient {
       /\\{\\}/g,
       (() => {
         let i = 0;
-        return () => encodeURIComponent(request.pathArgs[i++]);
+        return () => encodeURIComponent(request.pathArgs[i++]!);
       })(),
     );
     const init: RequestInit = {
@@ -295,7 +296,7 @@ export class ApiClient {
   if (errorRefs.length > 0) {
     src += `
       if (request.errorCodes?.[response.status]) {
-        const ErrorClass = ERROR_TYPES[request.errorCodes[response.status]];
+        const ErrorClass = ERROR_TYPES[request.errorCodes[response.status]!];
         if (ErrorClass) {
           try {
             const data = await response.json();

@@ -81,8 +81,8 @@ function renameRefs(node: unknown, renames: Map<string, string>): void {
     const obj = node as Record<string, unknown>;
     if (typeof obj.$ref === "string") {
       const m = REF_PATTERN.exec(obj.$ref);
-      if (m && renames.has(m[1])) {
-        obj.$ref = `#/components/schemas/${renames.get(m[1])}`;
+      if (m && renames.has(m[1]!)) {
+        obj.$ref = `#/components/schemas/${renames.get(m[1]!)}`;
       }
     }
     for (const child of Object.values(obj)) renameRefs(child, renames);
