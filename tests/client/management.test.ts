@@ -39,6 +39,27 @@ describe("ManagementClient", () => {
     expect(req.method).toBe("GET");
     expect(req.path).toBe("/v1/models");
     expect(req.headers.authorization).toBe("Api-Key test-key");
+    expect(req.headers["user-agent"]).toMatch(/^baseten-js\/\S+/);
+  });
+
+  it("merges custom headers and lets caller override User-Agent", async () => {
+    const { fetch, capture } = fakeFetch(200, { models: [] });
+    const client = new ManagementClient({
+      apiKey: "test-key",
+      fetch,
+      headers: { "X-Custom": "v", "User-Agent": "custom/1.0" },
+    });
+    await client.api.getModels();
+    const req = capture();
+    expect(req.headers["x-custom"]).toBe("v");
+    expect(req.headers["user-agent"]).toBe("custom/1.0");
+  });
+
+  it("omits Authorization when apiKey is empty string", async () => {
+    const { fetch, capture } = fakeFetch(200, { models: [] });
+    const client = new ManagementClient({ apiKey: "", fetch });
+    await client.api.getModels();
+    expect(capture().headers.authorization).toBeUndefined();
   });
 
   it("escapes path params", async () => {

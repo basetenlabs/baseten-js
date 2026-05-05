@@ -1,4 +1,5 @@
 import { ApiClient } from "./inferenceapi";
+import { applyUserAgentHeader } from "./userAgent";
 
 /** Options for {@link InferenceClient}. */
 export interface InferenceClientOptions {
@@ -22,6 +23,9 @@ export interface InferenceClientOptions {
 
   /** Custom fetch implementation. Defaults to globalThis.fetch. */
   fetch?: typeof fetch;
+
+  /** Additional headers to send on every request. */
+  headers?: Record<string, string>;
 }
 
 /** Client for the Baseten Inference API. */
@@ -59,9 +63,12 @@ export class InferenceClient {
         chainId: options.chainId,
         environment: options.environment,
       });
-    const headers: Record<string, string> = {
-      Authorization: `Api-Key ${options.apiKey}`,
-    };
+    const headers: Record<string, string> = { ...options.headers };
+    // Empty apiKey is an advanced opt-out from sending Authorization.
+    if (options.apiKey !== "") {
+      headers["Authorization"] = `Api-Key ${options.apiKey}`;
+    }
+    applyUserAgentHeader(headers);
     this._api = new ApiClient({ baseUrl, headers, fetch: options.fetch });
   }
 
