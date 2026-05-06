@@ -27,7 +27,26 @@ describe("InferenceClient", () => {
     expect(req.method).toBe("POST");
     expect(req.path).toBe("/production/predict");
     expect(req.headers.authorization).toBe("Api-Key test-key");
+    expect(req.headers["user-agent"]).toMatch(/^baseten-js\/\S+/);
     expect(req.body).toEqual({ input: "hi" });
+  });
+
+  it("merges custom headers and lets caller override User-Agent", async () => {
+    const { client, capture } = makeClient(
+      200,
+      { output: "ok" },
+      { headers: { "X-Custom": "v", "User-Agent": "custom/1.0" } },
+    );
+    await client.api.predictProduction({ body: {} });
+    const req = capture();
+    expect(req.headers["x-custom"]).toBe("v");
+    expect(req.headers["user-agent"]).toBe("custom/1.0");
+  });
+
+  it("omits Authorization when apiKey is empty string", async () => {
+    const { client, capture } = makeClient(200, { output: "ok" }, { apiKey: "" });
+    await client.api.predictProduction({ body: {} });
+    expect(capture().headers.authorization).toBeUndefined();
   });
 
   it("throws ResponseError on failure", async () => {

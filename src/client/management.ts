@@ -1,4 +1,5 @@
 import { ApiClient } from "./managementapi";
+import { applyUserAgentHeader } from "./userAgent";
 
 /** Options for {@link ManagementClient}. */
 export interface ManagementClientOptions {
@@ -10,6 +11,9 @@ export interface ManagementClientOptions {
 
   /** Custom fetch implementation. Defaults to globalThis.fetch. */
   fetch?: typeof fetch;
+
+  /** Additional headers to send on every request. */
+  headers?: Record<string, string>;
 }
 
 /** Client for the Baseten Management API. */
@@ -25,9 +29,12 @@ export class ManagementClient {
   constructor(options: ManagementClientOptions) {
     this._options = { ...options };
     const baseUrl = options.baseUrlOverride ?? ManagementClient.defaultBaseUrl();
-    const headers: Record<string, string> = {
-      Authorization: `Api-Key ${options.apiKey}`,
-    };
+    const headers: Record<string, string> = { ...options.headers };
+    // Empty apiKey is an advanced opt-out from sending Authorization.
+    if (options.apiKey !== "") {
+      headers["Authorization"] = `Api-Key ${options.apiKey}`;
+    }
+    applyUserAgentHeader(headers);
     this._api = new ApiClient({ baseUrl, headers, fetch: options.fetch });
   }
 
