@@ -1,9 +1,16 @@
 /**
- * Preprocesses OpenAPI specs for code generation.
+ * Preprocesses input schemas for code generation.
  *
+ * preprocessSpec (OpenAPI):
  * - Hoists inline schemas from components/responses and components/requestBodies
  *   into components/schemas so they get generated as named types.
  * - Strips V1 suffixes from management API schema names.
+ *
+ * preprocessConfigSchema (Truss config JSON Schema):
+ * - Asserts no required+nullable properties (would lose nullability on collapse).
+ * - Renames Truss*-prefixed $defs keys, $refs, and root title to Model*.
+ * - Strips property-level titles so json-schema-to-typescript only emits named
+ *   types for $defs entries (not for every described property).
  */
 
 const TRUSS_PREFIX = "Truss";

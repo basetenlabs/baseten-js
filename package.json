@@ -21,9 +21,9 @@
     "generate-api": "tsx scripts/apigen/main.ts",
     "build": "tsdown src/client/index.ts --platform neutral --dts",
     "test": "vitest run",
-    "lint": "oxlint --ignore-pattern dist && oxfmt --check . '!scripts/apigen/specs/**' && tsc --noEmit",
+    "lint": "oxlint --ignore-pattern dist && oxfmt --check . \"!scripts/apigen/specs/**\" && tsc --noEmit",
     "lint:fix": "oxlint --fix --ignore-pattern dist",
-    "format": "oxfmt --write . '!scripts/apigen/specs/**'"
+    "format": "oxfmt --write . \"!scripts/apigen/specs/**\""
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
