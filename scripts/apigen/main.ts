@@ -13,12 +13,14 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { generateClient } from "./clientgen.ts";
 import { postprocessDts } from "./postprocess.ts";
-import { preprocessSpec } from "./preprocess.ts";
+import { preprocessConfigSchema, preprocessSpec } from "./preprocess.ts";
 
 const execFileAsync = promisify(execFile);
 
 const MANAGEMENT_SPEC_URL = "https://api.baseten.co/v1/spec";
 const INFERENCE_SPEC_URL = "https://api.baseten.co/inference-spec";
+const TRUSS_CONFIG_SCHEMA_URL =
+  "https://raw.githubusercontent.com/basetenlabs/truss/main/truss/config.schema.json";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SPECS_DIR = resolve(SCRIPT_DIR, "specs");
@@ -34,10 +36,41 @@ async function main(): Promise<void> {
     console.log("Updating specs from remote URLs...");
     await downloadSpec(MANAGEMENT_SPEC_URL, resolve(SPECS_DIR, "management.json"));
     await downloadSpec(INFERENCE_SPEC_URL, resolve(SPECS_DIR, "inference.json"));
+    await downloadSpec(TRUSS_CONFIG_SCHEMA_URL, resolve(SPECS_DIR, "config.schema.json"));
   }
 
   await generateApi(resolve(SPECS_DIR, "management.json"), resolve(CLIENT_DIR, "managementapi"));
   await generateApi(resolve(SPECS_DIR, "inference.json"), resolve(CLIENT_DIR, "inferenceapi"));
+  await generateModelConfig(
+    resolve(SPECS_DIR, "config.schema.json"),
+    resolve(CLIENT_DIR, "modelconfig"),
+  );
+}
+
+// Generates the modelconfig package (Baseten model config, also known as
+// Truss config) from the upstream Truss config JSON Schema.
+async function generateModelConfig(specFile: string, outDir: string): Promise<void> {
+  console.log(`Generating ${outDir} from ${specFile}`);
+  await mkdir(outDir, { recursive: true });
+
+  const raw = await readFile(specFile);
+  const preprocessed = preprocessConfigSchema(raw);
+  const tmpSpec = resolve(outDir, "_spec.tmp.json");
+  await writeFile(tmpSpec, preprocessed);
+
+  const modelsFile = resolve(outDir, "models.gen.d.ts");
+  await execFileAsync("npx", [
+    "json2ts",
+    "--input",
+    tmpSpec,
+    "--output",
+    modelsFile,
+    "--no-additionalProperties",
+  ]);
+  console.log(`  -> ${modelsFile}`);
+
+  await execFileAsync("npx", ["oxfmt", "--write", modelsFile]);
+  await rm(tmpSpec);
 }
 
 async function downloadSpec(url: string, dest: string): Promise<void> {

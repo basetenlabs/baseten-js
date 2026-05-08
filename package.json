@@ -21,12 +21,15 @@
     "generate-api": "tsx scripts/apigen/main.ts",
     "build": "tsdown src/client/index.ts --platform neutral --dts",
     "test": "vitest run",
-    "lint": "oxlint --ignore-pattern dist && oxfmt --check . && tsc --noEmit",
+    "lint": "oxlint --ignore-pattern dist && oxfmt --check . \"!scripts/apigen/specs/**\" && tsc --noEmit",
     "lint:fix": "oxlint --fix --ignore-pattern dist",
-    "format": "oxfmt --write ."
+    "format": "oxfmt --write . \"!scripts/apigen/specs/**\""
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
+    "js-yaml": "^4.1.1",
+    "json-schema-to-typescript": "^15.0.4",
     "openapi-typescript": "^7.13.0",
     "oxfmt": "^0.43.0",
     "oxlint": "^1.58.0",
