@@ -8,21 +8,9 @@ importers:
 
   .:
     devDependencies:
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
-      js-yaml:
-        specifier: ^4.1.1
-        version: 4.1.1
-      json-schema-to-typescript:
-        specifier: ^15.0.4
-        version: 15.0.4
-      openapi-typescript:
-        specifier: ^7.13.0
-        version: 7.13.0(typescript@5.9.3)
       oxfmt:
         specifier: ^0.43.0
         version: 0.43.0
@@ -41,6 +29,27 @@ importers:
       vitest:
         specifier: ^3
         version: 3.2.4(@types/node@25.5.0)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  packages/client:
+    devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
+      js-yaml:
+        specifier: ^4.1.1
+        version: 4.1.1
+      json-schema-to-typescript:
+        specifier: ^15.0.4
+        version: 15.0.4
+      openapi-typescript:
+        specifier: ^7.13.0
+        version: 7.13.0(typescript@5.9.3)
+
+  packages/client-e2e-tests:
+    devDependencies:
+      '@basetenlabs/client':
+        specifier: workspace:*
+        version: link:../client
 
 packages:
 

@@ -1,4 +1,4 @@
-import { VERSION } from "../version";
+import { VERSION } from "./version";
 
 /** Build the User-Agent header value for outbound Baseten API calls. */
 export function userAgentHeader(): string {

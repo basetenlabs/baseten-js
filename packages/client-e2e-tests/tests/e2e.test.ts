@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { InferenceClient } from "../src/client/inference";
-import { ManagementClient } from "../src/client/management";
-import { ResponseError } from "../src/client/managementapi";
+import { InferenceClient, ManagementClient } from "@basetenlabs/client";
+import { ResponseError } from "@basetenlabs/client/managementapi";
 
 const API_KEY = process.env.BASETEN_E2E_TEST_API_KEY ?? "";
 const DOMAIN = process.env.BASETEN_E2E_TEST_DOMAIN ?? "";
@@ -86,7 +85,7 @@ describe.runIf(ensureE2EEnv())("e2e", () => {
         body: { name: keyName, type: "PERSONAL", model_ids: null },
       });
       expect(created.api_key).toBeTruthy();
-      createdPrefix = created.api_key.split(".")[0];
+      createdPrefix = created.api_key.split(".")[0]!;
 
       const keys = await client.api.getApiKeys();
       const names = keys.keys.map((k) => k.name);

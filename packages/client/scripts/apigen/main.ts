@@ -2,8 +2,8 @@
  * Code generator for Baseten JS SDK.
  *
  * Usage:
- *   npx tsx scripts/apigen/main.ts
- *   npx tsx scripts/apigen/main.ts --update-specs
+ *   pnpm generate-api
+ *   pnpm generate-api --update-specs
  */
 
 import { execFile } from "node:child_process";
@@ -24,8 +24,7 @@ const TRUSS_CONFIG_SCHEMA_URL =
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SPECS_DIR = resolve(SCRIPT_DIR, "specs");
-const REPO_ROOT = resolve(SCRIPT_DIR, "../..");
-const CLIENT_DIR = resolve(REPO_ROOT, "src/client");
+const CLIENT_SRC_DIR = resolve(SCRIPT_DIR, "../../src");
 
 await main();
 
@@ -39,11 +38,14 @@ async function main(): Promise<void> {
     await downloadSpec(TRUSS_CONFIG_SCHEMA_URL, resolve(SPECS_DIR, "config.schema.json"));
   }
 
-  await generateApi(resolve(SPECS_DIR, "management.json"), resolve(CLIENT_DIR, "managementapi"));
-  await generateApi(resolve(SPECS_DIR, "inference.json"), resolve(CLIENT_DIR, "inferenceapi"));
+  await generateApi(
+    resolve(SPECS_DIR, "management.json"),
+    resolve(CLIENT_SRC_DIR, "managementapi"),
+  );
+  await generateApi(resolve(SPECS_DIR, "inference.json"), resolve(CLIENT_SRC_DIR, "inferenceapi"));
   await generateModelConfig(
     resolve(SPECS_DIR, "config.schema.json"),
-    resolve(CLIENT_DIR, "modelconfig"),
+    resolve(CLIENT_SRC_DIR, "modelconfig"),
   );
 }
 
@@ -59,17 +61,14 @@ async function generateModelConfig(specFile: string, outDir: string): Promise<vo
   await writeFile(tmpSpec, preprocessed);
 
   const modelsFile = resolve(outDir, "models.gen.d.ts");
-  await execFileAsync("npx", [
+  await execFileAsync(
     "json2ts",
-    "--input",
-    tmpSpec,
-    "--output",
-    modelsFile,
-    "--no-additionalProperties",
-  ]);
+    ["--input", tmpSpec, "--output", modelsFile, "--no-additionalProperties"],
+    { shell: true },
+  );
   console.log(`  -> ${modelsFile}`);
 
-  await execFileAsync("npx", ["oxfmt", "--write", modelsFile]);
+  await execFileAsync("oxfmt", ["--write", modelsFile], { shell: true });
   await rm(tmpSpec);
 }
 
@@ -94,16 +93,19 @@ async function generateApi(specFile: string, outDir: string): Promise<void> {
 
   // Generate models
   const modelsFile = resolve(outDir, "models.gen.d.ts");
-  await execFileAsync("npx", [
+  await execFileAsync(
     "openapi-typescript",
-    tmpSpec,
-    "-o",
-    modelsFile,
-    "--export-type",
-    "--empty-objects-unknown",
-    "--root-types",
-    "--root-types-no-schema-prefix",
-  ]);
+    [
+      tmpSpec,
+      "-o",
+      modelsFile,
+      "--export-type",
+      "--empty-objects-unknown",
+      "--root-types",
+      "--root-types-no-schema-prefix",
+    ],
+    { shell: true },
+  );
   const dts = await readFile(modelsFile, "utf-8");
   await writeFile(modelsFile, postprocessDts(dts));
   console.log(`  -> ${modelsFile}`);
@@ -114,7 +116,7 @@ async function generateApi(specFile: string, outDir: string): Promise<void> {
   console.log(`  -> ${clientFile}`);
 
   // Format generated files
-  await execFileAsync("npx", ["oxfmt", "--write", modelsFile, clientFile]);
+  await execFileAsync("oxfmt", ["--write", modelsFile, clientFile], { shell: true });
 
   await rm(tmpSpec);
 }

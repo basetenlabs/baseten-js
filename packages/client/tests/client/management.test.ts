@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ManagementClient } from "../../src/client/management";
-import { ResponseError } from "../../src/client/managementapi";
+import { ManagementClient } from "../../src/management";
+import { ResponseError } from "../../src/managementapi";
 import { type CapturedRequest, fakeFetch } from "../helpers";
 
 const MINIMAL_MODEL = {
@@ -34,7 +34,7 @@ describe("ManagementClient", () => {
     const { client, capture } = makeClient(200, { models: [MINIMAL_MODEL] });
     const resp = await client.api.getModels();
     expect(resp.models).toHaveLength(1);
-    expect(resp.models[0].name).toBe("my-model");
+    expect(resp.models[0]!.name).toBe("my-model");
     const req = capture();
     expect(req.method).toBe("GET");
     expect(req.path).toBe("/v1/models");
