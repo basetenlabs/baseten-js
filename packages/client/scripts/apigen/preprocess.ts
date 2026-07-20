@@ -280,10 +280,15 @@ function injectQuerySchemas(doc: Record<string, unknown>): void {
  * those response fields optional (looser, still always sent by the server).
  */
 function stripRequestBodyDefaults(doc: Record<string, unknown>): void {
-  const schemas = (doc.components as Record<string, unknown>).schemas as Record<string, unknown>;
+  const components = doc.components as Record<string, unknown>;
+  const schemas = components.schemas as Record<string, unknown>;
   const paths = (doc.paths ?? {}) as Record<string, Record<string, unknown>>;
 
   const roots = new Set<string>();
+  // Inline request bodies reference the schema directly; component request
+  // bodies are reached via `$ref: #/components/requestBodies/...`, so also walk
+  // the requestBodies section (all of whose entries are request bodies).
+  collectSchemaRefs(components.requestBodies, roots);
   for (const pathItem of Object.values(paths)) {
     for (const [httpMethod, op] of Object.entries(pathItem)) {
       if (httpMethod === "parameters" || typeof op !== "object" || op === null) continue;
