@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyUserAgentHeader, userAgentHeader } from "../../src/client/userAgent";
+import { applyUserAgentHeader, userAgentHeader } from "../../src/userAgent";
 import { VERSION } from "../../src/version";
 
 describe("userAgentHeader", () => {

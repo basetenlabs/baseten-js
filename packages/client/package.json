@@ -1,0 +1,54 @@
+{
+  "name": "@basetenlabs/client",
+  "version": "0.1.0",
+  "description": "Baseten JS/TS SDK",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/basetenlabs/baseten-js",
+    "directory": "packages/client"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./managementapi": {
+      "types": "./dist/managementapi.d.ts",
+      "default": "./dist/managementapi.js"
+    },
+    "./inferenceapi": {
+      "types": "./dist/inferenceapi.d.ts",
+      "default": "./dist/inferenceapi.js"
+    },
+    "./modelconfig": {
+      "types": "./dist/modelconfig.d.ts",
+      "default": "./dist/modelconfig.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "generate-api": "tsx scripts/apigen/main.ts",
+    "sync-version": "tsx scripts/sync-version.ts",
+    "build": "pnpm run sync-version && tsdown",
+    "lint": "oxlint --ignore-pattern dist && oxfmt --check . \"!dist/**\" \"!scripts/apigen/specs/**\" && tsc --noEmit",
+    "format": "oxfmt --write . \"!dist/**\" \"!scripts/apigen/specs/**\"",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.1",
+    "json-schema-to-typescript": "^15.0.4",
+    "openapi-typescript": "^7.13.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

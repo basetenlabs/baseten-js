@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { InferenceClient } from "../../src/client/inference";
-import { ResponseError, ResponseErrorResponse } from "../../src/client/inferenceapi";
+import { InferenceClient } from "../../src/inference";
+import { ResponseError, ResponseErrorResponse } from "../../src/inferenceapi";
 import { type CapturedRequest, fakeFetch } from "../helpers";
 
 function makeClient(

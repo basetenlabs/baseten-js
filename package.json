@@ -1,36 +1,20 @@
 {
-  "name": "baseten",
-  "version": "0.1.0",
-  "description": "Baseten JS SDK",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/basetenlabs/baseten-js"
-  },
-  "files": [
-    "dist"
-  ],
+  "name": "baseten-js",
+  "private": true,
   "type": "module",
-  "exports": {
-    "./client": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "generate-api": "tsx scripts/apigen/main.ts",
-    "build": "tsdown src/client/index.ts --platform neutral --dts",
-    "test": "vitest run",
-    "lint": "oxlint --ignore-pattern dist && oxfmt --check . \"!scripts/apigen/specs/**\" && tsc --noEmit",
-    "lint:fix": "oxlint --fix --ignore-pattern dist",
-    "format": "oxfmt --write . \"!scripts/apigen/specs/**\""
+    "generate-api": "pnpm --filter @basetenlabs/client generate-api",
+    "sync-version": "pnpm --filter @basetenlabs/client sync-version",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "format": "pnpm -r run format",
+    "test": "pnpm -r run test"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
-    "js-yaml": "^4.1.1",
-    "json-schema-to-typescript": "^15.0.4",
-    "openapi-typescript": "^7.13.0",
     "oxfmt": "^0.43.0",
     "oxlint": "^1.58.0",
     "tsdown": "^0",

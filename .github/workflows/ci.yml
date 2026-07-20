@@ -24,9 +24,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm run lint
-
       - name: Generate API and check for diff
         run: |
           pnpm run generate-api
@@ -34,6 +31,9 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: Lint
+        run: pnpm run lint
 
       - name: Test
         env:
@@ -53,9 +53,6 @@ jobs:
 
       - run: bun install
 
-      - name: Test
-        env:
-          BASETEN_E2E_TEST_API_KEY: ${{ secrets.BASETEN_E2E_TEST_API_KEY }}
-          BASETEN_E2E_TEST_DOMAIN: ${{ secrets.BASETEN_E2E_TEST_DOMAIN }}
-          BASETEN_E2E_TEST_MODEL_ID: ${{ secrets.BASETEN_E2E_TEST_MODEL_ID }}
-        run: bun run vitest run
+      - name: Test client under Bun
+        working-directory: packages/client
+        run: bun run test

@@ -9,10 +9,14 @@ JS/TS SDK for Baseten.
 Current SDK only has barebones client. Here is usage example of the barebones underlying client in TypeScript:
 
 ```typescript
-import { ManagementClient } from "baseten/client";
+import { ManagementClient } from "@basetenlabs/client";
 
 const client = new ManagementClient({ apiKey: "my-api-key" });
 for (const model of (await client.api.getModels()).models) {
   console.log(model.name);
 }
 ```
+
+## Packages
+
+- [`@basetenlabs/client`](packages/client) — the Baseten JS/TS SDK.
