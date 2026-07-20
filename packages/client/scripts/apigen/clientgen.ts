@@ -20,6 +20,8 @@ interface Operation {
   path: string;
   pathParams: string[];
   hasBody: boolean;
+  hasQuery: boolean;
+  queryRequired: boolean;
   reqBodyRef: string;
   respRef: string;
   successCode: number;
@@ -27,10 +29,14 @@ interface Operation {
   summary: string;
 }
 
-function extractOperations(spec: Record<string, unknown>): Operation[] {
+/**
+ * Maps each (path, httpMethod) to its resolved client method name. Names are
+ * derived from method and path, using a trailing path parameter only where
+ * needed to disambiguate collisions. Shared with preprocessing so the injected
+ * query-parameter schema for an operation can be named to match its method.
+ */
+export function resolveMethodNames(spec: Record<string, unknown>): Map<string, string> {
   const paths = (spec.paths ?? {}) as Record<string, Record<string, unknown>>;
-
-  // Collect raw operation data with short names to detect collisions.
   const raw: { path: string; httpMethod: string; opData: Record<string, unknown> }[] = [];
   const shortNames = new Map<string, number>();
   for (const [path, pathItem] of Object.entries(paths)) {
@@ -41,25 +47,58 @@ function extractOperations(spec: Record<string, unknown>): Operation[] {
       shortNames.set(name, (shortNames.get(name) ?? 0) + 1);
     }
   }
-
-  // Build operations, using trailing param only where needed to disambiguate.
-  const ops: Operation[] = [];
+  const result = new Map<string, string>();
   for (const { path, httpMethod, opData } of raw) {
     const short = deriveMethodName(httpMethod, path, opData, false);
     const name =
       (shortNames.get(short) ?? 0) > 1 ? deriveMethodName(httpMethod, path, opData, true) : short;
-    ops.push({
-      name,
-      httpMethod: httpMethod.toUpperCase(),
-      path,
-      pathParams: [...path.matchAll(PATH_PARAM_RE)].map((m) => m[1]!),
-      hasBody: "requestBody" in opData,
-      reqBodyRef: bodySchemaRef(spec, opData),
-      respRef: responseSchemaRef(spec, opData),
-      successCode: extractSuccessCode(opData, httpMethod, path),
-      errorCodes: errorCodeMap(spec, opData),
-      summary: (opData.summary as string) ?? "",
-    });
+    result.set(`${httpMethod}\0${path}`, name);
+  }
+  return result;
+}
+
+/** Model name for an operation's injected query-parameter schema. */
+export function queryRequestTypeName(methodName: string): string {
+  return methodName.charAt(0).toUpperCase() + methodName.slice(1) + "Request";
+}
+
+function extractOperations(spec: Record<string, unknown>): Operation[] {
+  const paths = (spec.paths ?? {}) as Record<string, Record<string, unknown>>;
+  const names = resolveMethodNames(spec);
+
+  const ops: Operation[] = [];
+  for (const [path, pathItem] of Object.entries(paths)) {
+    for (const [httpMethod, opDataRaw] of Object.entries(pathItem)) {
+      if (httpMethod === "parameters" || typeof opDataRaw !== "object" || opDataRaw === null)
+        continue;
+      const opData = opDataRaw as Record<string, unknown>;
+      const name = names.get(`${httpMethod}\0${path}`)!;
+      const queryParams = ((opData.parameters as unknown[]) ?? []).filter(
+        (p): p is Record<string, unknown> =>
+          typeof p === "object" && p !== null && (p as Record<string, unknown>).in === "query",
+      );
+      const hasBody = "requestBody" in opData;
+      if (hasBody && queryParams.length > 0) {
+        throw new Error(
+          `${httpMethod.toUpperCase()} ${path} has both a request body and query parameters; ` +
+            "the generated `request` field cannot represent both",
+        );
+      }
+      ops.push({
+        name,
+        httpMethod: httpMethod.toUpperCase(),
+        path,
+        pathParams: [...path.matchAll(PATH_PARAM_RE)].map((m) => m[1]!),
+        hasBody,
+        hasQuery: queryParams.length > 0,
+        queryRequired: queryParams.some((p) => p.required === true),
+        reqBodyRef: bodySchemaRef(spec, opData),
+        respRef: responseSchemaRef(spec, opData),
+        successCode: extractSuccessCode(opData, httpMethod, path),
+        errorCodes: errorCodeMap(spec, opData),
+        summary: (opData.summary as string) ?? "",
+      });
+    }
   }
   ops.sort((a, b) => a.name.localeCompare(b.name));
   return ops;
@@ -196,6 +235,7 @@ function renderClient(ops: Operation[]): string {
   const modelImports = new Set<string>();
   for (const op of ops) {
     if (op.reqBodyRef) modelImports.add(op.reqBodyRef);
+    if (op.hasQuery) modelImports.add(queryRequestTypeName(op.name));
     if (op.respRef) modelImports.add(op.respRef);
     for (const ref of op.errorCodes?.values() ?? []) modelImports.add(ref);
   }
@@ -245,6 +285,7 @@ interface ApiRequest {
   method: string;
   pathFmt: string;
   pathArgs: string[];
+  query: Record<string, unknown> | null;
   body: unknown;
   successCode: number;
   errorCodes: Record<number, string> | null;
@@ -275,13 +316,29 @@ export class ApiClient {
 
   src += `
   private async _do(request: ApiRequest): Promise<Response> {
-    const path = request.pathFmt.replace(
+    let path = request.pathFmt.replace(
       /\\{\\}/g,
       (() => {
         let i = 0;
         return () => encodeURIComponent(request.pathArgs[i++]!);
       })(),
     );
+    if (request.query !== null) {
+      const search = new URLSearchParams();
+      for (const [key, value] of Object.entries(request.query)) {
+        // Unset params are omitted so the server applies its default. Arrays
+        // are exploded into one repeated param per element; enums and other
+        // scalars are stringified as-is.
+        if (value === undefined || value === null) continue;
+        if (Array.isArray(value)) {
+          for (const item of value) search.append(key, String(item));
+        } else {
+          search.append(key, String(value));
+        }
+      }
+      const qs = search.toString();
+      if (qs) path += \`?\${qs}\`;
+    }
     const init: RequestInit = {
       method: request.method,
       headers: { ...this.headers },
@@ -342,7 +399,25 @@ export class ApiClient {
 }
 
 function renderMethod(op: Operation): string {
-  const hasParams = op.pathParams.length > 0 || op.hasBody;
+  // An operation carries at most one input model on the `request` field: a
+  // request body (non-GET) or query parameters (GET). Both are represented as
+  // the same field since no operation has both. A body is always required so an
+  // empty body still sends `{}`; query params are optional unless the spec
+  // marks one required.
+  let requestType = "";
+  let requestRequired = false;
+  if (op.hasBody) {
+    requestType = op.reqBodyRef || "unknown";
+    requestRequired = true;
+  } else if (op.hasQuery) {
+    requestType = queryRequestTypeName(op.name);
+    requestRequired = op.queryRequired;
+  }
+
+  const hasParams = op.pathParams.length > 0 || requestType !== "";
+  // The whole params argument is optional when every field it holds is
+  // optional, i.e. no path params and an optional request.
+  const paramsOptional = op.pathParams.length === 0 && requestType !== "" && !requestRequired;
 
   let paramsType = "";
   if (hasParams) {
@@ -350,19 +425,20 @@ function renderMethod(op: Operation): string {
     for (const p of op.pathParams) {
       fields.push(`${p}: string`);
     }
-    if (op.hasBody) {
-      const bodyType = op.reqBodyRef || "unknown";
-      fields.push(`body: ${bodyType}`);
+    if (requestType) {
+      fields.push(`request${requestRequired ? "" : "?"}: ${requestType}`);
     }
     paramsType = `{ ${fields.join("; ")} }`;
   }
 
-  const paramSig = hasParams ? `params: ${paramsType}` : "";
+  const paramSig = hasParams ? `params${paramsOptional ? "?" : ""}: ${paramsType}` : "";
   const retType = op.respRef ? `Promise<${op.respRef}>` : "Promise<void>";
 
   const pathArgs =
     op.pathParams.length > 0 ? `[${op.pathParams.map((p) => `params.${p}`).join(", ")}]` : "[]";
-  const bodyArg = op.hasBody ? "params.body" : "null";
+  const paramsRef = paramsOptional ? "params?" : "params";
+  const bodyArg = op.hasBody ? "params.request" : "null";
+  const queryArg = op.hasQuery ? `${paramsRef}.request ?? null` : "null";
 
   let errorExpr: string;
   if (op.errorCodes) {
@@ -375,7 +451,7 @@ function renderMethod(op: Operation): string {
     errorExpr = "null";
   }
 
-  const req = `{ method: "${op.httpMethod}", pathFmt: "${pathFmt(op.path)}", pathArgs: ${pathArgs}, body: ${bodyArg}, successCode: ${op.successCode}, errorCodes: ${errorExpr} }`;
+  const req = `{ method: "${op.httpMethod}", pathFmt: "${pathFmt(op.path)}", pathArgs: ${pathArgs}, query: ${queryArg}, body: ${bodyArg}, successCode: ${op.successCode}, errorCodes: ${errorExpr} }`;
 
   let jsdoc = "";
   if (op.summary) {
@@ -394,11 +470,14 @@ function camelToSnakeField(s: string): string {
 
 /**
  * Transforms schema names to match openapi-typescript --root-types-no-schema-prefix casing.
- * e.g. APIKey -> ApiKey, LLMModel -> LlmModel, AWSCredentials -> AwsCredentials
+ * An uppercase run keeps its first letter and lowercases the rest, whether it is
+ * followed by a word (APIKey -> ApiKey, LLMModel -> LlmModel, AWSCredentials ->
+ * AwsCredentials) or trails the name (ModelAPI -> ModelApi).
  */
 function rootTypeName(name: string): string {
-  return name.replace(
-    /([A-Z]+)([A-Z][a-z])/g,
-    (_, p1: string, p2: string) => p1.charAt(0) + p1.slice(1).toLowerCase() + p2,
-  );
+  return name
+    .replace(/([A-Z]+)([A-Z][a-z])/g, (_, p1: string, p2: string) => {
+      return p1.charAt(0) + p1.slice(1).toLowerCase() + p2;
+    })
+    .replace(/([A-Z])([A-Z]+)$/, (_, p1: string, p2: string) => p1 + p2.toLowerCase());
 }

@@ -13,65 +13,146 @@ import type {
   ChainEnvironment,
   ChainTombstone,
   Chains,
+  CreateApiKeyForGroupRequest,
+  CreateApiKeyForGroupResponse,
   CreateApiKeyRequest,
   CreateChainEnvironmentRequest,
+  CreateDeploymentPatchRequest,
+  CreateDeploymentPatchResponse,
+  CreateEndpointRequest,
   CreateEnvironmentRequest,
+  CreateGroupRequest,
   CreateLibraryListingRequest,
   CreateLibraryListingVersionRequest,
   CreateLlmModelRequest,
   CreateLlmModelVersionRequest,
+  CreateLoopsRunRequest,
+  CreateLoopsRunResponse,
+  CreateLoopsSamplerRequest,
+  CreateLoopsSamplerResponse,
+  CreateLoopsSessionResponse,
+  CreateModelDeploymentRequest,
+  CreateModelRequest,
   CreateModelWeightSnapshotRequest,
   CreateTrainingJobRequest,
   CreateTrainingJobResponse,
+  CreatedModelDeployment,
+  DeactivateLoopsDeploymentResponse,
   DeactivateResponse,
   Deployment,
+  DeploymentConfigResponse,
   DeploymentTombstone,
   Deployments,
+  DownloadDeploymentResponse,
   DownloadTrainingJobResponse,
+  Endpoint,
+  EndpointTombstone,
+  EndpointsResponse,
   Environment,
+  EnvironmentGroup,
+  EnvironmentGroups,
   Environments,
+  GatewayKeyInfo,
+  GetAuditLogsRequest,
   GetAuthCodesResponse,
+  GetBillingUsageSummaryRequest,
   GetBlobCredentialsResponse,
   GetCacheSummaryResponse,
+  GetChainsAuditLogsRequest,
+  GetChainsDeploymentsChainletsLogsRequest,
   GetDeploymentLogsRequest,
+  GetDeploymentPatchesStateResponse,
   GetLogsResponse,
+  GetLoopsCapabilitiesResponse,
+  GetLoopsCheckpointsRequest,
+  GetLoopsDeploymentMetricsRequest,
+  GetLoopsDeploymentMetricsResponse,
+  GetLoopsDeploymentResponse,
+  GetLoopsDeploymentsLogsRequest,
+  GetLoopsRunResponse,
+  GetLoopsRunsRequest,
+  GetLoopsSamplerResponse,
+  GetLoopsSessionResponse,
+  GetLoopsUserConfigResponse,
+  GetModelApisRequest,
+  GetModelMetricsResponse,
+  GetModelsAuditLogsRequest,
+  GetModelsDeploymentsConfigRequest,
+  GetModelsDeploymentsLogsRequest,
+  GetModelsDeploymentsMetricsRequest,
+  GetModelsDeploymentsRequest,
+  GetModelsEnvironmentsLogsRequest,
+  GetModelsEnvironmentsMetricsRequest,
+  GetModelsRequest,
+  GetTeamsModelsRequest,
+  GetTeamsRequest,
+  GetTrainingGpuCapacityResponse,
   GetTrainingJobCheckpointFilesResponse,
   GetTrainingJobCheckpointsResponse,
   GetTrainingJobLogsRequest,
   GetTrainingJobMetricsRequest,
   GetTrainingJobMetricsResponse,
+  GetTrainingJobQueueContextResponse,
   GetTrainingJobResponse,
   GetTrainingProjectResponse,
+  GetTrainingProjectsJobsCheckpointFilesRequest,
+  GetTrainingProjectsJobsLogsRequest,
+  GetTrainingProjectsJobsMetricsRequest,
+  GetUsersRequest,
+  Group,
+  GroupsResponse,
   InstanceTypePrices,
   InstanceTypes,
+  KeysForGroupResponse,
   LibraryListing,
   LibraryListingTombstone,
   LibraryListingVersion,
   LibraryListingVersionTombstone,
   LibraryListingVersions,
   LibraryListings,
+  ListAuditLogsResponse,
+  ListLoopsCheckpointsResponse,
+  ListLoopsDeploymentsResponse,
+  ListLoopsRunsResponse,
+  ListLoopsSamplersResponse,
   ListTrainingJobsResponse,
   ListTrainingProjectsResponse,
-  LlmModel,
-  LlmModelVersion,
+  LlmModelHandle,
+  LoopsCheckpointFilesResponse,
   Model,
+  ModelApIsResponse,
+  ModelApi,
   ModelTombstone,
   ModelWeightSnapshot,
   Models,
   PatchInteractiveSessionRequest,
   PatchInteractiveSessionResponse,
+  PatchLoopsUserConfigRequest,
+  PatchLoopsUserConfigResponse,
+  PatchTeamTrainingGpuCapacityRequest,
+  PatchTeamTrainingGpuCapacityResponse,
+  PrepareModelUploadRequest,
+  PrepareModelUploadResponse,
   PromoteRequest,
   PromoteToChainEnvironmentRequest,
   PromoteToEnvironmentRequest,
   RecreateTrainingJobResponse,
+  RegisterApiKeyRequest,
+  RegisterApiKeyResponse,
   RetryDeploymentResponse,
   SearchTrainingJobsRequest,
   SearchTrainingJobsResponse,
   Secret,
+  SecretTombstone,
   Secrets,
+  SignSshCertificateRequest,
+  SignSshCertificateResponse,
   SignalPromotionResponse,
   StopTrainingJobRequest,
   StopTrainingJobResponse,
+  SyncDeploymentPatchesRequest,
+  SyncDeploymentPatchesResponse,
+  Team,
   Teams,
   TerminateReplicaResponse,
   TrainingJobTombstone,
@@ -83,13 +164,22 @@ import type {
   UpdateChainletEnvironmentAutoscalingSettingsRequest,
   UpdateChainletEnvironmentInstanceTypeRequest,
   UpdateChainletEnvironmentInstanceTypeResponse,
+  UpdateEndpointRequest,
+  UpdateEnvironmentGroupRequest,
   UpdateEnvironmentRequest,
+  UpdateGroupRequest,
   UpdateLibraryListingRequest,
   UpdateLibraryListingVersionRequest,
+  UpdateTrainingJobRequest,
+  UpdateTrainingJobResponse,
   UpsertSecretRequest,
   UpsertTrainingProjectRequest,
   UpsertTrainingProjectResponse,
   UsageSummary,
+  UserInfo,
+  UsersResponse,
+  ValidateLoopsCheckpointRequest,
+  ValidateLoopsCheckpointResponse,
 } from "./models.gen";
 
 export class ResponseError extends Error {
@@ -105,6 +195,7 @@ interface ApiRequest {
   method: string;
   pathFmt: string;
   pathArgs: string[];
+  query: Record<string, unknown> | null;
   body: unknown;
   successCode: number;
   errorCodes: Record<number, string> | null;
@@ -134,6 +225,7 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/api_keys/{}",
       pathArgs: [params.api_key_prefix],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -146,6 +238,7 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/chains/{}",
       pathArgs: [params.chain_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -161,6 +254,20 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/chains/{}/deployments/{}",
       pathArgs: [params.chain_id, params.chain_deployment_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes a Gateway endpoint */
+  async deleteGatewayEndpoints(params: { endpoint_id: string }): Promise<EndpointTombstone> {
+    return this._doJson<EndpointTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/gateway/endpoints/{}",
+      pathArgs: [params.endpoint_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -175,6 +282,7 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/library_listings/{}",
       pathArgs: [params.user_defined_listing_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -190,6 +298,7 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/library_listings/{}/versions/{}",
       pathArgs: [params.user_defined_listing_id, params.version_tag],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -202,6 +311,7 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/models/{}",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -217,6 +327,7 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/models/{}/deployments/{}",
       pathArgs: [params.model_id, params.deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -233,13 +344,43 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/models/{}/deployments/{}/replicas/{}",
       pathArgs: [params.model_id, params.deployment_id, params.replica_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Delete a training project. */
+  /** Deletes a secret by name */
+  async deleteSecrets(params: { secret_name: string }): Promise<SecretTombstone> {
+    return this._doJson<SecretTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/secrets/{}",
+      pathArgs: [params.secret_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes a secret by name */
+  async deleteTeamsSecrets(params: {
+    team_id: string;
+    secret_name: string;
+  }): Promise<SecretTombstone> {
+    return this._doJson<SecretTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/teams/{}/secrets/{}",
+      pathArgs: [params.team_id, params.secret_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes a training project */
   async deleteTrainingProjects(params: {
     training_project_id: string;
   }): Promise<TrainingProjectTombstone> {
@@ -247,13 +388,14 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/training_projects/{}",
       pathArgs: [params.training_project_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Delete a training job. */
+  /** Deletes a training job */
   async deleteTrainingProjectsJobs(params: {
     training_project_id: string;
     training_job_id: string;
@@ -262,18 +404,33 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/training_projects/{}/jobs/{}",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Lists the user's API keys */
+  /** Lists API keys (metadata only, no plain text keys) */
   async getApiKeys(): Promise<ApiKeys> {
     return this._doJson<ApiKeys>({
       method: "GET",
       pathFmt: "/v1/api_keys",
       pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the audit log for the workspace */
+  async getAuditLogs(params?: { request?: GetAuditLogsRequest }): Promise<ListAuditLogsResponse> {
+    return this._doJson<ListAuditLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/audit_logs",
+      pathArgs: [],
+      query: params?.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -281,35 +438,40 @@ export class ApiClient {
   }
 
   /** Gets billing usage summary for a date range */
-  async getBillingUsageSummary(): Promise<UsageSummary> {
+  async getBillingUsageSummary(params: {
+    request: GetBillingUsageSummaryRequest;
+  }): Promise<UsageSummary> {
     return this._doJson<UsageSummary>({
       method: "GET",
       pathFmt: "/v1/billing/usage_summary",
       pathArgs: [],
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get blob credentials for models. */
+  /** Gets blob credentials for models */
   async getBlobsCredentialsModel(): Promise<GetBlobCredentialsResponse> {
     return this._doJson<GetBlobCredentialsResponse>({
       method: "GET",
       pathFmt: "/v1/blobs/credentials/model",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get blob credentials for training. */
+  /** Gets blob credentials for training */
   async getBlobsCredentialsTrain(): Promise<GetBlobCredentialsResponse> {
     return this._doJson<GetBlobCredentialsResponse>({
       method: "GET",
       pathFmt: "/v1/blobs/credentials/train",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -322,6 +484,23 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/chains",
       pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the audit log for a chain */
+  async getChainsAuditLogs(params: {
+    chain_id: string;
+    request?: GetChainsAuditLogsRequest;
+  }): Promise<ListAuditLogsResponse> {
+    return this._doJson<ListAuditLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/chains/{}/audit_logs",
+      pathArgs: [params.chain_id],
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -334,6 +513,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/chains/{}",
       pathArgs: [params.chain_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -346,6 +526,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/chains/{}/deployments",
       pathArgs: [params.chain_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -361,25 +542,45 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/chains/{}/deployments/{}",
       pathArgs: [params.chain_id, params.chain_deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get all chain environments */
+  /** Gets the logs for a chainlet within a chain deployment */
+  async getChainsDeploymentsChainletsLogs(params: {
+    chain_id: string;
+    chain_deployment_id: string;
+    chainlet_id: string;
+    request?: GetChainsDeploymentsChainletsLogsRequest;
+  }): Promise<GetLogsResponse> {
+    return this._doJson<GetLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/chains/{}/deployments/{}/chainlets/{}/logs",
+      pathArgs: [params.chain_id, params.chain_deployment_id, params.chainlet_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets all chain environments */
   async getChainsEnvironments(params: { chain_id: string }): Promise<Environments> {
     return this._doJson<Environments>({
       method: "GET",
       pathFmt: "/v1/chains/{}/environments",
       pathArgs: [params.chain_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get a chain environment's details */
+  /** Gets a chain environment's details */
   async getChainsEnvironmentsEnvName(params: {
     chain_id: string;
     env_name: string;
@@ -388,18 +589,127 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/chains/{}/environments/{}",
       pathArgs: [params.chain_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Gets prices for available instance types. */
+  /** Lists environment groups */
+  async getEnvironmentGroups(): Promise<EnvironmentGroups> {
+    return this._doJson<EnvironmentGroups>({
+      method: "GET",
+      pathFmt: "/v1/environment_groups",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets an environment group by name */
+  async getEnvironmentGroupsEnvName(params: { env_name: string }): Promise<EnvironmentGroup> {
+    return this._doJson<EnvironmentGroup>({
+      method: "GET",
+      pathFmt: "/v1/environment_groups/{}",
+      pathArgs: [params.env_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists Gateway endpoints */
+  async getGatewayEndpoints(): Promise<EndpointsResponse> {
+    return this._doJson<EndpointsResponse>({
+      method: "GET",
+      pathFmt: "/v1/gateway/endpoints",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a Gateway endpoint */
+  async getGatewayEndpointsEndpointId(params: { endpoint_id: string }): Promise<Endpoint> {
+    return this._doJson<Endpoint>({
+      method: "GET",
+      pathFmt: "/v1/gateway/endpoints/{}",
+      pathArgs: [params.endpoint_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists groups */
+  async getGatewayGroups(): Promise<GroupsResponse> {
+    return this._doJson<GroupsResponse>({
+      method: "GET",
+      pathFmt: "/v1/gateway/groups",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists API keys for a group */
+  async getGatewayGroupsApiKeys(params: { group_id: string }): Promise<KeysForGroupResponse> {
+    return this._doJson<KeysForGroupResponse>({
+      method: "GET",
+      pathFmt: "/v1/gateway/groups/{}/api_keys",
+      pathArgs: [params.group_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets an API key for a group */
+  async getGatewayGroupsApiKeysApiKeyPrefix(params: {
+    group_id: string;
+    api_key_prefix: string;
+  }): Promise<GatewayKeyInfo> {
+    return this._doJson<GatewayKeyInfo>({
+      method: "GET",
+      pathFmt: "/v1/gateway/groups/{}/api_keys/{}",
+      pathArgs: [params.group_id, params.api_key_prefix],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a group */
+  async getGatewayGroupsGroupId(params: { group_id: string }): Promise<Group> {
+    return this._doJson<Group>({
+      method: "GET",
+      pathFmt: "/v1/gateway/groups/{}",
+      pathArgs: [params.group_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets prices for available instance types */
   async getInstanceTypePrices(): Promise<InstanceTypePrices> {
     return this._doJson<InstanceTypePrices>({
       method: "GET",
       pathFmt: "/v1/instance_type_prices",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -412,6 +722,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/instance_types",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -424,6 +735,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/library_listings",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -438,6 +750,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/library_listings/{}",
       pathArgs: [params.user_defined_listing_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -452,6 +765,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/library_listings/{}/versions",
       pathArgs: [params.user_defined_listing_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -467,30 +781,226 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/library_listings/{}/versions/{}",
       pathArgs: [params.user_defined_listing_id, params.version_tag],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get the latest model weight snapshot */
+  /** Gets Loops server capabilities */
+  async getLoopsCapabilities(): Promise<GetLoopsCapabilitiesResponse> {
+    return this._doJson<GetLoopsCapabilitiesResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/capabilities",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists Loops checkpoints */
+  async getLoopsCheckpoints(params?: {
+    request?: GetLoopsCheckpointsRequest;
+  }): Promise<ListLoopsCheckpointsResponse> {
+    return this._doJson<ListLoopsCheckpointsResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/checkpoints",
+      pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets Loops checkpoint files */
+  async getLoopsCheckpointsFiles(params: {
+    checkpoint_id: string;
+  }): Promise<LoopsCheckpointFilesResponse> {
+    return this._doJson<LoopsCheckpointFilesResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/checkpoints/{}/files",
+      pathArgs: [params.checkpoint_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists Loops deployments */
+  async getLoopsDeployments(): Promise<ListLoopsDeploymentsResponse> {
+    return this._doJson<ListLoopsDeploymentsResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/deployments",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a Loops deployment */
+  async getLoopsDeploymentsDeploymentId(params: {
+    deployment_id: string;
+  }): Promise<GetLoopsDeploymentResponse> {
+    return this._doJson<GetLoopsDeploymentResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/deployments/{}",
+      pathArgs: [params.deployment_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets logs for a Loops trainer deployment */
+  async getLoopsDeploymentsLogs(params: {
+    deployment_id: string;
+    request?: GetLoopsDeploymentsLogsRequest;
+  }): Promise<GetLogsResponse> {
+    return this._doJson<GetLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/deployments/{}/logs",
+      pathArgs: [params.deployment_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists Loops runs */
+  async getLoopsRuns(params?: { request?: GetLoopsRunsRequest }): Promise<ListLoopsRunsResponse> {
+    return this._doJson<ListLoopsRunsResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/runs",
+      pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a Loops run */
+  async getLoopsRunsRunId(params: { run_id: string }): Promise<GetLoopsRunResponse> {
+    return this._doJson<GetLoopsRunResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/runs/{}",
+      pathArgs: [params.run_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists Loops samplers */
+  async getLoopsSamplers(): Promise<ListLoopsSamplersResponse> {
+    return this._doJson<ListLoopsSamplersResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/samplers",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a Loops sampler */
+  async getLoopsSamplersSamplerId(params: {
+    sampler_id: string;
+  }): Promise<GetLoopsSamplerResponse> {
+    return this._doJson<GetLoopsSamplerResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/samplers/{}",
+      pathArgs: [params.sampler_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a Loops session */
+  async getLoopsSessions(params: { session_id: string }): Promise<GetLoopsSessionResponse> {
+    return this._doJson<GetLoopsSessionResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/sessions/{}",
+      pathArgs: [params.session_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the caller's Loops user config */
+  async getLoopsUserConfig(): Promise<GetLoopsUserConfigResponse> {
+    return this._doJson<GetLoopsUserConfigResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/user_config",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists Model APIs */
+  async getModelApis(params?: { request?: GetModelApisRequest }): Promise<ModelApIsResponse> {
+    return this._doJson<ModelApIsResponse>({
+      method: "GET",
+      pathFmt: "/v1/model_apis",
+      pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a Model API */
+  async getModelApisModelApiName(params: { model_api_name: string }): Promise<ModelApi> {
+    return this._doJson<ModelApi>({
+      method: "GET",
+      pathFmt: "/v1/model_apis/{}",
+      pathArgs: [params.model_api_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the latest model weight snapshot */
   async getModelApisSnapshots(): Promise<ModelWeightSnapshot> {
     return this._doJson<ModelWeightSnapshot>({
       method: "GET",
       pathFmt: "/v1/model_apis/snapshots",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get the latest model weight snapshot */
+  /** Gets the latest model weight snapshot */
   async getModelApisSnapshotsModelId(params: { model_id: string }): Promise<ModelWeightSnapshot> {
     return this._doJson<ModelWeightSnapshot>({
       method: "GET",
       pathFmt: "/v1/model_apis/snapshots/{}",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -498,11 +1008,28 @@ export class ApiClient {
   }
 
   /** Gets all models */
-  async getModels(): Promise<Models> {
+  async getModels(params?: { request?: GetModelsRequest }): Promise<Models> {
     return this._doJson<Models>({
       method: "GET",
       pathFmt: "/v1/models",
       pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the audit log for a model */
+  async getModelsAuditLogs(params: {
+    model_id: string;
+    request?: GetModelsAuditLogsRequest;
+  }): Promise<ListAuditLogsResponse> {
+    return this._doJson<ListAuditLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/audit_logs",
+      pathArgs: [params.model_id],
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -510,11 +1037,32 @@ export class ApiClient {
   }
 
   /** Gets all deployments of a model */
-  async getModelsDeployments(params: { model_id: string }): Promise<Deployments> {
+  async getModelsDeployments(params: {
+    model_id: string;
+    request?: GetModelsDeploymentsRequest;
+  }): Promise<Deployments> {
     return this._doJson<Deployments>({
       method: "GET",
       pathFmt: "/v1/models/{}/deployments",
       pathArgs: [params.model_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a deployment's config */
+  async getModelsDeploymentsConfig(params: {
+    model_id: string;
+    deployment_id: string;
+    request?: GetModelsDeploymentsConfigRequest;
+  }): Promise<DeploymentConfigResponse> {
+    return this._doJson<DeploymentConfigResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/deployments/{}/config",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -530,6 +1078,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/models/{}/deployments/{}",
       pathArgs: [params.model_id, params.deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -542,6 +1091,73 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/models/{}/deployments/development",
       pathArgs: [params.model_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a presigned download URL for a deployment's truss */
+  async getModelsDeploymentsDownload(params: {
+    model_id: string;
+    deployment_id: string;
+  }): Promise<DownloadDeploymentResponse> {
+    return this._doJson<DownloadDeploymentResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/deployments/{}/download",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the logs for a model deployment */
+  async getModelsDeploymentsLogs(params: {
+    model_id: string;
+    deployment_id: string;
+    request?: GetModelsDeploymentsLogsRequest;
+  }): Promise<GetLogsResponse> {
+    return this._doJson<GetLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/deployments/{}/logs",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the metrics for a model deployment */
+  async getModelsDeploymentsMetrics(params: {
+    model_id: string;
+    deployment_id: string;
+    request?: GetModelsDeploymentsMetricsRequest;
+  }): Promise<GetModelMetricsResponse> {
+    return this._doJson<GetModelMetricsResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/deployments/{}/metrics",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a development deployment's patch state */
+  async getModelsDeploymentsPatchesState(params: {
+    model_id: string;
+    deployment_id: string;
+  }): Promise<GetDeploymentPatchesStateResponse> {
+    return this._doJson<GetDeploymentPatchesStateResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/deployments/{}/patches/state",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -554,25 +1170,27 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/models/{}/deployments/production",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get all environments */
+  /** Gets all environments */
   async getModelsEnvironments(params: { model_id: string }): Promise<Environments> {
     return this._doJson<Environments>({
       method: "GET",
       pathFmt: "/v1/models/{}/environments",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get an environment's details */
+  /** Gets an environment's details */
   async getModelsEnvironmentsEnvName(params: {
     model_id: string;
     env_name: string;
@@ -581,6 +1199,41 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/models/{}/environments/{}",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the logs for a model environment */
+  async getModelsEnvironmentsLogs(params: {
+    model_id: string;
+    env_name: string;
+    request?: GetModelsEnvironmentsLogsRequest;
+  }): Promise<GetLogsResponse> {
+    return this._doJson<GetLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/environments/{}/logs",
+      pathArgs: [params.model_id, params.env_name],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the metrics for a model environment. */
+  async getModelsEnvironmentsMetrics(params: {
+    model_id: string;
+    env_name: string;
+    request?: GetModelsEnvironmentsMetricsRequest;
+  }): Promise<GetModelMetricsResponse> {
+    return this._doJson<GetModelMetricsResponse>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/environments/{}/metrics",
+      pathArgs: [params.model_id, params.env_name],
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -593,18 +1246,20 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/models/{}",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Gets all secrets */
+  /** Gets all secrets (metadata only, no plain text keys) */
   async getSecrets(): Promise<Secrets> {
     return this._doJson<Secrets>({
       method: "GET",
       pathFmt: "/v1/secrets",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -612,42 +1267,131 @@ export class ApiClient {
   }
 
   /** Lists all teams */
-  async getTeams(): Promise<Teams> {
+  async getTeams(params?: { request?: GetTeamsRequest }): Promise<Teams> {
     return this._doJson<Teams>({
       method: "GET",
       pathFmt: "/v1/teams",
       pathArgs: [],
+      query: params?.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Gets all secrets for a team */
+  /** Lists environment groups */
+  async getTeamsEnvironmentGroups(params: { team_id: string }): Promise<EnvironmentGroups> {
+    return this._doJson<EnvironmentGroups>({
+      method: "GET",
+      pathFmt: "/v1/teams/{}/environment_groups",
+      pathArgs: [params.team_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets an environment group by name */
+  async getTeamsEnvironmentGroupsEnvName(params: {
+    team_id: string;
+    env_name: string;
+  }): Promise<EnvironmentGroup> {
+    return this._doJson<EnvironmentGroup>({
+      method: "GET",
+      pathFmt: "/v1/teams/{}/environment_groups/{}",
+      pathArgs: [params.team_id, params.env_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets all models */
+  async getTeamsModels(params: {
+    team_id: string;
+    request?: GetTeamsModelsRequest;
+  }): Promise<Models> {
+    return this._doJson<Models>({
+      method: "GET",
+      pathFmt: "/v1/teams/{}/models",
+      pathArgs: [params.team_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets all secrets for a team (metadata only, no plain text keys) */
   async getTeamsSecrets(params: { team_id: string }): Promise<Secrets> {
     return this._doJson<Secrets>({
       method: "GET",
       pathFmt: "/v1/teams/{}/secrets",
       pathArgs: [params.team_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** List training projects. */
+  /** Gets a team by ID */
+  async getTeamsTeamId(params: { team_id: string }): Promise<Team> {
+    return this._doJson<Team>({
+      method: "GET",
+      pathFmt: "/v1/teams/{}",
+      pathArgs: [params.team_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets training GPU capacity */
+  async getTrainingCapacity(): Promise<GetTrainingGpuCapacityResponse> {
+    return this._doJson<GetTrainingGpuCapacityResponse>({
+      method: "GET",
+      pathFmt: "/v1/training/capacity",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Reconstructs queue context for a training job */
+  async getTrainingJobsQueueContext(params: {
+    training_job_id: string;
+  }): Promise<GetTrainingJobQueueContextResponse> {
+    return this._doJson<GetTrainingJobQueueContextResponse>({
+      method: "GET",
+      pathFmt: "/v1/training/jobs/{}/queue_context",
+      pathArgs: [params.training_job_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists training projects */
   async getTrainingProjects(): Promise<ListTrainingProjectsResponse> {
     return this._doJson<ListTrainingProjectsResponse>({
       method: "GET",
       pathFmt: "/v1/training_projects",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get training project cache summary. */
+  /** Gets training project cache summary */
   async getTrainingProjectsCacheSummary(params: {
     training_project_id: string;
   }): Promise<GetCacheSummaryResponse> {
@@ -655,13 +1399,14 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/training_projects/{}/cache/summary",
       pathArgs: [params.training_project_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** List training jobs. */
+  /** Lists training jobs */
   async getTrainingProjectsJobs(params: {
     training_project_id: string;
   }): Promise<ListTrainingJobsResponse> {
@@ -669,13 +1414,14 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs",
       pathArgs: [params.training_project_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get auth codes for a training job. */
+  /** Gets auth codes for a training job */
   async getTrainingProjectsJobsAuthCodes(params: {
     training_project_id: string;
     training_job_id: string;
@@ -684,28 +1430,31 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}/auth_codes",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get training job checkpoint files. */
+  /** Gets training job checkpoint files */
   async getTrainingProjectsJobsCheckpointFiles(params: {
     training_project_id: string;
     training_job_id: string;
+    request?: GetTrainingProjectsJobsCheckpointFilesRequest;
   }): Promise<GetTrainingJobCheckpointFilesResponse> {
     return this._doJson<GetTrainingJobCheckpointFilesResponse>({
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}/checkpoint_files",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get training job checkpoints. */
+  /** Gets training job checkpoints */
   async getTrainingProjectsJobsCheckpoints(params: {
     training_project_id: string;
     training_job_id: string;
@@ -714,13 +1463,14 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}/checkpoints",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get the uploaded training job as a S3 Artifact */
+  /** Gets presigned URLs for a training job's artifacts */
   async getTrainingProjectsJobsDownload(params: {
     training_project_id: string;
     training_job_id: string;
@@ -729,13 +1479,48 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}/download",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get a training job. */
+  /** Gets the logs for a training job */
+  async getTrainingProjectsJobsLogs(params: {
+    training_project_id: string;
+    training_job_id: string;
+    request?: GetTrainingProjectsJobsLogsRequest;
+  }): Promise<GetLogsResponse> {
+    return this._doJson<GetLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/training_projects/{}/jobs/{}/logs",
+      pathArgs: [params.training_project_id, params.training_job_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the metrics for a training job */
+  async getTrainingProjectsJobsMetrics(params: {
+    training_project_id: string;
+    training_job_id: string;
+    request?: GetTrainingProjectsJobsMetricsRequest;
+  }): Promise<GetTrainingJobMetricsResponse> {
+    return this._doJson<GetTrainingJobMetricsResponse>({
+      method: "GET",
+      pathFmt: "/v1/training_projects/{}/jobs/{}/metrics",
+      pathArgs: [params.training_project_id, params.training_job_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a training job */
   async getTrainingProjectsJobsTrainingJobId(params: {
     training_project_id: string;
     training_job_id: string;
@@ -744,13 +1529,14 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get a training project. */
+  /** Gets a training project */
   async getTrainingProjectsTrainingProjectId(params: {
     training_project_id: string;
   }): Promise<GetTrainingProjectResponse> {
@@ -758,39 +1544,129 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/v1/training_projects/{}",
       pathArgs: [params.training_project_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Update a chain environment's settings */
-  async patchChainsEnvironments(params: {
-    chain_id: string;
-    env_name: string;
-    body: UpdateChainEnvironmentRequest;
-  }): Promise<UpdateChainEnvironmentResponse> {
-    return this._doJson<UpdateChainEnvironmentResponse>({
-      method: "PATCH",
-      pathFmt: "/v1/chains/{}/environments/{}",
-      pathArgs: [params.chain_id, params.env_name],
-      body: params.body,
+  /** Lists users in the workspace */
+  async getUsers(params?: { request?: GetUsersRequest }): Promise<UsersResponse> {
+    return this._doJson<UsersResponse>({
+      method: "GET",
+      pathFmt: "/v1/users",
+      pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Update a chainlet environment's autoscaling settings */
+  /** Gets the authenticated user */
+  async getUsersMe(): Promise<UserInfo> {
+    return this._doJson<UserInfo>({
+      method: "GET",
+      pathFmt: "/v1/users/me",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a user by ID */
+  async getUsersUserId(params: { user_id: string }): Promise<UserInfo> {
+    return this._doJson<UserInfo>({
+      method: "GET",
+      pathFmt: "/v1/users/{}",
+      pathArgs: [params.user_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a chain environment's settings */
+  async patchChainsEnvironments(params: {
+    chain_id: string;
+    env_name: string;
+    request: UpdateChainEnvironmentRequest;
+  }): Promise<UpdateChainEnvironmentResponse> {
+    return this._doJson<UpdateChainEnvironmentResponse>({
+      method: "PATCH",
+      pathFmt: "/v1/chains/{}/environments/{}",
+      pathArgs: [params.chain_id, params.env_name],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a chainlet environment's autoscaling settings */
   async patchChainsEnvironmentsChainletSettingsAutoscalingSettings(params: {
     chain_id: string;
     env_name: string;
-    body: UpdateChainletEnvironmentAutoscalingSettingsRequest;
+    request: UpdateChainletEnvironmentAutoscalingSettingsRequest;
   }): Promise<UpdateAutoscalingSettingsResponse> {
     return this._doJson<UpdateAutoscalingSettingsResponse>({
       method: "PATCH",
       pathFmt: "/v1/chains/{}/environments/{}/chainlet_settings/autoscaling_settings",
       pathArgs: [params.chain_id, params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates an environment group's restriction settings */
+  async patchEnvironmentGroups(params: {
+    env_name: string;
+    request: UpdateEnvironmentGroupRequest;
+  }): Promise<EnvironmentGroup> {
+    return this._doJson<EnvironmentGroup>({
+      method: "PATCH",
+      pathFmt: "/v1/environment_groups/{}",
+      pathArgs: [params.env_name],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a Gateway endpoint */
+  async patchGatewayEndpoints(params: {
+    endpoint_id: string;
+    request: UpdateEndpointRequest;
+  }): Promise<Endpoint> {
+    return this._doJson<Endpoint>({
+      method: "PATCH",
+      pathFmt: "/v1/gateway/endpoints/{}",
+      pathArgs: [params.endpoint_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a group */
+  async patchGatewayGroups(params: {
+    group_id: string;
+    request: UpdateGroupRequest;
+  }): Promise<Group> {
+    return this._doJson<Group>({
+      method: "PATCH",
+      pathFmt: "/v1/gateway/groups/{}",
+      pathArgs: [params.group_id],
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -799,13 +1675,14 @@ export class ApiClient {
   /** Updates a library listing */
   async patchLibraryListings(params: {
     user_defined_listing_id: string;
-    body: UpdateLibraryListingRequest;
+    request: UpdateLibraryListingRequest;
   }): Promise<LibraryListing> {
     return this._doJson<LibraryListing>({
       method: "PATCH",
       pathFmt: "/v1/library_listings/{}",
       pathArgs: [params.user_defined_listing_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -815,13 +1692,29 @@ export class ApiClient {
   async patchLibraryListingsVersions(params: {
     user_defined_listing_id: string;
     version_tag: string;
-    body: UpdateLibraryListingVersionRequest;
+    request: UpdateLibraryListingVersionRequest;
   }): Promise<LibraryListingVersion> {
     return this._doJson<LibraryListingVersion>({
       method: "PATCH",
       pathFmt: "/v1/library_listings/{}/versions/{}",
       pathArgs: [params.user_defined_listing_id, params.version_tag],
-      body: params.body,
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Patches the caller's Loops user config */
+  async patchLoopsUserConfig(params: {
+    request: PatchLoopsUserConfigRequest;
+  }): Promise<PatchLoopsUserConfigResponse> {
+    return this._doJson<PatchLoopsUserConfigResponse>({
+      method: "PATCH",
+      pathFmt: "/v1/loops/user_config",
+      pathArgs: [],
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -831,13 +1724,14 @@ export class ApiClient {
   async patchModelsDeploymentsAutoscalingSettings(params: {
     model_id: string;
     deployment_id: string;
-    body: UpdateAutoscalingSettings;
+    request: UpdateAutoscalingSettings;
   }): Promise<UpdateAutoscalingSettingsResponse> {
     return this._doJson<UpdateAutoscalingSettingsResponse>({
       method: "PATCH",
       pathFmt: "/v1/models/{}/deployments/{}/autoscaling_settings",
       pathArgs: [params.model_id, params.deployment_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -846,13 +1740,14 @@ export class ApiClient {
   /** Updates a development deployment's autoscaling settings */
   async patchModelsDeploymentsDevelopmentAutoscalingSettings(params: {
     model_id: string;
-    body: UpdateAutoscalingSettings;
+    request: UpdateAutoscalingSettings;
   }): Promise<UpdateAutoscalingSettingsResponse> {
     return this._doJson<UpdateAutoscalingSettingsResponse>({
       method: "PATCH",
       pathFmt: "/v1/models/{}/deployments/development/autoscaling_settings",
       pathArgs: [params.model_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -861,58 +1756,111 @@ export class ApiClient {
   /** Updates a production deployment's autoscaling settings */
   async patchModelsDeploymentsProductionAutoscalingSettings(params: {
     model_id: string;
-    body: UpdateAutoscalingSettings;
+    request: UpdateAutoscalingSettings;
   }): Promise<UpdateAutoscalingSettingsResponse> {
     return this._doJson<UpdateAutoscalingSettingsResponse>({
       method: "PATCH",
       pathFmt: "/v1/models/{}/deployments/production/autoscaling_settings",
       pathArgs: [params.model_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Update an environment's settings */
+  /** Updates an environment's settings */
   async patchModelsEnvironments(params: {
     model_id: string;
     env_name: string;
-    body: UpdateEnvironmentRequest;
+    request: UpdateEnvironmentRequest;
   }): Promise<UpdateAutoscalingSettingsResponse> {
     return this._doJson<UpdateAutoscalingSettingsResponse>({
       method: "PATCH",
       pathFmt: "/v1/models/{}/environments/{}",
       pathArgs: [params.model_id, params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Patch an interactive session. */
+  /** Updates an environment group's restriction settings */
+  async patchTeamsEnvironmentGroups(params: {
+    team_id: string;
+    env_name: string;
+    request: UpdateEnvironmentGroupRequest;
+  }): Promise<EnvironmentGroup> {
+    return this._doJson<EnvironmentGroup>({
+      method: "PATCH",
+      pathFmt: "/v1/teams/{}/environment_groups/{}",
+      pathArgs: [params.team_id, params.env_name],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Sets a team's training GPU capacity */
+  async patchTrainingCapacity(params: {
+    request: PatchTeamTrainingGpuCapacityRequest;
+  }): Promise<PatchTeamTrainingGpuCapacityResponse> {
+    return this._doJson<PatchTeamTrainingGpuCapacityResponse>({
+      method: "PATCH",
+      pathFmt: "/v1/training/capacity",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a training job */
+  async patchTrainingProjectsJobs(params: {
+    training_project_id: string;
+    training_job_id: string;
+    request: UpdateTrainingJobRequest;
+  }): Promise<UpdateTrainingJobResponse> {
+    return this._doJson<UpdateTrainingJobResponse>({
+      method: "PATCH",
+      pathFmt: "/v1/training_projects/{}/jobs/{}",
+      pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Patches an interactive session */
   async patchTrainingProjectsJobsInteractiveSessions(params: {
     training_project_id: string;
     training_job_id: string;
     session_id: string;
-    body: PatchInteractiveSessionRequest;
+    request: PatchInteractiveSessionRequest;
   }): Promise<PatchInteractiveSessionResponse> {
     return this._doJson<PatchInteractiveSessionResponse>({
       method: "PATCH",
       pathFmt: "/v1/training_projects/{}/jobs/{}/interactive_sessions/{}",
       pathArgs: [params.training_project_id, params.training_job_id, params.session_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Creates an API key */
-  async postApiKeys(params: { body: CreateApiKeyRequest }): Promise<ApiKey> {
+  async postApiKeys(params: { request: CreateApiKeyRequest }): Promise<ApiKey> {
     return this._doJson<ApiKey>({
       method: "POST",
       pathFmt: "/v1/api_keys",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -927,38 +1875,41 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/chains/{}/deployments/{}/deactivate",
       pathArgs: [params.chain_id, params.chain_deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Create a chain environment */
+  /** Creates a chain environment */
   async postChainsEnvironments(params: {
     chain_id: string;
-    body: CreateChainEnvironmentRequest;
+    request: CreateChainEnvironmentRequest;
   }): Promise<ChainEnvironment> {
     return this._doJson<ChainEnvironment>({
       method: "POST",
       pathFmt: "/v1/chains/{}/environments",
       pathArgs: [params.chain_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Update a chainlet environment's instance type settings. */
+  /** Updates a chainlet environment's instance type settings */
   async postChainsEnvironmentsChainletSettingsInstanceTypesUpdate(params: {
     chain_id: string;
     env_name: string;
-    body: UpdateChainletEnvironmentInstanceTypeRequest;
+    request: UpdateChainletEnvironmentInstanceTypeRequest;
   }): Promise<UpdateChainletEnvironmentInstanceTypeResponse> {
     return this._doJson<UpdateChainletEnvironmentInstanceTypeResponse>({
       method: "POST",
       pathFmt: "/v1/chains/{}/environments/{}/chainlet_settings/instance_types/update",
       pathArgs: [params.chain_id, params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -968,13 +1919,72 @@ export class ApiClient {
   async postChainsEnvironmentsPromote(params: {
     chain_id: string;
     env_name: string;
-    body: PromoteToChainEnvironmentRequest;
+    request: PromoteToChainEnvironmentRequest;
   }): Promise<ChainDeployment> {
     return this._doJson<ChainDeployment>({
       method: "POST",
       pathFmt: "/v1/chains/{}/environments/{}/promote",
       pathArgs: [params.chain_id, params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Gateway endpoint */
+  async postGatewayEndpoints(params: { request: CreateEndpointRequest }): Promise<Endpoint> {
+    return this._doJson<Endpoint>({
+      method: "POST",
+      pathFmt: "/v1/gateway/endpoints",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a group */
+  async postGatewayGroups(params: { request: CreateGroupRequest }): Promise<Group> {
+    return this._doJson<Group>({
+      method: "POST",
+      pathFmt: "/v1/gateway/groups",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates an API key for a group */
+  async postGatewayGroupsApiKeys(params: {
+    group_id: string;
+    request: CreateApiKeyForGroupRequest;
+  }): Promise<CreateApiKeyForGroupResponse> {
+    return this._doJson<CreateApiKeyForGroupResponse>({
+      method: "POST",
+      pathFmt: "/v1/gateway/groups/{}/api_keys",
+      pathArgs: [params.group_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Registers an API key for a group */
+  async postGatewayGroupsApiKeysRegister(params: {
+    group_id: string;
+    request: RegisterApiKeyRequest;
+  }): Promise<RegisterApiKeyResponse> {
+    return this._doJson<RegisterApiKeyResponse>({
+      method: "POST",
+      pathFmt: "/v1/gateway/groups/{}/api_keys/register",
+      pathArgs: [params.group_id],
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -982,13 +1992,14 @@ export class ApiClient {
 
   /** Creates a new library listing */
   async postLibraryListings(params: {
-    body: CreateLibraryListingRequest;
+    request: CreateLibraryListingRequest;
   }): Promise<LibraryListing> {
     return this._doJson<LibraryListing>({
       method: "POST",
       pathFmt: "/v1/library_listings",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -997,69 +2008,190 @@ export class ApiClient {
   /** Creates a new library listing version */
   async postLibraryListingsVersions(params: {
     user_defined_listing_id: string;
-    body: CreateLibraryListingVersionRequest;
+    request: CreateLibraryListingVersionRequest;
   }): Promise<LibraryListingVersion> {
     return this._doJson<LibraryListingVersion>({
       method: "POST",
       pathFmt: "/v1/library_listings/{}/versions",
       pathArgs: [params.user_defined_listing_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Creates a new BIS LLM deployment */
-  async postLlmModels(params: { body: CreateLlmModelRequest }): Promise<LlmModel> {
-    return this._doJson<LlmModel>({
+  /** Creates a new BIS-LLM deployment */
+  async postLlmModels(params: { request: CreateLlmModelRequest }): Promise<LlmModelHandle> {
+    return this._doJson<LlmModelHandle>({
       method: "POST",
       pathFmt: "/v1/llm_models",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Creates a new BIS LLM deployment version */
+  /** Creates a new BIS-LLM deployment version */
   async postLlmModelsDeployments(params: {
     model_id: string;
-    body: CreateLlmModelVersionRequest;
-  }): Promise<LlmModelVersion> {
-    return this._doJson<LlmModelVersion>({
+    request: CreateLlmModelVersionRequest;
+  }): Promise<LlmModelHandle> {
+    return this._doJson<LlmModelHandle>({
       method: "POST",
       pathFmt: "/v1/llm_models/{}/deployments",
       pathArgs: [params.model_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Create a model weight snapshot */
+  /** Validates a Loops checkpoint bt:// URI */
+  async postLoopsCheckpointsValidate(params: {
+    request: ValidateLoopsCheckpointRequest;
+  }): Promise<ValidateLoopsCheckpointResponse> {
+    return this._doJson<ValidateLoopsCheckpointResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/checkpoints/validate",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Deactivates a Loops deployment */
+  async postLoopsDeploymentsDeactivate(params: {
+    deployment_id: string;
+  }): Promise<DeactivateLoopsDeploymentResponse> {
+    return this._doJson<DeactivateLoopsDeploymentResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/deployments/{}/deactivate",
+      pathArgs: [params.deployment_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets metrics for a Loops trainer deployment */
+  async postLoopsDeploymentsMetrics(params: {
+    deployment_id: string;
+    request: GetLoopsDeploymentMetricsRequest;
+  }): Promise<GetLoopsDeploymentMetricsResponse> {
+    return this._doJson<GetLoopsDeploymentMetricsResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/deployments/{}/metrics",
+      pathArgs: [params.deployment_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Loops run */
+  async postLoopsRuns(params: { request: CreateLoopsRunRequest }): Promise<CreateLoopsRunResponse> {
+    return this._doJson<CreateLoopsRunResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/runs",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Loops sampler */
+  async postLoopsSamplers(params: {
+    request: CreateLoopsSamplerRequest;
+  }): Promise<CreateLoopsSamplerResponse> {
+    return this._doJson<CreateLoopsSamplerResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/samplers",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Loops session */
+  async postLoopsSessions(): Promise<CreateLoopsSessionResponse> {
+    return this._doJson<CreateLoopsSessionResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/sessions",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a model weight snapshot */
   async postModelApisSnapshots(params: {
-    body: CreateModelWeightSnapshotRequest;
+    request: CreateModelWeightSnapshotRequest;
   }): Promise<ModelWeightSnapshot> {
     return this._doJson<ModelWeightSnapshot>({
       method: "POST",
       pathFmt: "/v1/model_apis/snapshots",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Create a model weight snapshot */
+  /** Creates a model weight snapshot */
   async postModelApisSnapshotsModelId(params: {
     model_id: string;
-    body: CreateModelWeightSnapshotRequest;
+    request: CreateModelWeightSnapshotRequest;
   }): Promise<ModelWeightSnapshot> {
     return this._doJson<ModelWeightSnapshot>({
       method: "POST",
       pathFmt: "/v1/model_apis/snapshots/{}",
       pathArgs: [params.model_id],
-      body: params.body,
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a new model from a source */
+  async postModels(params: { request: CreateModelRequest }): Promise<CreatedModelDeployment> {
+    return this._doJson<CreatedModelDeployment>({
+      method: "POST",
+      pathFmt: "/v1/models",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Adds a new deployment to a model */
+  async postModelsDeployments(params: {
+    model_id: string;
+    request: CreateModelDeploymentRequest;
+  }): Promise<CreatedModelDeployment> {
+    return this._doJson<CreatedModelDeployment>({
+      method: "POST",
+      pathFmt: "/v1/models/{}/deployments",
+      pathArgs: [params.model_id],
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -1074,6 +2206,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/{}/activate",
       pathArgs: [params.model_id, params.deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1089,6 +2222,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/{}/deactivate",
       pathArgs: [params.model_id, params.deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1103,6 +2237,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/development/activate",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1117,6 +2252,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/development/deactivate",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1126,13 +2262,14 @@ export class ApiClient {
   /** Promotes a development deployment to production */
   async postModelsDeploymentsDevelopmentPromote(params: {
     model_id: string;
-    body: PromoteRequest;
+    request: PromoteRequest;
   }): Promise<Deployment> {
     return this._doJson<Deployment>({
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/development/promote",
       pathArgs: [params.model_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -1146,23 +2283,59 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/development/retry",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Gets the logs for a model deployment. */
+  /** Gets the logs for a model deployment (deprecated; use GET) */
   async postModelsDeploymentsLogs(params: {
     model_id: string;
     deployment_id: string;
-    body: GetDeploymentLogsRequest;
+    request: GetDeploymentLogsRequest;
   }): Promise<GetLogsResponse> {
     return this._doJson<GetLogsResponse>({
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/{}/logs",
       pathArgs: [params.model_id, params.deployment_id],
-      body: params.body,
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Stages a patch against a development deployment */
+  async postModelsDeploymentsPatches(params: {
+    model_id: string;
+    deployment_id: string;
+    request: CreateDeploymentPatchRequest;
+  }): Promise<CreateDeploymentPatchResponse> {
+    return this._doJson<CreateDeploymentPatchResponse>({
+      method: "POST",
+      pathFmt: "/v1/models/{}/deployments/{}/patches",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Syncs staged patches to a development deployment */
+  async postModelsDeploymentsPatchesSync(params: {
+    model_id: string;
+    deployment_id: string;
+    request: SyncDeploymentPatchesRequest;
+  }): Promise<SyncDeploymentPatchesResponse> {
+    return this._doJson<SyncDeploymentPatchesResponse>({
+      method: "POST",
+      pathFmt: "/v1/models/{}/deployments/{}/patches/sync",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -1176,6 +2349,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/production/activate",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1190,6 +2364,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/production/deactivate",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1204,6 +2379,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/production/retry",
       pathArgs: [params.model_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1214,13 +2390,14 @@ export class ApiClient {
   async postModelsDeploymentsPromote(params: {
     model_id: string;
     deployment_id: string;
-    body: PromoteRequest;
+    request: PromoteRequest;
   }): Promise<Deployment> {
     return this._doJson<Deployment>({
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/{}/promote",
       pathArgs: [params.model_id, params.deployment_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -1235,22 +2412,41 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/deployments/{}/retry",
       pathArgs: [params.model_id, params.deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Create an environment */
+  /** Signs an SSH certificate for an inference model */
+  async postModelsDeploymentsSshSign(params: {
+    model_id: string;
+    deployment_id: string;
+    request: SignSshCertificateRequest;
+  }): Promise<SignSshCertificateResponse> {
+    return this._doJson<SignSshCertificateResponse>({
+      method: "POST",
+      pathFmt: "/v1/models/{}/deployments/{}/ssh/sign",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates an environment */
   async postModelsEnvironments(params: {
     model_id: string;
-    body: CreateEnvironmentRequest;
+    request: CreateEnvironmentRequest;
   }): Promise<Environment> {
     return this._doJson<Environment>({
       method: "POST",
       pathFmt: "/v1/models/{}/environments",
       pathArgs: [params.model_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -1265,6 +2461,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/activate",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1280,6 +2477,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/cancel_promotion",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1295,6 +2493,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/deactivate",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1310,6 +2509,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/force_cancel_promotion",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1325,6 +2525,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/force_roll_forward_promotion",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1340,6 +2541,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/pause_promotion",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1350,13 +2552,14 @@ export class ApiClient {
   async postModelsEnvironmentsPromote(params: {
     model_id: string;
     env_name: string;
-    body: PromoteToEnvironmentRequest;
+    request: PromoteToEnvironmentRequest;
   }): Promise<Deployment> {
     return this._doJson<Deployment>({
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/promote",
       pathArgs: [params.model_id, params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
@@ -1371,139 +2574,202 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/models/{}/environments/{}/resume_promotion",
       pathArgs: [params.model_id, params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
+  /** Validates a model push payload and issues upload credentials */
+  async postPrepareModelUpload(params: {
+    request: PrepareModelUploadRequest;
+  }): Promise<PrepareModelUploadResponse> {
+    return this._doJson<PrepareModelUploadResponse>({
+      method: "POST",
+      pathFmt: "/v1/prepare_model_upload",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Upserts a secret */
-  async postSecrets(params: { body: UpsertSecretRequest }): Promise<Secret> {
+  async postSecrets(params: { request: UpsertSecretRequest }): Promise<Secret> {
     return this._doJson<Secret>({
       method: "POST",
       pathFmt: "/v1/secrets",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Creates a team API key */
-  async postTeamsApiKeys(params: { team_id: string; body: CreateApiKeyRequest }): Promise<ApiKey> {
+  async postTeamsApiKeys(params: {
+    team_id: string;
+    request: CreateApiKeyRequest;
+  }): Promise<ApiKey> {
     return this._doJson<ApiKey>({
       method: "POST",
       pathFmt: "/v1/teams/{}/api_keys",
       pathArgs: [params.team_id],
-      body: params.body,
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a new BIS-LLM deployment */
+  async postTeamsLlmModels(params: {
+    team_id: string;
+    request: CreateLlmModelRequest;
+  }): Promise<LlmModelHandle> {
+    return this._doJson<LlmModelHandle>({
+      method: "POST",
+      pathFmt: "/v1/teams/{}/llm_models",
+      pathArgs: [params.team_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a new model from a source */
+  async postTeamsModels(params: {
+    team_id: string;
+    request: CreateModelRequest;
+  }): Promise<CreatedModelDeployment> {
+    return this._doJson<CreatedModelDeployment>({
+      method: "POST",
+      pathFmt: "/v1/teams/{}/models",
+      pathArgs: [params.team_id],
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Upserts a secret in a team */
-  async postTeamsSecrets(params: { team_id: string; body: UpsertSecretRequest }): Promise<Secret> {
+  async postTeamsSecrets(params: {
+    team_id: string;
+    request: UpsertSecretRequest;
+  }): Promise<Secret> {
     return this._doJson<Secret>({
       method: "POST",
       pathFmt: "/v1/teams/{}/secrets",
       pathArgs: [params.team_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Upsert a training project in a specific team. */
+  /** Upserts a training project in a specific team */
   async postTeamsTrainingProjects(params: {
     team_id: string;
-    body: UpsertTrainingProjectRequest;
+    request: UpsertTrainingProjectRequest;
   }): Promise<UpsertTrainingProjectResponse> {
     return this._doJson<UpsertTrainingProjectResponse>({
       method: "POST",
       pathFmt: "/v1/teams/{}/training_projects",
       pathArgs: [params.team_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Search training jobs. */
+  /** Searches training jobs */
   async postTrainingJobsSearch(params: {
-    body: SearchTrainingJobsRequest;
+    request: SearchTrainingJobsRequest;
   }): Promise<SearchTrainingJobsResponse> {
     return this._doJson<SearchTrainingJobsResponse>({
       method: "POST",
       pathFmt: "/v1/training_jobs/search",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Upsert a training project. */
+  /** Upserts a training project */
   async postTrainingProjects(params: {
-    body: UpsertTrainingProjectRequest;
+    request: UpsertTrainingProjectRequest;
   }): Promise<UpsertTrainingProjectResponse> {
     return this._doJson<UpsertTrainingProjectResponse>({
       method: "POST",
       pathFmt: "/v1/training_projects",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Create a training job. */
+  /** Creates a training job */
   async postTrainingProjectsJobs(params: {
     training_project_id: string;
-    body: CreateTrainingJobRequest;
+    request: CreateTrainingJobRequest;
   }): Promise<CreateTrainingJobResponse> {
     return this._doJson<CreateTrainingJobResponse>({
       method: "POST",
       pathFmt: "/v1/training_projects/{}/jobs",
       pathArgs: [params.training_project_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get the logs for a training job. */
+  /** Gets the logs for a training job (deprecated; use GET) */
   async postTrainingProjectsJobsLogs(params: {
     training_project_id: string;
     training_job_id: string;
-    body: GetTrainingJobLogsRequest;
+    request: GetTrainingJobLogsRequest;
   }): Promise<GetLogsResponse> {
     return this._doJson<GetLogsResponse>({
       method: "POST",
       pathFmt: "/v1/training_projects/{}/jobs/{}/logs",
       pathArgs: [params.training_project_id, params.training_job_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Get the metrics for a training job. */
+  /** Gets the metrics for a training job (deprecated; use GET) */
   async postTrainingProjectsJobsMetrics(params: {
     training_project_id: string;
     training_job_id: string;
-    body: GetTrainingJobMetricsRequest;
+    request: GetTrainingJobMetricsRequest;
   }): Promise<GetTrainingJobMetricsResponse> {
     return this._doJson<GetTrainingJobMetricsResponse>({
       method: "POST",
       pathFmt: "/v1/training_projects/{}/jobs/{}/metrics",
       pathArgs: [params.training_project_id, params.training_job_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Recreate a training job */
+  /** Recreates a training job */
   async postTrainingProjectsJobsRecreate(params: {
     training_project_id: string;
     training_job_id: string;
@@ -1512,36 +2778,71 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/training_projects/{}/jobs/{}/recreate",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Stop a training job. */
+  /** Signs an SSH certificate for a training job */
+  async postTrainingProjectsJobsSshSign(params: {
+    training_project_id: string;
+    training_job_id: string;
+    request: SignSshCertificateRequest;
+  }): Promise<SignSshCertificateResponse> {
+    return this._doJson<SignSshCertificateResponse>({
+      method: "POST",
+      pathFmt: "/v1/training_projects/{}/jobs/{}/ssh/sign",
+      pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Stops a training job */
   async postTrainingProjectsJobsStop(params: {
     training_project_id: string;
     training_job_id: string;
-    body: StopTrainingJobRequest;
+    request: StopTrainingJobRequest;
   }): Promise<StopTrainingJobResponse> {
     return this._doJson<StopTrainingJobResponse>({
       method: "POST",
       pathFmt: "/v1/training_projects/{}/jobs/{}/stop",
       pathArgs: [params.training_project_id, params.training_job_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: null,
     });
   }
 
   private async _do(request: ApiRequest): Promise<Response> {
-    const path = request.pathFmt.replace(
+    let path = request.pathFmt.replace(
       /\{\}/g,
       (() => {
         let i = 0;
         return () => encodeURIComponent(request.pathArgs[i++]!);
       })(),
     );
+    if (request.query !== null) {
+      const search = new URLSearchParams();
+      for (const [key, value] of Object.entries(request.query)) {
+        // Unset params are omitted so the server applies its default. Arrays
+        // are exploded into one repeated param per element; enums and other
+        // scalars are stringified as-is.
+        if (value === undefined || value === null) continue;
+        if (Array.isArray(value)) {
+          for (const item of value) search.append(key, String(item));
+        } else {
+          search.append(key, String(value));
+        }
+      }
+      const qs = search.toString();
+      if (qs) path += `?${qs}`;
+    }
     const init: RequestInit = {
       method: request.method,
       headers: { ...this.headers },

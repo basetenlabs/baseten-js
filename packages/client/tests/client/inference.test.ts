@@ -21,7 +21,7 @@ function makeClient(
 describe("InferenceClient", () => {
   it("calls predict", async () => {
     const { client, capture } = makeClient(200, { output: "hello" });
-    const resp = await client.api.predictProduction({ body: { input: "hi" } });
+    const resp = await client.api.predictProduction({ request: { input: "hi" } });
     expect(resp).toEqual({ output: "hello" });
     const req = capture();
     expect(req.method).toBe("POST");
@@ -37,7 +37,7 @@ describe("InferenceClient", () => {
       { output: "ok" },
       { headers: { "X-Custom": "v", "User-Agent": "custom/1.0" } },
     );
-    await client.api.predictProduction({ body: {} });
+    await client.api.predictProduction({ request: {} });
     const req = capture();
     expect(req.headers["x-custom"]).toBe("v");
     expect(req.headers["user-agent"]).toBe("custom/1.0");
@@ -45,20 +45,22 @@ describe("InferenceClient", () => {
 
   it("omits Authorization when apiKey is empty string", async () => {
     const { client, capture } = makeClient(200, { output: "ok" }, { apiKey: "" });
-    await client.api.predictProduction({ body: {} });
+    await client.api.predictProduction({ request: {} });
     expect(capture().headers.authorization).toBeUndefined();
   });
 
   it("throws ResponseError on failure", async () => {
     const { client } = makeClient(500, { detail: "boom" });
-    await expect(client.api.predictProduction({ body: {} })).rejects.toThrow(ResponseError);
+    await expect(client.api.predictProduction({ request: {} })).rejects.toThrow(ResponseError);
   });
 
   it("throws ResponseErrorResponse on typed error", async () => {
     const { client } = makeClient(400, { error: "bad input", error_code: "client_error" });
-    await expect(client.api.predictProduction({ body: {} })).rejects.toThrow(ResponseErrorResponse);
+    await expect(client.api.predictProduction({ request: {} })).rejects.toThrow(
+      ResponseErrorResponse,
+    );
     try {
-      await client.api.predictProduction({ body: {} });
+      await client.api.predictProduction({ request: {} });
     } catch (e) {
       expect(e).toBeInstanceOf(ResponseErrorResponse);
       expect((e as ResponseErrorResponse).error_response.error).toBe("bad input");
@@ -96,7 +98,7 @@ describe("InferenceClient", () => {
         baseUrlOverride: "https://custom.example.com",
       },
     );
-    await client.api.predictProduction({ body: {} });
+    await client.api.predictProduction({ request: {} });
     expect(capture().url.startsWith("https://custom.example.com")).toBe(true);
   });
 });

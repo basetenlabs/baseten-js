@@ -68,10 +68,38 @@ describe("ManagementClient", () => {
     expect(capture().path).toBe("/v1/models/abc%2Fdef");
   });
 
+  it("serializes query params, exploding arrays and stringifying enums", async () => {
+    const { client, capture } = makeClient(200, { entries: [], next_cursor: null });
+    await client.api.getAuditLogs({
+      request: {
+        limit: 50,
+        direction: "ASC",
+        search: "deploy prod",
+        event_type_groups: ["DEPLOYED", "SECRETS"],
+        user_ids: ["u1", "u2"],
+      },
+    });
+    const params = new URLSearchParams(capture().search);
+    expect(params.get("limit")).toBe("50");
+    expect(params.get("direction")).toBe("ASC");
+    expect(params.get("search")).toBe("deploy prod");
+    // Arrays explode into one repeated param per element.
+    expect(params.getAll("event_type_groups")).toEqual(["DEPLOYED", "SECRETS"]);
+    expect(params.getAll("user_ids")).toEqual(["u1", "u2"]);
+    // Unset optional params are omitted entirely.
+    expect(params.has("cursor")).toBe(false);
+  });
+
+  it("omits the query string when no query params are given", async () => {
+    const { client, capture } = makeClient(200, { entries: [], next_cursor: null });
+    await client.api.getAuditLogs();
+    expect(capture().search).toBe("");
+  });
+
   it("sends post body", async () => {
     const { client, capture } = makeClient(200, MINIMAL_SECRET);
     const resp = await client.api.postSecrets({
-      body: { name: "MY_SECRET", value: "s3cret" },
+      request: { name: "MY_SECRET", value: "s3cret" },
     });
     expect(resp.name).toBe("MY_SECRET");
     const req = capture();
