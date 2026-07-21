@@ -4,7 +4,7 @@
 
 JS/TS SDK for Baseten.
 
-⚠️ SDK may change incompatibility between releases until the SDK reaches 1.0.
+⚠️ SDK may change in incompatible ways between releases until the SDK reaches 1.0.
 
 ## Install
 
