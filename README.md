@@ -1,8 +1,16 @@
 # Baseten JS SDK
 
+[![npm](https://img.shields.io/npm/v/@basetenlabs/client.svg)](https://www.npmjs.com/package/@basetenlabs/client)
+
 JS/TS SDK for Baseten.
 
-⚠️ Under active development. Nothing should be considered stable at this time.
+⚠️ SDK may change incompatibility between releases until the SDK reaches 1.0.
+
+## Install
+
+```bash
+npm install @basetenlabs/client
+```
 
 ## Usage
 
