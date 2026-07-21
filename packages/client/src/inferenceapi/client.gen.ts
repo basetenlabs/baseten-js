@@ -40,6 +40,7 @@ interface ApiRequest {
   method: string;
   pathFmt: string;
   pathArgs: string[];
+  query: Record<string, unknown> | null;
   body: unknown;
   successCode: number;
   errorCodes: Record<number, string> | null;
@@ -66,13 +67,14 @@ export class ApiClient {
   /** Asynchronously call a named environment of a model. */
   async asyncPredict(params: {
     env_name: string;
-    body: AsyncPredictRequest;
+    request: AsyncPredictRequest;
   }): Promise<AsyncPredictOutput> {
     return this._doJson<AsyncPredictOutput>({
       method: "POST",
       pathFmt: "/environments/{}/async_predict",
       pathArgs: [params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -87,13 +89,14 @@ export class ApiClient {
   /** Asynchronously call a specific deployment of a model. */
   async asyncPredictDeployment(params: {
     deployment_id: string;
-    body: AsyncPredictRequest;
+    request: AsyncPredictRequest;
   }): Promise<AsyncPredictOutput> {
     return this._doJson<AsyncPredictOutput>({
       method: "POST",
       pathFmt: "/deployment/{}/async_predict",
       pathArgs: [params.deployment_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -107,13 +110,14 @@ export class ApiClient {
 
   /** Asynchronously call the development deployment of a model. */
   async asyncPredictDevelopment(params: {
-    body: AsyncPredictRequest;
+    request: AsyncPredictRequest;
   }): Promise<AsyncPredictOutput> {
     return this._doJson<AsyncPredictOutput>({
       method: "POST",
       pathFmt: "/development/async_predict",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -126,12 +130,15 @@ export class ApiClient {
   }
 
   /** Asynchronously call the production environment of a model. */
-  async asyncPredictProduction(params: { body: AsyncPredictRequest }): Promise<AsyncPredictOutput> {
+  async asyncPredictProduction(params: {
+    request: AsyncPredictRequest;
+  }): Promise<AsyncPredictOutput> {
     return this._doJson<AsyncPredictOutput>({
       method: "POST",
       pathFmt: "/production/async_predict",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -144,12 +151,15 @@ export class ApiClient {
   }
 
   /** Asynchronously call a regional environment of a model. */
-  async asyncPredictRegional(params: { body: AsyncPredictRequest }): Promise<AsyncPredictOutput> {
+  async asyncPredictRegional(params: {
+    request: AsyncPredictRequest;
+  }): Promise<AsyncPredictOutput> {
     return this._doJson<AsyncPredictOutput>({
       method: "POST",
       pathFmt: "/async_predict",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -164,13 +174,14 @@ export class ApiClient {
   /** Asynchronously call a named environment of a chain. */
   async asyncRunRemote(params: {
     env_name: string;
-    body: AsyncRunRemoteInput;
+    request: AsyncRunRemoteInput;
   }): Promise<AsyncRunRemoteOutput> {
     return this._doJson<AsyncRunRemoteOutput>({
       method: "POST",
       pathFmt: "/environments/{}/async_run_remote",
       pathArgs: [params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -184,13 +195,14 @@ export class ApiClient {
   /** Asynchronously call a specific deployment of a chain. */
   async asyncRunRemoteDeployment(params: {
     deployment_id: string;
-    body: AsyncRunRemoteInput;
+    request: AsyncRunRemoteInput;
   }): Promise<AsyncRunRemoteOutput> {
     return this._doJson<AsyncRunRemoteOutput>({
       method: "POST",
       pathFmt: "/deployment/{}/async_run_remote",
       pathArgs: [params.deployment_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -203,13 +215,14 @@ export class ApiClient {
 
   /** Asynchronously call the development deployment of a chain. */
   async asyncRunRemoteDevelopment(params: {
-    body: AsyncRunRemoteInput;
+    request: AsyncRunRemoteInput;
   }): Promise<AsyncRunRemoteOutput> {
     return this._doJson<AsyncRunRemoteOutput>({
       method: "POST",
       pathFmt: "/development/async_run_remote",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -222,13 +235,14 @@ export class ApiClient {
 
   /** Asynchronously call the production environment of a chain. */
   async asyncRunRemoteProduction(params: {
-    body: AsyncRunRemoteInput;
+    request: AsyncRunRemoteInput;
   }): Promise<AsyncRunRemoteOutput> {
     return this._doJson<AsyncRunRemoteOutput>({
       method: "POST",
       pathFmt: "/production/async_run_remote",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -241,13 +255,14 @@ export class ApiClient {
 
   /** Asynchronously call a regional environment of a chain. */
   async asyncRunRemoteRegional(params: {
-    body: AsyncRunRemoteInput;
+    request: AsyncRunRemoteInput;
   }): Promise<AsyncRunRemoteOutput> {
     return this._doJson<AsyncRunRemoteOutput>({
       method: "POST",
       pathFmt: "/async_run_remote",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 201,
       errorCodes: {
         400: "ErrorResponse",
@@ -264,6 +279,7 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/async_request/{}",
       pathArgs: [params.request_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
@@ -276,6 +292,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/environments/{}/async_queue_status",
       pathArgs: [params.env_name],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
@@ -290,6 +307,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/deployment/{}/async_queue_status",
       pathArgs: [params.deployment_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
@@ -302,6 +320,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/development/async_queue_status",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
@@ -314,6 +333,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/production/async_queue_status",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
@@ -326,6 +346,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/async_queue_status",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
@@ -338,6 +359,7 @@ export class ApiClient {
       method: "GET",
       pathFmt: "/async_request/{}",
       pathArgs: [params.request_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
@@ -345,12 +367,13 @@ export class ApiClient {
   }
 
   /** Call the model deployment associated with a specified environment. */
-  async predict(params: { env_name: string; body: PredictInput }): Promise<PredictOutput> {
+  async predict(params: { env_name: string; request: PredictInput }): Promise<PredictOutput> {
     return this._doJson<PredictOutput>({
       method: "POST",
       pathFmt: "/environments/{}/predict",
       pathArgs: [params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -366,13 +389,14 @@ export class ApiClient {
   /** Call a specific deployment of a model by deployment ID. */
   async predictDeployment(params: {
     deployment_id: string;
-    body: PredictInput;
+    request: PredictInput;
   }): Promise<PredictOutput> {
     return this._doJson<PredictOutput>({
       method: "POST",
       pathFmt: "/deployment/{}/predict",
       pathArgs: [params.deployment_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -386,12 +410,13 @@ export class ApiClient {
   }
 
   /** Call the development deployment of a model. */
-  async predictDevelopment(params: { body: PredictInput }): Promise<PredictOutput> {
+  async predictDevelopment(params: { request: PredictInput }): Promise<PredictOutput> {
     return this._doJson<PredictOutput>({
       method: "POST",
       pathFmt: "/development/predict",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -405,12 +430,13 @@ export class ApiClient {
   }
 
   /** Call the production environment of a model. */
-  async predictProduction(params: { body: PredictInput }): Promise<PredictOutput> {
+  async predictProduction(params: { request: PredictInput }): Promise<PredictOutput> {
     return this._doJson<PredictOutput>({
       method: "POST",
       pathFmt: "/production/predict",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -424,12 +450,13 @@ export class ApiClient {
   }
 
   /** Call a regional environment of a model. */
-  async predictRegional(params: { body: PredictInput }): Promise<PredictOutput> {
+  async predictRegional(params: { request: PredictInput }): Promise<PredictOutput> {
     return this._doJson<PredictOutput>({
       method: "POST",
       pathFmt: "/predict",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -443,12 +470,13 @@ export class ApiClient {
   }
 
   /** Call the chain deployment associated with a specified environment. */
-  async runRemote(params: { env_name: string; body: RunRemoteInput }): Promise<RunRemoteOutput> {
+  async runRemote(params: { env_name: string; request: RunRemoteInput }): Promise<RunRemoteOutput> {
     return this._doJson<RunRemoteOutput>({
       method: "POST",
       pathFmt: "/environments/{}/run_remote",
       pathArgs: [params.env_name],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -464,13 +492,14 @@ export class ApiClient {
   /** Call a specific chain deployment by deployment ID. */
   async runRemoteDeployment(params: {
     deployment_id: string;
-    body: RunRemoteInput;
+    request: RunRemoteInput;
   }): Promise<RunRemoteOutput> {
     return this._doJson<RunRemoteOutput>({
       method: "POST",
       pathFmt: "/deployment/{}/run_remote",
       pathArgs: [params.deployment_id],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -484,12 +513,13 @@ export class ApiClient {
   }
 
   /** Call the development deployment of a chain. */
-  async runRemoteDevelopment(params: { body: RunRemoteInput }): Promise<RunRemoteOutput> {
+  async runRemoteDevelopment(params: { request: RunRemoteInput }): Promise<RunRemoteOutput> {
     return this._doJson<RunRemoteOutput>({
       method: "POST",
       pathFmt: "/development/run_remote",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -503,12 +533,13 @@ export class ApiClient {
   }
 
   /** Call the production environment of a chain. */
-  async runRemoteProduction(params: { body: RunRemoteInput }): Promise<RunRemoteOutput> {
+  async runRemoteProduction(params: { request: RunRemoteInput }): Promise<RunRemoteOutput> {
     return this._doJson<RunRemoteOutput>({
       method: "POST",
       pathFmt: "/production/run_remote",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -522,12 +553,13 @@ export class ApiClient {
   }
 
   /** Call a regional environment of a chain. */
-  async runRemoteRegional(params: { body: RunRemoteInput }): Promise<RunRemoteOutput> {
+  async runRemoteRegional(params: { request: RunRemoteInput }): Promise<RunRemoteOutput> {
     return this._doJson<RunRemoteOutput>({
       method: "POST",
       pathFmt: "/run_remote",
       pathArgs: [],
-      body: params.body,
+      query: null,
+      body: params.request,
       successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
@@ -546,6 +578,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/environments/{}/wake",
       pathArgs: [params.env_name],
+      query: null,
       body: null,
       successCode: 202,
       errorCodes: { 401: "ErrorResponse" },
@@ -558,6 +591,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/deployment/{}/wake",
       pathArgs: [params.deployment_id],
+      query: null,
       body: null,
       successCode: 202,
       errorCodes: { 401: "ErrorResponse" },
@@ -570,6 +604,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/development/wake",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 202,
       errorCodes: { 401: "ErrorResponse" },
@@ -582,6 +617,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/production/wake",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 202,
       errorCodes: { 401: "ErrorResponse" },
@@ -594,6 +630,7 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/wake",
       pathArgs: [],
+      query: null,
       body: null,
       successCode: 202,
       errorCodes: { 401: "ErrorResponse" },
@@ -601,13 +638,29 @@ export class ApiClient {
   }
 
   private async _do(request: ApiRequest): Promise<Response> {
-    const path = request.pathFmt.replace(
+    let path = request.pathFmt.replace(
       /\{\}/g,
       (() => {
         let i = 0;
         return () => encodeURIComponent(request.pathArgs[i++]!);
       })(),
     );
+    if (request.query !== null) {
+      const search = new URLSearchParams();
+      for (const [key, value] of Object.entries(request.query)) {
+        // Unset params are omitted so the server applies its default. Arrays
+        // are exploded into one repeated param per element; enums and other
+        // scalars are stringified as-is.
+        if (value === undefined || value === null) continue;
+        if (Array.isArray(value)) {
+          for (const item of value) search.append(key, String(item));
+        } else {
+          search.append(key, String(value));
+        }
+      }
+      const qs = search.toString();
+      if (qs) path += `?${qs}`;
+    }
     const init: RequestInit = {
       method: request.method,
       headers: { ...this.headers },

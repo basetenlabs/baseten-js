@@ -6,25 +6,40 @@
 export type components = {
   schemas: {
     /**
+     * DeploymentConfigOutputFormat
+     * @enum {string}
+     */
+    DeploymentConfigOutputFormat: "raw" | "parsed" | "both";
+    /**
      * CheckpointSyncStatus
      * @description Lifecycle state for the checkpoint uploader.
      * @enum {string}
      */
     CheckpointSyncStatus: "SYNCING" | "COMPLETED";
+    /**
+     * V1AvailabilityModel
+     * @description Capacity guarantee under which a training job is scheduled.
+     *
+     *     ``DEDICATED`` is on-demand capacity that is not preempted (the default). ``SPOT`` is
+     *     interruptible capacity that may be preempted; the user is responsible for checkpointing
+     *     their own progress. A managed/resumable model where the platform handles
+     *     checkpoint/resume on its own is intentionally not defined yet; it is planned for a
+     *     future milestone.
+     * @enum {string}
+     */
+    V1AvailabilityModel: "dedicated" | "spot";
     /** BasetenLatestCheckpointConfig */
     BasetenLatestCheckpointConfig: {
       /**
        * Project Name
        * @description Name of the project to load the checkpoint from
-       * @default null
        */
-      project_name: string | null;
+      project_name?: string | null;
       /**
        * Job Id
        * @description ID of the job to load the checkpoint from
-       * @default null
        */
-      job_id: string | null;
+      job_id?: string | null;
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
@@ -41,15 +56,13 @@ export type components = {
       /**
        * Project Name
        * @description Name of the project to load the checkpoint from
-       * @default null
        */
-      project_name: string | null;
+      project_name?: string | null;
       /**
        * Job Id
        * @description ID of the job to load the checkpoint from
-       * @default null
        */
-      job_id: string | null;
+      job_id?: string | null;
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
@@ -61,57 +74,50 @@ export type components = {
       /**
        * Enable Legacy Hf Mount
        * @description Whether to enable the legacy Hugging Face cache.
-       * @default false
        * @example true
        */
-      enable_legacy_hf_mount: boolean;
+      enable_legacy_hf_mount?: boolean;
       /**
        * Enabled
        * @description Whether to enable the read-write cache.
-       * @default false
        * @example true
        */
-      enabled: boolean;
+      enabled?: boolean;
       /**
        * Require Cache Affinity
        * @description Whether to require region affinity for the read-write cache. If False, the resulting job is not guaranteed to be deployed alongside the previous cache.
-       * @default true
        * @example true
        * @example false
        */
-      require_cache_affinity: boolean;
+      require_cache_affinity?: boolean;
       /**
        * Mount Base Path
        * @description Mount base path for the cache directory. The project cache and team cache will be mounted under this path.
-       * @default /root/.cache
        * @example /workspace/.cache
        * @example /root/.cache
        */
-      mount_base_path: string;
+      mount_base_path?: string;
     };
     /** CreateTrainingJobCheckpointingConfig */
     CreateTrainingJobCheckpointingConfig: {
       /**
        * Enabled
        * @description Whether checkpointing is enabled.
-       * @default false
        * @example true
        */
-      enabled: boolean;
+      enabled?: boolean;
       /**
        * Checkpoint Path
        * @description path where checkpoints will be saved.
-       * @default null
        * @example /mnt/ckpts
        */
-      checkpoint_path: string | null;
+      checkpoint_path?: string | null;
       /**
        * Volume Size Gib
        * @description Size of the volume in gibibytes. If not provided, the default size will be used
-       * @default null
        * @example 10
        */
-      volume_size_gib: number | null;
+      volume_size_gib?: number | null;
     };
     /** CreateTrainingJobS3Artifact */
     CreateTrainingJobS3Artifact: {
@@ -154,15 +160,13 @@ export type components = {
       /**
        * Enabled
        * @description Whether checkpoint loading is enabled
-       * @default false
        */
-      enabled: boolean;
+      enabled?: boolean;
       /**
        * Download Folder
        * @description Folder where checkpoints will be downloaded
-       * @default /tmp/loaded_checkpoints
        */
-      download_folder: string;
+      download_folder?: string;
       /**
        * Checkpoints
        * @description List of checkpoint configurations
@@ -170,7 +174,32 @@ export type components = {
       checkpoints?: (
         | components["schemas"]["BasetenLatestCheckpointConfig"]
         | components["schemas"]["BasetenNamedCheckpointConfig"]
+        | components["schemas"]["LoopsCheckpointConfig"]
       )[];
+    };
+    /** LoopsCheckpointConfig */
+    LoopsCheckpointConfig: {
+      /**
+       * Run Id
+       * @description ID of the Loops run to load the checkpoint from
+       */
+      run_id: string;
+      /**
+       * Checkpoint Name
+       * @description Name of the checkpoint to load
+       */
+      checkpoint_name: string;
+      /**
+       * Target
+       * @description Which checkpoint target to load: 'trainer' (full training state) or 'sampler' (inference weights)
+       * @enum {string}
+       */
+      target?: "trainer" | "sampler";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      typ: "loops_checkpoint";
     };
     /**
      * TrussUserEnv
@@ -181,38 +210,19 @@ export type components = {
      *     clients.
      */
     TrussUserEnv: {
-      /**
-       * Truss Client Version
-       * @default null
-       */
-      truss_client_version: string | null;
-      /**
-       * Python Version
-       * @default null
-       */
-      python_version: string | null;
-      /**
-       * Pydantic Version
-       * @default null
-       */
-      pydantic_version: string | null;
-      /**
-       * Mypy Version
-       * @default null
-       */
-      mypy_version: string | null;
-      /**
-       * Is Library Deployment
-       * @default false
-       */
-      is_library_deployment: boolean;
-      /**
-       * Is Frontend Deployment
-       * @default false
-       */
-      is_frontend_deployment: boolean;
-      /** @default null */
-      git_info: components["schemas"]["GitInfo"] | null;
+      /** Truss Client Version */
+      truss_client_version?: string | null;
+      /** Python Version */
+      python_version?: string | null;
+      /** Pydantic Version */
+      pydantic_version?: string | null;
+      /** Mypy Version */
+      mypy_version?: string | null;
+      /** Is Library Deployment */
+      is_library_deployment?: boolean;
+      /** Is Frontend Deployment */
+      is_frontend_deployment?: boolean;
+      git_info?: components["schemas"]["GitInfo"] | null;
     };
     /**
      * V1InteractiveSessionAuthProvider
@@ -223,7 +233,7 @@ export type components = {
      * V1InteractiveSessionProvider
      * @enum {string}
      */
-    V1InteractiveSessionProvider: "vs_code" | "cursor";
+    V1InteractiveSessionProvider: "vs_code" | "cursor" | "ssh";
     /**
      * V1InteractiveSessionTrigger
      * @enum {string}
@@ -274,6 +284,22 @@ export type components = {
       permissions: string;
     };
     /**
+     * TrainerCheckpointTarget
+     * @description Whether a TrainerServerCheckpoint is loadable by the sampler or the trainer.
+     *
+     *     SAMPLER checkpoints are consumed by the sampling server for inference;
+     *     TRAINER checkpoints capture full trainer state for resuming training.
+     *     Mirrored in the bt:// URI as
+     *     ``bt://loops:<trainer_id>/(sampler_weights|weights)/<name>``.
+     * @enum {string}
+     */
+    TrainerCheckpointTarget: "sampler" | "trainer";
+    /**
+     * LoopsDeploymentStatus
+     * @enum {string}
+     */
+    Name: "CREATED" | "DEPLOYING" | "RUNNING" | "SCALED_TO_ZERO" | "FAILED" | "STOPPED";
+    /**
      * APIKeyCategory
      * @description Enum representing the category of an API key.
      * @enum {string}
@@ -289,10 +315,31 @@ export type components = {
      */
     ResourceKind: "MODEL_DEPLOYMENT" | "TRAINING_JOB" | "CHAINLET";
     /**
+     * GatewayProvider
+     * @description Customer-facing provider for an endpoint target.
+     *
+     *     External providers resolve to a fixed upstream host + protocol adapter via
+     *     ``external_provider_configs()``; ``BASETEN`` derives its host from the referenced oracle.
+     * @enum {string}
+     */
+    GatewayProvider:
+      | "ANTHROPIC"
+      | "OPENAI"
+      | "BASETEN"
+      | "BASETEN_MODEL_API"
+      | "VERTEX"
+      | "OPENAI_COMPATIBLE";
+    /**
      * SecretV1
      * @description A Baseten secret. Note that we do not support retrieving secret values.
      */
     Secret: {
+      /**
+       * Id
+       * @description Stable identifier for the secret. Unchanged across rotation.
+       * @example 3kZ9xqd
+       */
+      id: string;
       /**
        * Created At
        * Format: date-time
@@ -335,6 +382,134 @@ export type components = {
        * @example my_secret_value
        */
       value: string;
+    };
+    /**
+     * SecretTombstoneV1
+     * @description A secret tombstone.
+     */
+    SecretTombstone: {
+      /**
+       * Name
+       * @description Name of the deleted secret
+       */
+      name: string;
+    };
+    /**
+     * EnvironmentGroupManageAccessV1
+     * @description Who is allowed to manage an environment group.
+     */
+    EnvironmentGroupManageAccess: {
+      /**
+       * Is Restricted
+       * @description Whether the environment is restricted to a specific set of users.
+       */
+      is_restricted: boolean;
+      /**
+       * Users
+       * @description Users who can manage the environment while it is restricted, including organization and team admins who always have access. Empty when the environment is unrestricted.
+       */
+      users?: components["schemas"]["EnvironmentGroupUser"][];
+    };
+    /**
+     * EnvironmentGroupUserV1
+     * @description A user referenced by an environment group's manage access.
+     */
+    EnvironmentGroupUser: {
+      /**
+       * User Id
+       * @description Unique identifier for the user.
+       */
+      user_id: string;
+      /**
+       * Email
+       * @description Email address of the user.
+       * @default null
+       */
+      email: string | null;
+      /**
+       * Name
+       * @description Display name of the user.
+       * @default null
+       */
+      name: string | null;
+    };
+    /**
+     * EnvironmentGroupV1
+     * @description A team-scoped grouping of same-named environments (e.g. "production", "staging").
+     *
+     *     Restricting an environment group limits who can manage the environment of that name
+     *     across every model and chain in the team.
+     */
+    EnvironmentGroup: {
+      /**
+       * Name
+       * @description Name of the environment group, matching the environment name it governs.
+       * @example staging
+       */
+      name: string;
+      /**
+       * Team Id
+       * @description Unique identifier of the team the environment group belongs to.
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the team the environment group belongs to.
+       */
+      team_name: string;
+      /** @description Settings controlling who can manage this environment group. */
+      manage_access: components["schemas"]["EnvironmentGroupManageAccess"];
+    };
+    /** PaginationResponseV1 */
+    PaginationResponse: {
+      /**
+       * Has More
+       * @description Whether more items exist after this page.
+       */
+      has_more: boolean;
+      /**
+       * Cursor
+       * @description Opaque cursor to pass into the next request. Null when there is no next page.
+       * @default null
+       */
+      cursor: string | null;
+    };
+    /**
+     * EnvironmentGroupsV1
+     * @description A page of environment groups.
+     */
+    EnvironmentGroups: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["EnvironmentGroup"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * UpdateEnvironmentGroupManageAccessV1
+     * @description Manage-access settings to apply to an environment group.
+     */
+    UpdateEnvironmentGroupManageAccess: {
+      /**
+       * Is Restricted
+       * @description Whether to restrict this environment to a specific set of users.
+       */
+      is_restricted: boolean;
+      /**
+       * User Ids
+       * @description IDs of users granted manage access while restricted. Only meaningful when is_restricted is true.
+       */
+      user_ids?: string[];
+    };
+    /**
+     * UpdateEnvironmentGroupRequestV1
+     * @description A request to update an existing environment group.
+     */
+    UpdateEnvironmentGroupRequest: {
+      /** @description Manage-access settings to apply. Omit to leave manage access unchanged. */
+      manage_access?: components["schemas"]["UpdateEnvironmentGroupManageAccess"] | null;
     };
     /**
      * TeamV1
@@ -423,6 +598,76 @@ export type components = {
       /** Instance Types */
       instance_types: components["schemas"]["InstanceType"][];
     };
+    /**
+     * LoopsUserConfigV1
+     * @description The caller's Loops user-level config (accelerator priorities).
+     */
+    LoopsUserConfig: {
+      /**
+       * Trainer Accelerator Priority
+       * @description Ordered allowlist of GPU types for your Loops trainer deployments, highest priority first. Intersected with the org-level allowlist (org acts as a ceiling). Null means 'inherit the org-level allowlist'.
+       * @example [
+       *       "H100",
+       *       "H200"
+       *     ]
+       */
+      trainer_accelerator_priority: string[] | null;
+      /**
+       * Sampler Accelerator Priority
+       * @description Ordered allowlist of GPU types for your Loops sampler deployments, highest priority first. Intersected with the org-level allowlist (org acts as a ceiling). Null means 'inherit the org-level allowlist'.
+       * @example [
+       *       "H100",
+       *       "H200"
+       *     ]
+       */
+      sampler_accelerator_priority: string[] | null;
+    };
+    /**
+     * GetLoopsUserConfigResponseV1
+     * @description Response for ``GET /v1/loops/user_config``.
+     */
+    GetLoopsUserConfigResponse: {
+      /** @description The caller's Loops user config. */
+      user_config: components["schemas"]["LoopsUserConfig"];
+    };
+    /**
+     * PatchLoopsUserConfigRequestV1
+     * @description Request body for ``PATCH /v1/loops/user_config``.
+     *
+     *     Follows JSON Merge Patch (RFC 7396) semantics per field: omit the field
+     *     to leave it unchanged, send ``null`` to clear and inherit the org-level
+     *     allowlist, send a list to set the allowlist. Empty lists are rejected
+     *     because the storage layer normalizes ``null`` and ``[]`` identically, so
+     *     accepting both would create two ways to spell the same intent.
+     */
+    PatchLoopsUserConfigRequest: {
+      /**
+       * Trainer Accelerator Priority
+       * @description Ordered list of GPU types for trainer deployments, highest priority first. Send a list to set; send null to clear (inherit org allowlist); omit to leave unchanged. Empty list is rejected.
+       * @example [
+       *       "H100",
+       *       "H200"
+       *     ]
+       */
+      trainer_accelerator_priority?: string[] | null;
+      /**
+       * Sampler Accelerator Priority
+       * @description Ordered list of GPU types for sampler deployments, highest priority first. Send a list to set; send null to clear (inherit org allowlist); omit to leave unchanged. Empty list is rejected.
+       * @example [
+       *       "H100",
+       *       "H200"
+       *     ]
+       */
+      sampler_accelerator_priority?: string[] | null;
+    };
+    /**
+     * PatchLoopsUserConfigResponseV1
+     * @description Response for ``PATCH /v1/loops/user_config``.
+     */
+    PatchLoopsUserConfigResponse: {
+      /** @description The updated Loops user config. */
+      user_config: components["schemas"]["LoopsUserConfig"];
+    };
     /** InstanceTypeWithPriceV1 */
     InstanceTypeWithPrice: {
       /** @description Instance type properties. */
@@ -441,6 +686,1312 @@ export type components = {
       /** Instance Types */
       instance_types: components["schemas"]["InstanceTypeWithPrice"][];
     };
+    /**
+     * DeploymentArchivePayloadV1
+     * @description Deployment-level fields for a model-archive push.
+     *
+     *     Shared by every endpoint that creates a deployment from an uploaded archive:
+     *     `POST /v1/prepare_model_upload`, the `model_archive` source on `POST
+     *     /v1/models`, and `POST /v1/models/{model_id}/deployments`.
+     */
+    DeploymentArchivePayload: {
+      /**
+       * Config
+       * @description Parsed model config as a JSON object.
+       */
+      config: {
+        [key: string]: unknown;
+      };
+      /**
+       * Raw Config
+       * @description Original config.yaml text, persisted as-is on the deployment. Best-effort: invalid raw configs are logged and dropped without failing the request.
+       */
+      raw_config?: string | null;
+      /**
+       * User Env
+       * @description Client environment metadata (e.g. client version, Python version). Validated server-side.
+       */
+      user_env?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Environment Name
+       * @description Stable environment to push to (e.g. `production`). If unset, the deployment is created without environment selection. Caller must have push permission for the named environment.
+       */
+      environment_name?: string | null;
+      /**
+       * Preserve Env Instance Type
+       * @description Retain the target environment's current instance type rather than the one in `config`. Only meaningful when `environment_name` is set and that environment already exists.
+       */
+      preserve_env_instance_type?: boolean;
+      /**
+       * Deploy Timeout Minutes
+       * @description Deploy timeout in minutes; allowed range 10 to 1440. Server default applies if unset.
+       */
+      deploy_timeout_minutes?: number | null;
+      /**
+       * Deployment Name
+       * @description Optional human-readable name for the deployment.
+       */
+      deployment_name?: string | null;
+      /**
+       * Labels
+       * @description User-provided key-value labels for the deployment.
+       */
+      labels?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Is Development
+       * @description If true, push as a development deployment: the model's single mutable dev slot, created if absent and overwritten in place otherwise. The following fields must be left at their defaults: `environment_name`, `preserve_env_instance_type`, `deployment_name`.
+       */
+      is_development?: boolean;
+    };
+    /**
+     * PrepareModelUploadRequestV1
+     * @description Body for `POST /v1/prepare_model_upload`.
+     *
+     *     Validates the same payload the commit endpoint will validate, and on
+     *     `dry_run=false` issues STS upload credentials. Exactly one of `name` or
+     *     `model_id` is required: `name` validates the new-model path (`POST
+     *     /v1/models`); `model_id` validates the add-deployment path (`POST
+     *     /v1/models/{model_id}/deployments`).
+     */
+    PrepareModelUploadRequest: {
+      /** @description Deployment-level payload, identical to the payload sent at commit. */
+      deployment: components["schemas"]["DeploymentArchivePayload"];
+      /**
+       * Name
+       * @description Set to validate a new-model push. Exactly one of `name` or `model_id` is required.
+       */
+      name?: string | null;
+      /**
+       * Team Id
+       * @description Team the new model will belong to. Only valid when `name` is set; defaults to the organization's default team when omitted. Must not be set when `model_id` is set (the existing model already has a team).
+       */
+      team_id?: string | null;
+      /**
+       * Model Id
+       * @description Set to validate an add-deployment push to an existing model. Exactly one of `name` or `model_id` is required.
+       */
+      model_id?: string | null;
+      /**
+       * Dry Run
+       * @description If true, validate the payload only and do not issue upload credentials. The response sets `creds`, `s3_bucket`, and `s3_key` to `null`.
+       */
+      dry_run?: boolean;
+    };
+    /**
+     * AWSCredentialsV1
+     * @description AWS credentials
+     */
+    AWSCredentials: {
+      /**
+       * Aws Access Key Id
+       * @description The AWS access key ID
+       */
+      aws_access_key_id: string;
+      /**
+       * Aws Secret Access Key
+       * @description The AWS secret access key
+       */
+      aws_secret_access_key: string;
+      /**
+       * Aws Session Token
+       * @description The AWS session token
+       */
+      aws_session_token: string;
+    };
+    /**
+     * PrepareModelUploadResponseV1
+     * @description Response from `POST /v1/prepare_model_upload`.
+     *
+     *     Returns STS upload credentials when the push requires an archive upload. All
+     *     four fields (`creds`, `s3_bucket`, `s3_key`, `s3_region`) are `null` when no
+     *     upload is needed: either `dry_run=true` (validation only) or a model format
+     *     that is not built from an uploaded archive (for example, BIS-LLM, which is
+     *     built from its config alone).
+     */
+    PrepareModelUploadResponse: {
+      /**
+       * @description STS credentials to upload the model archive. Null when no archive upload is required.
+       * @default null
+       */
+      creds: components["schemas"]["AWSCredentials"] | null;
+      /**
+       * S3 Bucket
+       * @description S3 bucket the credentials are scoped to. Null when no archive upload is required.
+       * @default null
+       */
+      s3_bucket: string | null;
+      /**
+       * S3 Key
+       * @description S3 key the credentials are scoped to. Pass this to `POST /v1/models` (in the `model_archive` source) once the upload completes. Null when no archive upload is required.
+       * @default null
+       */
+      s3_key: string | null;
+      /**
+       * S3 Region
+       * @description AWS region the S3 bucket resides in. Null when no archive upload is required.
+       * @default null
+       */
+      s3_region: string | null;
+    };
+    /**
+     * AuditLogActorTypeV1
+     * @description Kind of actor that performed an audited action.
+     * @enum {string}
+     */
+    AuditLogActorType: "USER" | "API_KEY" | "BASETEN_USER" | "BASETEN_SYSTEM" | "TOMBSTONE_USER";
+    /**
+     * AuditLogActorV1
+     * @description The actor that performed an audited action.
+     */
+    AuditLogActor: {
+      /** @description Kind of actor that performed the action. */
+      type: components["schemas"]["AuditLogActorType"];
+      /**
+       * Email
+       * @description Email of the acting user, when the actor is a user.
+       * @default null
+       */
+      email: string | null;
+      /**
+       * Api Key Prefix
+       * @description Prefix of the acting API key, when the actor is an API key.
+       * @default null
+       */
+      api_key_prefix: string | null;
+    };
+    /**
+     * AuditLogApiKeyTypeV1
+     * @description Type of API key recorded on an API-key event.
+     * @enum {string}
+     */
+    AuditLogApiKeyType:
+      | "PERSONAL"
+      | "CREATOR_SERVICE_ACCOUNT"
+      | "INVOKE_ALL_MODELS_SERVICE_ACCOUNT"
+      | "INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT"
+      | "INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT"
+      | "EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT"
+      | "EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT"
+      | "INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT"
+      | "INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT";
+    /**
+     * AuditLogEntryV1
+     * @description A single audit-log entry.
+     */
+    AuditLogEntry: {
+      /**
+       * Id
+       * @description Unique identifier of the audit-log entry.
+       */
+      id: string;
+      /**
+       * Created
+       * Format: date-time
+       * @description Time the action occurred, in ISO 8601 format.
+       */
+      created: string;
+      /** @description Type of action that was recorded. */
+      event_type: components["schemas"]["AuditLogEventType"];
+      /**
+       * Event Data
+       * @description Structured details of the action, discriminated by `event_type`.
+       */
+      event_data:
+        | components["schemas"]["AuditLogEventModelDeployed"]
+        | components["schemas"]["AuditLogEventModelDeploymentActivated"]
+        | components["schemas"]["AuditLogEventModelDeploymentDeactivated"]
+        | components["schemas"]["AuditLogEventModelDeploymentRetried"]
+        | components["schemas"]["AuditLogEventModelDeploymentPromoted"]
+        | components["schemas"]["AuditLogEventModelDeploymentAutoscalingSettingsChanged"]
+        | components["schemas"]["AuditLogEventModelDeploymentInstanceTypeChanged"]
+        | components["schemas"]["AuditLogEventModelDeploymentDeleted"]
+        | components["schemas"]["AuditLogEventModelDeleted"]
+        | components["schemas"]["AuditLogEventChainDeployed"]
+        | components["schemas"]["AuditLogEventChainDeploymentActivated"]
+        | components["schemas"]["AuditLogEventChainDeploymentDeactivated"]
+        | components["schemas"]["AuditLogEventChainDeploymentPromoted"]
+        | components["schemas"]["AuditLogEventChainletAutoscalingSettingsChanged"]
+        | components["schemas"]["AuditLogEventChainletInstanceTypeChanged"]
+        | components["schemas"]["AuditLogEventChainDeploymentDeleted"]
+        | components["schemas"]["AuditLogEventChainDeleted"]
+        | components["schemas"]["AuditLogEventChainEnvironmentCreated"]
+        | components["schemas"]["AuditLogEventChainEnvironmentUpdated"]
+        | components["schemas"]["AuditLogEventSecretUpdated"]
+        | components["schemas"]["AuditLogEventSecretDeleted"]
+        | components["schemas"]["AuditLogEventApiKeyCreated"]
+        | components["schemas"]["AuditLogEventApiKeyDeleted"]
+        | components["schemas"]["AuditLogEventGatewayEndpointCreated"]
+        | components["schemas"]["AuditLogEventGatewayEndpointUpdated"]
+        | components["schemas"]["AuditLogEventGatewayEndpointDeleted"]
+        | components["schemas"]["AuditLogEventUserInvited"]
+        | components["schemas"]["AuditLogEventUserJoinedOrganization"]
+        | components["schemas"]["AuditLogEventWebhookSigningSecretCreated"]
+        | components["schemas"]["AuditLogEventWebhookSigningSecretRotated"]
+        | components["schemas"]["AuditLogEventWebhookSigningSecretDeleted"]
+        | components["schemas"]["AuditLogEventUserRoleUpdated"]
+        | components["schemas"]["AuditLogEventUserTeamRoleUpdated"]
+        | components["schemas"]["AuditLogEventUserRemoved"]
+        | components["schemas"]["AuditLogEventDirectoryGroupRoleUpdated"]
+        | components["schemas"]["AuditLogEventRequireGroupBasedAdminsEnabled"]
+        | components["schemas"]["AuditLogEventEnvironmentCreated"]
+        | components["schemas"]["AuditLogEventEnvironmentUpdated"]
+        | components["schemas"]["AuditLogEventEnvironmentDeleted"]
+        | components["schemas"]["AuditLogEventReplicaTerminated"]
+        | components["schemas"]["AuditLogEventModelPromotionControlAction"]
+        | components["schemas"]["AuditLogEventSshCertificateSigned"];
+      /**
+       * @description Surface that issued the action, if known.
+       * @default null
+       */
+      source: components["schemas"]["AuditLogSource"] | null;
+      /** @description The actor that performed the action. */
+      actor: components["schemas"]["AuditLogActor"];
+      /**
+       * Client Name
+       * @description Name of the client that issued the action, if known.
+       * @default null
+       */
+      client_name: string | null;
+      /**
+       * Client Version
+       * @description Version of the client that issued the action, if known.
+       * @default null
+       */
+      client_version: string | null;
+      /**
+       * Client Session Id
+       * @description Opaque identifier grouping actions from the same client session, if known.
+       * @default null
+       */
+      client_session_id: string | null;
+    };
+    /**
+     * AuditLogEventApiKeyCreatedV1
+     * @description An API key was created.
+     */
+    AuditLogEventApiKeyCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "API_KEY_CREATED";
+      /** Api Key Id */
+      api_key_id: string;
+      api_key_type: components["schemas"]["AuditLogApiKeyType"];
+      /** Prefix */
+      prefix: string;
+    };
+    /**
+     * AuditLogEventApiKeyDeletedV1
+     * @description An API key was revoked.
+     */
+    AuditLogEventApiKeyDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "API_KEY_DELETED";
+      /** Api Key Id */
+      api_key_id: string;
+      api_key_type: components["schemas"]["AuditLogApiKeyType"];
+      /** Prefix */
+      prefix: string;
+    };
+    /**
+     * AuditLogEventAutoscalingSettingsV1
+     * @description Autoscaling settings for a deployment or environment.
+     */
+    AuditLogEventAutoscalingSettings: {
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+    };
+    /**
+     * AuditLogEventChainDeletedV1
+     * @description A chain was deleted.
+     */
+    AuditLogEventChainDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_DELETED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Name */
+      chain_deployment_name: string | null;
+    };
+    /**
+     * AuditLogEventChainDeployedV1
+     * @description A chain deployment was created.
+     */
+    AuditLogEventChainDeployed: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_DEPLOYED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Id */
+      chain_deployment_id: string;
+      /** Chain Deployment Name */
+      chain_deployment_name: string | null;
+      /** Is Primary */
+      is_primary: boolean;
+      /** Publish */
+      publish: boolean;
+    };
+    /**
+     * AuditLogEventChainDeploymentActivatedV1
+     * @description A chain deployment was activated.
+     */
+    AuditLogEventChainDeploymentActivated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_DEPLOYMENT_ACTIVATED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Id */
+      chain_deployment_id: string;
+      /** Chain Deployment Name */
+      chain_deployment_name: string | null;
+    };
+    /**
+     * AuditLogEventChainDeploymentDeactivatedV1
+     * @description A chain deployment was deactivated.
+     */
+    AuditLogEventChainDeploymentDeactivated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_DEPLOYMENT_DEACTIVATED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Id */
+      chain_deployment_id: string;
+      /** Chain Deployment Name */
+      chain_deployment_name: string | null;
+    };
+    /**
+     * AuditLogEventChainDeploymentDeletedV1
+     * @description A chain deployment was deleted.
+     */
+    AuditLogEventChainDeploymentDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_DEPLOYMENT_DELETED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Id */
+      chain_deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string | null;
+    };
+    /**
+     * AuditLogEventChainDeploymentPromotedV1
+     * @description A chain deployment was promoted to an environment.
+     */
+    AuditLogEventChainDeploymentPromoted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_DEPLOYMENT_PROMOTED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Id */
+      chain_deployment_id: string;
+      /** Chain Deployment Name */
+      chain_deployment_name: string | null;
+      /** Environment Name */
+      environment_name: string | null;
+      /** Environment Id */
+      environment_id: string | null;
+    };
+    /**
+     * AuditLogEventChainEnvironmentCreatedV1
+     * @description A chain environment was created.
+     */
+    AuditLogEventChainEnvironmentCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_ENVIRONMENT_CREATED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Environment Name */
+      environment_name: string;
+      /** Redeploy On Promotion */
+      redeploy_on_promotion: boolean | null;
+      /** Ramp Up While Promoting */
+      ramp_up_while_promoting: boolean | null;
+      /** Ramp Up Duration Seconds */
+      ramp_up_duration_seconds: number | null;
+    };
+    /**
+     * AuditLogEventChainEnvironmentUpdatedV1
+     * @description A chain environment was updated.
+     */
+    AuditLogEventChainEnvironmentUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAIN_ENVIRONMENT_UPDATED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Environment Name */
+      environment_name: string;
+      /** Redeploy On Promotion */
+      redeploy_on_promotion: boolean | null;
+      /** Ramp Up While Promoting */
+      ramp_up_while_promoting: boolean | null;
+      /** Ramp Up Duration Seconds */
+      ramp_up_duration_seconds: number | null;
+    };
+    /**
+     * AuditLogEventChainletAutoscalingSettingsChangedV1
+     * @description A chainlet's autoscaling settings were changed.
+     */
+    AuditLogEventChainletAutoscalingSettingsChanged: {
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAINLET_AUTOSCALING_SETTINGS_CHANGED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Id */
+      chain_deployment_id: string;
+      /** Chain Deployment Name */
+      chain_deployment_name: string | null;
+      /** Chainlet Name */
+      chainlet_name: string;
+      /** Chainlet Id */
+      chainlet_id: string;
+      previous_settings: components["schemas"]["AuditLogEventAutoscalingSettings"] | null;
+    };
+    /**
+     * AuditLogEventChainletInstanceTypeChangedV1
+     * @description A chainlet's instance type was changed.
+     */
+    AuditLogEventChainletInstanceTypeChanged: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "CHAINLET_INSTANCE_TYPE_CHANGED";
+      /** Chain Id */
+      chain_id: string;
+      /** Chain Name */
+      chain_name: string;
+      /** Chain Deployment Id */
+      chain_deployment_id: string;
+      /** Chain Deployment Name */
+      chain_deployment_name: string | null;
+      /** Chainlet Name */
+      chainlet_name: string;
+      /** Chainlet Id */
+      chainlet_id: string;
+      /** Instance Type Name */
+      instance_type_name: string;
+    };
+    /**
+     * AuditLogEventDirectoryGroupRoleUpdatedV1
+     * @description A directory group's role was updated.
+     */
+    AuditLogEventDirectoryGroupRoleUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "DIRECTORY_GROUP_ROLE_UPDATED";
+      /** Directory Group Id */
+      directory_group_id: string;
+      /** Directory Group Name */
+      directory_group_name: string;
+      /** New Role Name */
+      new_role_name: string;
+      /** Team Id */
+      team_id: string | null;
+      /** Team Name */
+      team_name: string | null;
+    };
+    /**
+     * AuditLogEventEnvironmentCreatedV1
+     * @description A model environment was created.
+     */
+    AuditLogEventEnvironmentCreated: {
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Environment Name */
+      environment_name: string;
+      /** Deployment Type */
+      deployment_type: string | null;
+      /** Redeploy On Promotion */
+      redeploy_on_promotion: boolean | null;
+      /** Ramp Up While Promoting */
+      ramp_up_while_promoting: boolean | null;
+      /** Ramp Up Duration Seconds */
+      ramp_up_duration_seconds: number | null;
+      /** Ramp Up Step Size */
+      ramp_up_step_size: number | null;
+      /** Rolling Deploy */
+      rolling_deploy: boolean | null;
+      /** Rolling Deploy Strategy */
+      rolling_deploy_strategy: string | null;
+      /** Max Unavailable Percent */
+      max_unavailable_percent: number | null;
+      /** Max Surge Percent */
+      max_surge_percent: number | null;
+      /** Stabilization Time Seconds */
+      stabilization_time_seconds: number | null;
+      /** Replica Overhead Percent */
+      replica_overhead_percent: number | null;
+      /** Promotion Cleanup Strategy */
+      promotion_cleanup_strategy: string | null;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "ENVIRONMENT_CREATED";
+    };
+    /**
+     * AuditLogEventEnvironmentDeletedV1
+     * @description A model environment was deleted.
+     */
+    AuditLogEventEnvironmentDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "ENVIRONMENT_DELETED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Environment Name */
+      environment_name: string;
+    };
+    /**
+     * AuditLogEventEnvironmentUpdatedV1
+     * @description A model environment's settings were updated.
+     */
+    AuditLogEventEnvironmentUpdated: {
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Environment Name */
+      environment_name: string;
+      /** Deployment Type */
+      deployment_type: string | null;
+      /** Redeploy On Promotion */
+      redeploy_on_promotion: boolean | null;
+      /** Ramp Up While Promoting */
+      ramp_up_while_promoting: boolean | null;
+      /** Ramp Up Duration Seconds */
+      ramp_up_duration_seconds: number | null;
+      /** Ramp Up Step Size */
+      ramp_up_step_size: number | null;
+      /** Rolling Deploy */
+      rolling_deploy: boolean | null;
+      /** Rolling Deploy Strategy */
+      rolling_deploy_strategy: string | null;
+      /** Max Unavailable Percent */
+      max_unavailable_percent: number | null;
+      /** Max Surge Percent */
+      max_surge_percent: number | null;
+      /** Stabilization Time Seconds */
+      stabilization_time_seconds: number | null;
+      /** Replica Overhead Percent */
+      replica_overhead_percent: number | null;
+      /** Promotion Cleanup Strategy */
+      promotion_cleanup_strategy: string | null;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "ENVIRONMENT_UPDATED";
+      previous_settings: components["schemas"]["AuditLogEventAutoscalingSettings"] | null;
+    };
+    /**
+     * AuditLogEventGatewayEndpointCreatedV1
+     * @description A Frontier Gateway endpoint was created.
+     */
+    AuditLogEventGatewayEndpointCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "GATEWAY_ENDPOINT_CREATED";
+      /** Gateway Endpoint Id */
+      gateway_endpoint_id: string;
+      /** Slug */
+      slug: string;
+    };
+    /**
+     * AuditLogEventGatewayEndpointDeletedV1
+     * @description A Frontier Gateway endpoint was deleted.
+     */
+    AuditLogEventGatewayEndpointDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "GATEWAY_ENDPOINT_DELETED";
+      /** Gateway Endpoint Id */
+      gateway_endpoint_id: string;
+      /** Slug */
+      slug: string;
+    };
+    /**
+     * AuditLogEventGatewayEndpointUpdatedV1
+     * @description A Frontier Gateway endpoint was updated.
+     */
+    AuditLogEventGatewayEndpointUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "GATEWAY_ENDPOINT_UPDATED";
+      /** Gateway Endpoint Id */
+      gateway_endpoint_id: string;
+      /** Slug */
+      slug: string;
+      /** Previous Slug */
+      previous_slug: string | null;
+    };
+    /**
+     * AuditLogEventModelDeletedV1
+     * @description A model was deleted.
+     */
+    AuditLogEventModelDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DELETED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+    };
+    /**
+     * AuditLogEventModelDeployedV1
+     * @description A model deployment was created.
+     */
+    AuditLogEventModelDeployed: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /** Scale Previous To Zero */
+      scale_previous_to_zero: boolean;
+      /** Trusted */
+      trusted: boolean;
+      /** Publish */
+      publish: boolean;
+      /** Environment Name */
+      environment_name: string | null;
+    };
+    /**
+     * AuditLogEventModelDeploymentActivatedV1
+     * @description A model deployment was activated.
+     */
+    AuditLogEventModelDeploymentActivated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_ACTIVATED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+    };
+    /**
+     * AuditLogEventModelDeploymentAutoscalingSettingsChangedV1
+     * @description A model deployment's autoscaling settings were changed.
+     */
+    AuditLogEventModelDeploymentAutoscalingSettingsChanged: {
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /** Deployment Type */
+      deployment_type: string | null;
+      previous_settings: components["schemas"]["AuditLogEventAutoscalingSettings"] | null;
+    };
+    /**
+     * AuditLogEventModelDeploymentDeactivatedV1
+     * @description A model deployment was deactivated.
+     */
+    AuditLogEventModelDeploymentDeactivated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_DEACTIVATED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+    };
+    /**
+     * AuditLogEventModelDeploymentDeletedV1
+     * @description A model deployment was deleted.
+     */
+    AuditLogEventModelDeploymentDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_DELETED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+    };
+    /**
+     * AuditLogEventModelDeploymentInstanceTypeChangedV1
+     * @description A model deployment's instance type was changed.
+     */
+    AuditLogEventModelDeploymentInstanceTypeChanged: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /** Instance Type Name */
+      instance_type_name: string;
+    };
+    /**
+     * AuditLogEventModelDeploymentPromotedV1
+     * @description A model deployment was promoted to an environment.
+     */
+    AuditLogEventModelDeploymentPromoted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_PROMOTED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /** Environment Name */
+      environment_name: string | null;
+      /** Environment Id */
+      environment_id: string | null;
+    };
+    /**
+     * AuditLogEventModelDeploymentRetriedV1
+     * @description A model deployment build was retried.
+     */
+    AuditLogEventModelDeploymentRetried: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_RETRIED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /** Retried */
+      retried: boolean;
+    };
+    /**
+     * AuditLogEventModelPromotionControlActionV1
+     * @description A user-initiated promotion control signal was sent to a rolling promotion.
+     */
+    AuditLogEventModelPromotionControlAction: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_PROMOTION_CONTROL_ACTION";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /** Environment Name */
+      environment_name: string;
+      /** Environment Id */
+      environment_id: string | null;
+      action: components["schemas"]["AuditLogPromotionControlAction"];
+    };
+    /**
+     * AuditLogEventReplicaTerminatedV1
+     * @description A replica of a model deployment was terminated.
+     */
+    AuditLogEventReplicaTerminated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "REPLICA_TERMINATED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /** Replica Id */
+      replica_id: string;
+    };
+    /**
+     * AuditLogEventRequireGroupBasedAdminsEnabledV1
+     * @description Group-based admin enforcement was enabled for the organization.
+     */
+    AuditLogEventRequireGroupBasedAdminsEnabled: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "REQUIRE_GROUP_BASED_ADMINS_ENABLED";
+      /** Organization Id */
+      organization_id: string;
+    };
+    /**
+     * AuditLogEventSecretDeletedV1
+     * @description A secret was deleted.
+     */
+    AuditLogEventSecretDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "SECRET_DELETED";
+      /** Secret Id */
+      secret_id: string;
+      /** Secret Name */
+      secret_name: string;
+    };
+    /**
+     * AuditLogEventSecretUpdatedV1
+     * @description A secret was created or updated.
+     */
+    AuditLogEventSecretUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "SECRET_UPDATED";
+      /** Secret Id */
+      secret_id: string;
+      /** Secret Name */
+      secret_name: string;
+    };
+    /**
+     * AuditLogEventSshCertificateSignedV1
+     * @description An SSH certificate was signed for a workload.
+     */
+    AuditLogEventSshCertificateSigned: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "SSH_CERTIFICATE_SIGNED";
+      /** Workload Type */
+      workload_type: string;
+      /** Workload Id */
+      workload_id: string;
+      /** Project Id */
+      project_id: string;
+      /** Replica Id */
+      replica_id: string;
+      /** Proxy Address */
+      proxy_address: string;
+      /** Expires At */
+      expires_at: string;
+    };
+    /**
+     * AuditLogEventTypeV1
+     * @description Type of action recorded by an audit-log entry.
+     * @enum {string}
+     */
+    AuditLogEventType:
+      | "MODEL_DEPLOYED"
+      | "MODEL_DEPLOYMENT_ACTIVATED"
+      | "MODEL_DEPLOYMENT_DEACTIVATED"
+      | "MODEL_DEPLOYMENT_RETRIED"
+      | "MODEL_DEPLOYMENT_PROMOTED"
+      | "MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED"
+      | "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"
+      | "MODEL_DEPLOYMENT_DELETED"
+      | "MODEL_DELETED"
+      | "CHAIN_DEPLOYED"
+      | "CHAIN_DEPLOYMENT_ACTIVATED"
+      | "CHAIN_DEPLOYMENT_DEACTIVATED"
+      | "CHAIN_DEPLOYMENT_PROMOTED"
+      | "CHAINLET_AUTOSCALING_SETTINGS_CHANGED"
+      | "CHAINLET_INSTANCE_TYPE_CHANGED"
+      | "CHAIN_DEPLOYMENT_DELETED"
+      | "CHAIN_DELETED"
+      | "CHAIN_ENVIRONMENT_CREATED"
+      | "CHAIN_ENVIRONMENT_UPDATED"
+      | "SECRET_UPDATED"
+      | "SECRET_DELETED"
+      | "API_KEY_CREATED"
+      | "API_KEY_DELETED"
+      | "GATEWAY_ENDPOINT_CREATED"
+      | "GATEWAY_ENDPOINT_UPDATED"
+      | "GATEWAY_ENDPOINT_DELETED"
+      | "USER_INVITED"
+      | "USER_JOINED_ORGANIZATION"
+      | "WEBHOOK_SIGNING_SECRET_CREATED"
+      | "WEBHOOK_SIGNING_SECRET_ROTATED"
+      | "WEBHOOK_SIGNING_SECRET_DELETED"
+      | "USER_ROLE_UPDATED"
+      | "USER_TEAM_ROLE_UPDATED"
+      | "USER_REMOVED"
+      | "DIRECTORY_GROUP_ROLE_UPDATED"
+      | "REQUIRE_GROUP_BASED_ADMINS_ENABLED"
+      | "ENVIRONMENT_CREATED"
+      | "ENVIRONMENT_UPDATED"
+      | "ENVIRONMENT_DELETED"
+      | "REPLICA_TERMINATED"
+      | "MODEL_PROMOTION_CONTROL_ACTION"
+      | "SSH_CERTIFICATE_SIGNED";
+    /**
+     * AuditLogEventUserInvitedV1
+     * @description A user was invited to the organization.
+     */
+    AuditLogEventUserInvited: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "USER_INVITED";
+      /** Invited User Email */
+      invited_user_email: string;
+      /** Role Name */
+      role_name: string;
+    };
+    /**
+     * AuditLogEventUserJoinedOrganizationV1
+     * @description A user joined the organization.
+     */
+    AuditLogEventUserJoinedOrganization: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "USER_JOINED_ORGANIZATION";
+      /** New User Email */
+      new_user_email: string;
+      /** User Id */
+      user_id: string;
+    };
+    /**
+     * AuditLogEventUserRemovedV1
+     * @description A user was removed from the organization.
+     */
+    AuditLogEventUserRemoved: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "USER_REMOVED";
+      /** Removed User Email */
+      removed_user_email: string;
+    };
+    /**
+     * AuditLogEventUserRoleUpdatedV1
+     * @description A user's organization role was updated.
+     */
+    AuditLogEventUserRoleUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "USER_ROLE_UPDATED";
+      /** User Id */
+      user_id: string;
+      /** User Email */
+      user_email: string;
+      /** New Role Name */
+      new_role_name: string;
+    };
+    /**
+     * AuditLogEventUserTeamRoleUpdatedV1
+     * @description A user's team role was updated.
+     */
+    AuditLogEventUserTeamRoleUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "USER_TEAM_ROLE_UPDATED";
+      /** User Id */
+      user_id: string;
+      /** User Email */
+      user_email: string;
+      /** Team Id */
+      team_id: string;
+      /** Team Name */
+      team_name: string;
+      /** New Role Name */
+      new_role_name: string;
+    };
+    /**
+     * AuditLogEventWebhookSigningSecretCreatedV1
+     * @description A webhook signing secret was created.
+     */
+    AuditLogEventWebhookSigningSecretCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "WEBHOOK_SIGNING_SECRET_CREATED";
+      /** Webhook Signing Secret Id */
+      webhook_signing_secret_id: string;
+    };
+    /**
+     * AuditLogEventWebhookSigningSecretDeletedV1
+     * @description A webhook signing secret was deleted.
+     */
+    AuditLogEventWebhookSigningSecretDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "WEBHOOK_SIGNING_SECRET_DELETED";
+      /** Webhook Signing Secret Id */
+      webhook_signing_secret_id: string;
+    };
+    /**
+     * AuditLogEventWebhookSigningSecretRotatedV1
+     * @description A webhook signing secret was rotated.
+     */
+    AuditLogEventWebhookSigningSecretRotated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "WEBHOOK_SIGNING_SECRET_ROTATED";
+      /** Webhook Signing Secret Id */
+      webhook_signing_secret_id: string;
+    };
+    /**
+     * AuditLogPromotionControlActionV1
+     * @description User-initiated promotion control signal recorded on a promotion-control event.
+     * @enum {string}
+     */
+    AuditLogPromotionControlAction:
+      | "PAUSE"
+      | "RESUME"
+      | "FORCE_CANCEL"
+      | "FORCE_ROLL_FORWARD"
+      | "GRACEFUL_CANCEL";
+    /**
+     * AuditLogSourceV1
+     * @description Surface that issued the audited action.
+     * @enum {string}
+     */
+    AuditLogSource: "UI" | "API" | "MCP" | "OTHER";
+    /**
+     * ListAuditLogsResponseV1
+     * @description A page of audit-log entries, newest first by default.
+     */
+    ListAuditLogsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["AuditLogEntry"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * AuditLogEventTypeGroupV1
+     * @description Coarse grouping of event types, used to filter the audit log.
+     * @enum {string}
+     */
+    AuditLogEventTypeGroup:
+      | "DEPLOYED"
+      | "PROMOTED"
+      | "ACTIVATED_DEACTIVATED"
+      | "AUTOSCALING_SETTINGS"
+      | "INSTANCE_TYPE_CHANGED"
+      | "ENVIRONMENT_SETTINGS"
+      | "REPLICA_TERMINATED"
+      | "DELETED"
+      | "SECRETS"
+      | "API_KEYS"
+      | "GATEWAY"
+      | "WEBHOOK_SIGNING_SECRETS"
+      | "USER_MANAGEMENT"
+      | "DIRECTORY_GROUP_MANAGEMENT"
+      | "SSH";
+    /**
+     * AuditLogSortDirectionV1
+     * @description Sort order of returned entries, by creation time.
+     * @enum {string}
+     */
+    AuditLogSortDirection: "DESC" | "ASC";
     /**
      * ModelV1
      * @description A model.
@@ -497,20 +2048,72 @@ export type components = {
       models: components["schemas"]["Model"][];
     };
     /**
-     * ModelTombstoneV1
-     * @description A model tombstone.
+     * LibraryListingSourceV1
+     * @description Create a model by forking a library listing accessible to the caller's organization.
      */
-    ModelTombstone: {
+    LibraryListingSource: {
       /**
-       * Id
-       * @description Unique identifier of the model
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
        */
-      id: string;
+      kind: "library_listing";
       /**
-       * Deleted
-       * @description Whether the model was deleted
+       * Lab Display Name
+       * @description Identifier of the publishing organization, as returned by `GET /v1/library_models`.
        */
-      deleted: boolean;
+      lab_display_name: string;
+      /**
+       * User Defined Listing Id
+       * @description Listing identifier within the publishing organization.
+       */
+      user_defined_listing_id: string;
+      /**
+       * Deployed Model Name
+       * @description Optional name for the new deployed model. Defaults to the listing's configured name.
+       */
+      deployed_model_name?: string | null;
+    };
+    /**
+     * ModelArchiveSourceV1
+     * @description Create a model from an archive previously uploaded via the credentials
+     *     issued by `POST /v1/prepare_model_upload`.
+     */
+    ModelArchiveSource: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "model_archive";
+      /**
+       * Name
+       * @description Name of the new model.
+       */
+      name: string;
+      /** @description Deployment-level configuration for the model's first deployment. */
+      deployment: components["schemas"]["DeploymentArchivePayload"];
+      /**
+       * S3 Key
+       * @description S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.
+       */
+      s3_key?: string | null;
+      /**
+       * Disable Archive Download
+       * @description If true, the uploaded archive is not downloadable after creation. Locked at model creation; cannot be changed by subsequent deployments.
+       */
+      disable_archive_download?: boolean;
+    };
+    /**
+     * CreateModelRequestV1
+     * @description Body for creating a model via `POST /v1/models`.
+     */
+    CreateModelRequest: {
+      /**
+       * Source
+       * @description Where the new model is created from.
+       */
+      source:
+        | components["schemas"]["LibraryListingSource"]
+        | components["schemas"]["ModelArchiveSource"];
     };
     /**
      * AutoscalingSettingsV1
@@ -553,6 +2156,12 @@ export type components = {
        * @default null
        */
       target_in_flight_tokens: number | null;
+      /**
+       * Max Scale Down Rate
+       * @description Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.
+       * @default null
+       */
+      max_scale_down_rate: number | null;
     };
     /**
      * DeploymentStatusV1
@@ -639,6 +2248,32 @@ export type components = {
       } | null;
     };
     /**
+     * CreatedModelDeploymentV1
+     * @description A newly created deployment and its model.
+     */
+    CreatedModelDeployment: {
+      /** @description The model the deployment belongs to. May have been created by this call. */
+      model: components["schemas"]["Model"];
+      /** @description The newly created deployment. */
+      deployment: components["schemas"]["Deployment"];
+    };
+    /**
+     * ModelTombstoneV1
+     * @description A model tombstone.
+     */
+    ModelTombstone: {
+      /**
+       * Id
+       * @description Unique identifier of the model
+       */
+      id: string;
+      /**
+       * Deleted
+       * @description Whether the model was deleted
+       */
+      deleted: boolean;
+    };
+    /**
      * DeploymentsV1
      * @description A list of deployments of a model.
      */
@@ -648,6 +2283,37 @@ export type components = {
        * @description A list of deployments of a model
        */
       deployments: components["schemas"]["Deployment"][];
+    };
+    /**
+     * DeploymentArchiveSourceV1
+     * @description Add a deployment from an archive previously uploaded via the credentials
+     *     issued by `POST /v1/prepare_model_upload`.
+     */
+    DeploymentArchiveSource: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "model_archive";
+      /** @description Deployment-level configuration. */
+      deployment: components["schemas"]["DeploymentArchivePayload"];
+      /**
+       * S3 Key
+       * @description S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.
+       */
+      s3_key?: string | null;
+    };
+    /**
+     * CreateModelDeploymentRequestV1
+     * @description Body for adding a deployment to an existing model via
+     *     `POST /v1/models/{model_id}/deployments`.
+     */
+    CreateModelDeploymentRequest: {
+      /**
+       * Source
+       * @description Where the new deployment is created from.
+       */
+      source: components["schemas"]["DeploymentArchiveSource"];
     };
     /**
      * DeploymentTombstoneV1
@@ -678,52 +2344,51 @@ export type components = {
       /**
        * Min Replica
        * @description Minimum number of replicas
-       * @default null
        * @example 0
        */
-      min_replica: number | null;
+      min_replica?: number | null;
       /**
        * Max Replica
        * @description Maximum number of replicas
-       * @default null
        * @example 7
        */
-      max_replica: number | null;
+      max_replica?: number | null;
       /**
        * Autoscaling Window
        * @description Timeframe of traffic considered for autoscaling decisions
-       * @default null
        * @example 600
        */
-      autoscaling_window: number | null;
+      autoscaling_window?: number | null;
       /**
        * Scale Down Delay
        * @description Waiting period before scaling down any active replica
-       * @default null
        * @example 120
        */
-      scale_down_delay: number | null;
+      scale_down_delay?: number | null;
       /**
        * Concurrency Target
        * @description Number of requests per replica before scaling up
-       * @default null
        * @example 2
        */
-      concurrency_target: number | null;
+      concurrency_target?: number | null;
       /**
        * Target Utilization Percentage
        * @description Target utilization percentage for scaling up/down.
-       * @default null
        * @example 70
        */
-      target_utilization_percentage: number | null;
+      target_utilization_percentage?: number | null;
       /**
        * Target In Flight Tokens
        * @description Target number of in-flight tokens for autoscaling decisions. Early access only.
-       * @default null
        * @example 40000
        */
-      target_in_flight_tokens: number | null;
+      target_in_flight_tokens?: number | null;
+      /**
+       * Max Scale Down Rate
+       * @description Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.
+       * @example 20
+       */
+      max_scale_down_rate?: number | null;
     };
     /**
      * UpdateAutoscalingSettingsStatusV1
@@ -752,17 +2417,15 @@ export type components = {
       /**
        * Scale Down Previous Production
        * @description Whether to scale down the previous production deployment after promoting
-       * @default true
        * @example true
        */
-      scale_down_previous_production: boolean;
+      scale_down_previous_production?: boolean;
       /**
        * Preserve Env Instance Type
        * @description Whether to use the promoting deployment's instance type or preserve target environment's instance type
-       * @default true
        * @example true
        */
-      preserve_env_instance_type: boolean;
+      preserve_env_instance_type?: boolean;
     };
     /**
      * ActivateResponseV1
@@ -808,39 +2471,42 @@ export type components = {
       deployment: components["schemas"]["Deployment"];
     };
     /**
-     * SortOrderV1
+     * DownloadDeploymentResponseV1
+     * @description The response to a request to download a deployment's truss.
+     */
+    DownloadDeploymentResponse: {
+      /**
+       * Download Url
+       * @description Presigned URL to download the truss tar file
+       */
+      download_url: string;
+    };
+    /**
+     * DeploymentConfigResponseV1
+     * @description The config of a deployment. Fields are populated per `output_format`.
+     */
+    DeploymentConfigResponse: {
+      /**
+       * Config
+       * @description The parsed config of the deployment.
+       * @default null
+       */
+      config: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Raw Config
+       * @description The original config.yaml text — preserves comments, ordering, formatting.
+       * @default null
+       */
+      raw_config: string | null;
+    };
+    /**
+     * LogLevelV1
+     * @description A log severity level.
      * @enum {string}
      */
-    SortOrder: "asc" | "desc";
-    /**
-     * GetDeploymentLogsRequestV1
-     * @description A request to fetch deployment logs.
-     */
-    GetDeploymentLogsRequest: {
-      /**
-       * Start Epoch Millis
-       * @description Epoch millis timestamp to start fetching logs
-       * @default null
-       */
-      start_epoch_millis: number | null;
-      /**
-       * End Epoch Millis
-       * @description Epoch millis timestamp to end fetching logs
-       * @default null
-       */
-      end_epoch_millis: number | null;
-      /**
-       * @description Sort order for logs
-       * @default null
-       */
-      direction: components["schemas"]["SortOrder"] | null;
-      /**
-       * Limit
-       * @description Limit of logs to fetch in a single request
-       * @default 500
-       */
-      limit: number | null;
-    };
+    LogLevel: "DEBUG" | "INFO" | "WARNING" | "ERROR";
     /** LogV1 */
     Log: {
       /**
@@ -858,6 +2524,17 @@ export type components = {
        * @description The replica the log line was emitted from.
        */
       replica: string | null;
+      /**
+       * Request Id
+       * @description The request ID associated with an inference request.
+       * @default null
+       */
+      request_id: string | null;
+      /**
+       * @description Severity of the log line, if one was detected. null when unknown.
+       * @default null
+       */
+      level: components["schemas"]["LogLevel"] | null;
     };
     /**
      * GetLogsResponseV1
@@ -871,6 +2548,471 @@ export type components = {
       logs: components["schemas"]["Log"][];
     };
     /**
+     * SortOrderV1
+     * @enum {string}
+     */
+    SortOrder: "asc" | "desc";
+    /**
+     * GetDeploymentLogsRequestV1
+     * @description A request to fetch deployment logs.
+     */
+    GetDeploymentLogsRequest: {
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds at which to stop fetching logs. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+      /** @description Sort order for logs */
+      direction?: components["schemas"]["SortOrder"] | null;
+      /**
+       * Limit
+       * @description Limit of logs to fetch in a single request
+       */
+      limit?: number | null;
+      /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
+      min_level?: components["schemas"]["LogLevel"] | null;
+      /**
+       * Replica
+       * @description Only return logs emitted by this replica (5-char short ID).
+       */
+      replica?: string | null;
+      /**
+       * Request Id
+       * @description Only return logs tagged with this inference request ID.
+       */
+      request_id?: string | null;
+      /**
+       * Component
+       * @description Only return logs from this component.
+       */
+      component?: string | null;
+      /**
+       * Search Pattern
+       * @description RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.
+       */
+      search_pattern?: string | null;
+      /**
+       * Includes
+       * @description Case-sensitive substrings that must all appear in the log message.
+       */
+      includes?: string[];
+      /**
+       * Excludes
+       * @description Case-sensitive substrings; lines containing any of these are dropped.
+       */
+      excludes?: string[];
+    };
+    /**
+     * DeploymentPatchActionV1
+     * @description How a patch op changes its target.
+     * @enum {string}
+     */
+    DeploymentPatchAction: "ADD" | "UPDATE" | "REMOVE";
+    /**
+     * DeploymentPatchOpConfigV1
+     * @description Replace the config when config.yaml changes.
+     *
+     *     Config has no action: it is always a full replacement of the parsed config.
+     *     Derived changes (environment variables, external data, requirements) are
+     *     emitted as their own ops alongside this one.
+     */
+    DeploymentPatchOpConfig: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "config";
+      /**
+       * Config
+       * @description The full parsed config as a JSON object.
+       */
+      config: {
+        [key: string]: unknown;
+      };
+      /**
+       * Path
+       * @description Config file path within the source.
+       */
+      path?: string;
+    };
+    /**
+     * DeploymentPatchOpEnvVarV1
+     * @description Add, update, or remove a single environment variable.
+     */
+    DeploymentPatchOpEnvVar: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "environment_variable";
+      /** @description How this op changes the variable. */
+      action: components["schemas"]["DeploymentPatchAction"];
+      /**
+       * Name
+       * @description The environment variable name.
+       */
+      name: string;
+      /**
+       * Value
+       * @description The environment variable value. Required for add and update.
+       */
+      value?: string | null;
+    };
+    /**
+     * DeploymentPatchOpExternalDataV1
+     * @description Add, update, or remove a single external data item.
+     *
+     *     External data is referenced by config, not stored in the source. The backend
+     *     only adds or removes it, where adding re-downloads (overwriting any existing
+     *     file), so `update` is accepted and treated identically to `add`.
+     */
+    DeploymentPatchOpExternalData: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "external_data";
+      /** @description How this op changes the item. `UPDATE` is treated identically to `ADD`. */
+      action: components["schemas"]["DeploymentPatchAction"];
+      /**
+       * Item
+       * @description The single external data item descriptor.
+       */
+      item: {
+        [key: string]: string;
+      };
+    };
+    /**
+     * DeploymentPatchOpModelCodeV1
+     * @description Add, update, or remove a file under the model code directory.
+     */
+    DeploymentPatchOpModelCode: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "model_code";
+      /** @description How this op changes the file. */
+      action: components["schemas"]["DeploymentPatchAction"];
+      /**
+       * Path
+       * @description File path relative to the model code directory.
+       */
+      path: string;
+      /**
+       * Content
+       * @description UTF-8 file content. Null for removals and binary files.
+       */
+      content?: string | null;
+      /**
+       * Content Bytes
+       * @description Base64-encoded content for binary files.
+       */
+      content_bytes?: string | null;
+      /**
+       * Hot Reload
+       * @description Whether the running server can pick up this change without a restart.
+       */
+      hot_reload?: boolean;
+    };
+    /**
+     * DeploymentPatchOpPackageV1
+     * @description Add, update, or remove a file under the bundled packages directory.
+     */
+    DeploymentPatchOpPackage: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "package";
+      /** @description How this op changes the file. */
+      action: components["schemas"]["DeploymentPatchAction"];
+      /**
+       * Path
+       * @description File path relative to the bundled packages directory.
+       */
+      path: string;
+      /**
+       * Content
+       * @description UTF-8 file content. Null for removals and binary files.
+       */
+      content?: string | null;
+      /**
+       * Content Bytes
+       * @description Base64-encoded content for binary files.
+       */
+      content_bytes?: string | null;
+    };
+    /**
+     * DeploymentPatchOpPythonRequirementV1
+     * @description Add, update, or remove a single Python requirement.
+     */
+    DeploymentPatchOpPythonRequirement: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "python_requirement";
+      /** @description How this op changes the requirement. */
+      action: components["schemas"]["DeploymentPatchAction"];
+      /**
+       * Requirement
+       * @description The requirement to apply. For removals this is the package name; otherwise the full requirements.txt-style line.
+       */
+      requirement: string;
+    };
+    /**
+     * DeploymentPatchPointV1
+     * @description A patch point: the source state the next patch is computed against.
+     *
+     *     The content hash that identifies a point is derived from this state (see
+     *     `DeploymentPatchPointWithHashV1.hash`), so a request only sends the state and
+     *     the server stamps the hash. A previous point's hash plus the current local
+     *     source is enough to compute the next patch, so the watch client reads the
+     *     point it is patching off of.
+     */
+    DeploymentPatchPoint: {
+      /**
+       * Content Hashes
+       * @description Map of every non-ignored source path, relative and forward-slash, to its content hash: files map to the hex blake3 digest of their bytes, directories map to null. This is the full signature of the source tree and what the content hash is derived from.
+       */
+      content_hashes: {
+        [key: string]: string | null;
+      };
+      /**
+       * Config
+       * @description The verbatim config.yaml text for this source state.
+       */
+      config: string;
+      /**
+       * Requirements
+       * @description Requirements resolved from the config's requirements file, when it points at one. Empty when requirements are declared inline in the config.
+       */
+      requirements?: string[];
+    };
+    /**
+     * CreateDeploymentPatchRequestV1
+     * @description A patch to stage against the development deployment.
+     *
+     *     Staging is durable on its own: the patch is persisted independently of the
+     *     later sync, so a failed sync does not lose it.
+     */
+    CreateDeploymentPatchRequest: {
+      /**
+       * Prev Patch Hash
+       * @description Content hash of the patch point this patch is applied on - the link the staged patch must build on. A stale value (the base moved underneath the client) is rejected with a conflict.
+       */
+      prev_patch_hash: string;
+      /** @description The source state after this patch. The server derives its content hash from `content_hashes`. */
+      next_patch_point: components["schemas"]["DeploymentPatchPoint"];
+      /**
+       * Patch Ops
+       * @description The ordered ops that make up this patch. At least one op is required; a patch that changes nothing is not a valid request. There is no op for a directory: a directory comes into existence when the first file under it is added, and is removed when its last file is removed, so directory creation and deletion happen implicitly through the file ops. Adding or removing an otherwise empty directory therefore produces no ops even though it changes the source hash; do not send a patch request for such a change.
+       */
+      patch_ops: (
+        | components["schemas"]["DeploymentPatchOpModelCode"]
+        | components["schemas"]["DeploymentPatchOpPackage"]
+        | components["schemas"]["DeploymentPatchOpConfig"]
+        | components["schemas"]["DeploymentPatchOpPythonRequirement"]
+        | components["schemas"]["DeploymentPatchOpEnvVar"]
+        | components["schemas"]["DeploymentPatchOpExternalData"]
+      )[];
+    };
+    /**
+     * DeploymentPatchPointWithHashV1
+     * @description A patch point plus its server-assigned content hash, returned in responses.
+     *
+     *     Requests omit the hash (the server derives it from the source state); responses
+     *     include it so the watch client can echo it back as the next patch's
+     *     `prev_patch_hash` without having to recompute the fold itself.
+     */
+    DeploymentPatchPointWithHash: {
+      /**
+       * Content Hashes
+       * @description Map of every non-ignored source path, relative and forward-slash, to its content hash: files map to the hex blake3 digest of their bytes, directories map to null. This is the full signature of the source tree and what the content hash is derived from.
+       */
+      content_hashes: {
+        [key: string]: string | null;
+      };
+      /**
+       * Config
+       * @description The verbatim config.yaml text for this source state.
+       */
+      config: string;
+      /**
+       * Requirements
+       * @description Requirements resolved from the config's requirements file, when it points at one. Empty when requirements are declared inline in the config.
+       */
+      requirements?: string[];
+      /**
+       * Hash
+       * @description Content hash identifying this exact source state, and the link patches build on. It is derived deterministically from `content_hashes`, so a request need not send it - the server derives it. It is derived by sorting the `content_hashes` keys as paths, splitting each key on '/' into its path components and ordering the keys by comparing those component lists element by element, each component compared by Unicode code point (equivalently UTF-8 byte order). Treating '/' as a path separator this way, rather than as the ordinary character U+002F, means a key that is an ancestor path sorts before a sibling whose name extends the first differing component (so e.g. 'a/b' sorts before 'a.b'). A blake3 hasher is then built, and for each key in that order updated with the blake3 digest (32 raw bytes) of the key encoded as UTF-8, then, when the entry is a file (non-null value), with that file's digest as 32 raw bytes. The stream uses raw digest bytes, but the values in `content_hashes` are those digests hex-encoded (64 hex chars), so decode each value from hex first. Directory entries (null value) contribute only their key digest. The result is the hasher's own hex digest.
+       */
+      hash: string;
+    };
+    /**
+     * CreateDeploymentPatchResponseV1
+     * @description The created patch, represented by the patch point it produced.
+     */
+    CreateDeploymentPatchResponse: {
+      /** @description The resulting patch point the staged patch produced; matches the pending point a subsequent state read returns. */
+      patch_point: components["schemas"]["DeploymentPatchPointWithHash"];
+    };
+    /**
+     * GetDeploymentPatchesStateResponseV1
+     * @description The patch state of the development deployment.
+     *
+     *     The watch client computes its next patch off `pending_patch_point` when present,
+     *     else `running_patch_point`.
+     */
+    GetDeploymentPatchesStateResponse: {
+      /** @description The patch point the deployment is recorded as running. */
+      running_patch_point: components["schemas"]["DeploymentPatchPointWithHash"];
+      /**
+       * @description The latest staged-but-unsynced patch point, or null when the deployment is recorded as caught up.
+       * @default null
+       */
+      pending_patch_point: components["schemas"]["DeploymentPatchPointWithHash"] | null;
+    };
+    /**
+     * SyncDeploymentPatchesRequestV1
+     * @description Triggers a sync of any staged patches to the running deployment. Takes no
+     *     fields: the deployment and its staged patches fully determine the sync.
+     */
+    SyncDeploymentPatchesRequest: Record<string, unknown>;
+    /**
+     * SyncDeploymentPatchesResponseV1
+     * @description The outcome of a sync that ran.
+     *
+     *     Operational failures (a transient patch failure, an invalid patch sequence)
+     *     are surfaced as HTTP errors rather than fields here, so a 2xx means the sync
+     *     reached a verdict.
+     */
+    SyncDeploymentPatchesResponse: {
+      /**
+       * Needs Full Deploy Reason
+       * @description If set, the change cannot be patched and a full push is required; the value explains why. If null, the deployment is now in sync.
+       * @default null
+       */
+      needs_full_deploy_reason: string | null;
+    };
+    /**
+     * ModelMetricDescriptorV1
+     * @description Describes one metric. Its position in the response ``metric_descriptors``
+     *     list is the index used to read that metric out of each value set's ``values``.
+     *
+     *     A metric may break down into multiple labeled series (e.g. latency quantiles,
+     *     or volume by status). ``label_sets`` enumerates those series in order; each
+     *     value set's value for this metric is a list aligned to that order.
+     */
+    ModelMetricDescriptor: {
+      /**
+       * Name
+       * @description Canonical metric name.
+       */
+      name: string;
+      /** @description Advisory unit of the metric's values. */
+      unit_hint: components["schemas"]["ModelMetricUnitHint"];
+      /** @description Semantic hint for how the metric behaves (GAUGE, COUNTER, HISTOGRAM). */
+      kind: components["schemas"]["ModelMetricKind"];
+      /**
+       * Label Sets
+       * @description The metric's series, in order. Each entry is the set of labels identifying one series; the value at the same index in each value set's ``values`` is that series' value. A plain metric has a single entry with no labels (`{}`). A histogram has one entry per quantile plus an average, e.g. {'quantile': '0.5'} … {'quantile': '0.99'}, {'stat': 'avg'}. A by-status metric has one entry per status, e.g. {'status': '2xx'}.
+       */
+      label_sets: {
+        [key: string]: string;
+      }[];
+    };
+    /**
+     * ModelMetricKindV1
+     * @description Semantic hint for how a metric behaves, to aid client rendering and
+     *     aggregation. It does not describe the value's shape (that is carried by the
+     *     descriptor's ``label_sets``; a metric may break down into multiple series).
+     *
+     *     - ``GAUGE``: an instantaneous value (e.g. queue size, running requests).
+     *     - ``COUNTER``: a cumulative total over the step (e.g. tokens, restarts).
+     *     - ``HISTOGRAM``: a distribution, exposed as quantile/average series.
+     * @enum {string}
+     */
+    ModelMetricKind: "GAUGE" | "COUNTER" | "HISTOGRAM";
+    /**
+     * ModelMetricModeV1
+     * @description How metric values are aggregated over the request.
+     * @enum {string}
+     */
+    ModelMetricMode: "CURRENT" | "SUMMARY" | "SERIES";
+    /**
+     * ModelMetricUnitHintV1
+     * @description Advisory unit of a metric's values. Values are reported as scraped, so the
+     *     hint describes the raw value (e.g. GPU memory is reported in mebibytes).
+     *
+     *     - ``PER_SECOND``: a rate per second.
+     *     - ``SECONDS``: a duration in seconds.
+     *     - ``BYTES``: a size in bytes.
+     *     - ``MEBIBYTES``: a size in mebibytes (MiB).
+     *     - ``COUNT``: a dimensionless tally of discrete things.
+     *     - ``RATIO``: a dimensionless ratio. Usually in ``[0, 1]`` but may exceed 1
+     *       (e.g. CPU usage in cores = cpu-seconds/second).
+     * @enum {string}
+     */
+    ModelMetricUnitHint: "PER_SECOND" | "SECONDS" | "BYTES" | "MEBIBYTES" | "COUNT" | "RATIO";
+    /**
+     * ModelMetricValueSetV1
+     * @description The metric values for one time step. ``values`` is aligned by index to the
+     *     response ``metric_descriptors`` list.
+     */
+    ModelMetricValueSet: {
+      /**
+       * Start Epoch Millis
+       * @description Start of the step. The step spans until the next value set's start, or the window end for the last one; a summary has a single value set starting at the window start.
+       */
+      start_epoch_millis: number;
+      /**
+       * Values
+       * @description Metric values aligned to the ``metric_descriptors`` index. Each entry is a list aligned to that descriptor's ``label_sets`` (a single-element list for a plain metric). A series with no data in this step is null.
+       */
+      values: (number | null)[][];
+    };
+    /**
+     * GetModelMetricsResponseV1
+     * @description Model metrics over a time window, index-mapped: metric descriptors appear once
+     *     in ``metric_descriptors``; each value set's ``values`` are aligned to that order.
+     */
+    GetModelMetricsResponse: {
+      /**
+       * Start Epoch Millis
+       * @description Start of the returned window.
+       */
+      start_epoch_millis: number;
+      /**
+       * End Epoch Millis
+       * @description End of the returned window.
+       */
+      end_epoch_millis: number;
+      /** @description The aggregation mode used. */
+      mode: components["schemas"]["ModelMetricMode"];
+      /**
+       * Step Seconds
+       * @description Seconds per step; populated only in SERIES mode, null otherwise.
+       */
+      step_seconds: number | null;
+      /**
+       * Metric Descriptors
+       * @description Descriptors for each metric; position defines the values index.
+       */
+      metric_descriptors: components["schemas"]["ModelMetricDescriptor"][];
+      /**
+       * Metric Values
+       * @description Metric values per time step covering the window. In summary mode this always contains exactly one value set spanning the whole window.
+       */
+      metric_values: components["schemas"]["ModelMetricValueSet"][];
+    };
+    /**
      * TerminateReplicaResponseV1
      * @description The response to a request to terminate a replica in a deployment.
      */
@@ -881,6 +3023,49 @@ export type components = {
        * @default true
        */
       success: boolean;
+    };
+    /**
+     * SignSSHCertificateRequestV1
+     * @description Request to sign an SSH certificate for accessing a workload pod.
+     */
+    SignSSHCertificateRequest: {
+      /**
+       * Public Key
+       * @description The user's SSH public key (e.g., 'ssh-ed25519 AAAA... user@host').
+       */
+      public_key: string;
+      /**
+       * Replica Id
+       * @description The replica to connect to. Required for training jobs (e.g. '0'). Optional for inference (server picks a running replica if omitted).
+       */
+      replica_id?: string | null;
+    };
+    /**
+     * SignSSHCertificateResponseV1
+     * @description Response containing a signed SSH certificate for proxy authentication.
+     */
+    SignSSHCertificateResponse: {
+      /**
+       * Ssh Certificate
+       * @description The signed SSH certificate in OpenSSH format.
+       */
+      ssh_certificate: string;
+      /**
+       * Jwt
+       * @description Signed JWT (ES256) for SSH proxy authorization.
+       */
+      jwt: string;
+      /**
+       * Proxy Address
+       * @description Address of the SSH proxy to connect to (host:port).
+       */
+      proxy_address: string;
+      /**
+       * Ssh Cert Expires At
+       * Format: date-time
+       * @description When the certificate expires, in ISO 8601 format.
+       */
+      ssh_cert_expires_at: string;
     };
     /**
      * EnvironmentV1
@@ -1024,8 +3209,8 @@ export type components = {
       /**
        * Max Surge Percent
        * @description The maximum surge percentage for rolling deploys.
-       * @default 10
-       * @example 10
+       * @default 25
+       * @example 25
        */
       max_surge_percent: number;
       /**
@@ -1072,42 +3257,34 @@ export type components = {
       /**
        * Redeploy On Promotion
        * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
-       * @default null
        * @example true
        */
-      redeploy_on_promotion: boolean | null;
+      redeploy_on_promotion?: boolean | null;
       /**
        * Rolling Deploy
        * @description Whether the environment should rely on rolling deploy orchestration.
-       * @default null
        * @example true
        */
-      rolling_deploy: boolean | null;
+      rolling_deploy?: boolean | null;
       /**
        * @description The cleanup strategy to use after a promotion completes.
-       * @default null
        * @example SCALE_TO_ZERO
        */
-      promotion_cleanup_strategy: components["schemas"]["PromotionCleanupStrategy"] | null;
-      /**
-       * @description Rolling deploy configuration for promotions
-       * @default null
-       */
-      rolling_deploy_config: components["schemas"]["UpdateRollingDeployConfig"] | null;
+      promotion_cleanup_strategy?: components["schemas"]["PromotionCleanupStrategy"] | null;
+      /** @description Rolling deploy configuration for promotions */
+      rolling_deploy_config?: components["schemas"]["UpdateRollingDeployConfig"] | null;
       /**
        * Ramp Up While Promoting
        * @description Whether to ramp up traffic while promoting
-       * @default null
        * @example true
        */
-      ramp_up_while_promoting: boolean | null;
+      ramp_up_while_promoting?: boolean | null;
       /**
        * Ramp Up Duration Seconds
        * @description Duration of the ramp up in seconds
-       * @default null
        * @example 600
        */
-      ramp_up_duration_seconds: number | null;
+      ramp_up_duration_seconds?: number | null;
     };
     /**
      * UpdateRollingDeployConfigV1
@@ -1116,38 +3293,33 @@ export type components = {
     UpdateRollingDeployConfig: {
       /**
        * @description The rolling deploy strategy to use for promotions.
-       * @default null
        * @example REPLICA
        */
-      rolling_deploy_strategy: components["schemas"]["RollingDeployStrategy"] | null;
+      rolling_deploy_strategy?: components["schemas"]["RollingDeployStrategy"] | null;
       /**
        * Max Surge Percent
        * @description The maximum surge percentage for rolling deploys.
-       * @default 10
-       * @example 10
+       * @example 25
        */
-      max_surge_percent: number | null;
+      max_surge_percent?: number | null;
       /**
        * Max Unavailable Percent
        * @description The maximum unavailable percentage for rolling deploys.
-       * @default null
        * @example 10
        */
-      max_unavailable_percent: number | null;
+      max_unavailable_percent?: number | null;
       /**
        * Stabilization Time Seconds
        * @description The stabilization time in seconds for rolling deploys.
-       * @default null
        * @example 300
        */
-      stabilization_time_seconds: number | null;
+      stabilization_time_seconds?: number | null;
       /**
        * Replica Overhead Percent
        * @description The replica overhead percentage for rolling deploys.
-       * @default null
        * @example 0
        */
-      replica_overhead_percent: number | null;
+      replica_overhead_percent?: number | null;
     };
     /**
      * CreateEnvironmentRequestV1
@@ -1162,21 +3334,20 @@ export type components = {
       name: string;
       /**
        * @description Autoscaling settings for the environment
-       * @default null
        * @example {
        *       "autoscaling_window": 800,
        *       "concurrency_target": 3,
        *       "max_replica": 2,
+       *       "max_scale_down_rate": null,
        *       "min_replica": 1,
        *       "scale_down_delay": 60,
        *       "target_in_flight_tokens": null,
        *       "target_utilization_percentage": null
        *     }
        */
-      autoscaling_settings: components["schemas"]["UpdateAutoscalingSettings"] | null;
+      autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
       /**
        * @description Promotion settings for the environment
-       * @default null
        * @example {
        *       "promotion_cleanup_strategy": null,
        *       "ramp_up_duration_seconds": 600,
@@ -1186,7 +3357,7 @@ export type components = {
        *       "rolling_deploy_config": null
        *     }
        */
-      promotion_settings: components["schemas"]["UpdatePromotionSettings"] | null;
+      promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
     };
     /**
      * UpdateEnvironmentRequestV1
@@ -1195,21 +3366,20 @@ export type components = {
     UpdateEnvironmentRequest: {
       /**
        * @description Autoscaling settings for the environment
-       * @default null
        * @example {
        *       "autoscaling_window": 800,
        *       "concurrency_target": 3,
        *       "max_replica": 2,
+       *       "max_scale_down_rate": null,
        *       "min_replica": 1,
        *       "scale_down_delay": 60,
        *       "target_in_flight_tokens": null,
        *       "target_utilization_percentage": null
        *     }
        */
-      autoscaling_settings: components["schemas"]["UpdateAutoscalingSettings"] | null;
+      autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
       /**
        * @description Promotion settings for the environment
-       * @default null
        * @example {
        *       "promotion_cleanup_strategy": null,
        *       "ramp_up_duration_seconds": 600,
@@ -1219,7 +3389,7 @@ export type components = {
        *       "rolling_deploy_config": null
        *     }
        */
-      promotion_settings: components["schemas"]["UpdatePromotionSettings"] | null;
+      promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
     };
     /**
      * PromoteToEnvironmentRequestV1
@@ -1229,10 +3399,9 @@ export type components = {
       /**
        * Scale Down Previous Deployment
        * @description Whether to scale down the previous deployment after promoting
-       * @default true
        * @example true
        */
-      scale_down_previous_deployment: boolean;
+      scale_down_previous_deployment?: boolean;
       /**
        * Deployment Id
        * @description The id of the deployment to promote
@@ -1241,10 +3410,9 @@ export type components = {
       /**
        * Preserve Env Instance Type
        * @description Whether to use the promoting deployment's instance type or preserve target environment's instance type
-       * @default true
        * @example true
        */
-      preserve_env_instance_type: boolean;
+      preserve_env_instance_type?: boolean;
     };
     /**
      * CancelPromotionStatusV1
@@ -1441,28 +3609,27 @@ export type components = {
       chainlet_name: string;
       /**
        * @description Autoscaling settings for the chainlet
-       * @default null
        * @example {
        *       "autoscaling_window": 60,
        *       "concurrency_target": 1,
        *       "max_replica": 1,
+       *       "max_scale_down_rate": null,
        *       "min_replica": 0,
        *       "scale_down_delay": 900,
        *       "target_in_flight_tokens": null,
        *       "target_utilization_percentage": 70
        *     }
        */
-      autoscaling_settings: components["schemas"]["UpdateAutoscalingSettings"] | null;
+      autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
       /**
        * Instance Type Id
        * @description ID of the instance type to use for the chainlet
-       * @default 1x2
        * @example 1x4
        * @example 2x8
        * @example A10G:2x24x96
        * @example H100:2x52x468
        */
-      instance_type_id: string;
+      instance_type_id?: string;
     };
     /**
      * CreateChainEnvironmentRequestV1
@@ -1477,7 +3644,6 @@ export type components = {
       name: string;
       /**
        * @description Promotion settings for the environment
-       * @default null
        * @example {
        *       "promotion_cleanup_strategy": null,
        *       "ramp_up_duration_seconds": 600,
@@ -1487,17 +3653,17 @@ export type components = {
        *       "rolling_deploy_config": null
        *     }
        */
-      promotion_settings: components["schemas"]["UpdatePromotionSettings"] | null;
+      promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
       /**
        * Chainlet Settings
        * @description Mapping of chainlet name to the desired chainlet environment settings
-       * @default null
        * @example [
        *       {
        *         "autoscaling_settings": {
        *           "autoscaling_window": 800,
        *           "concurrency_target": 4,
        *           "max_replica": 3,
+       *           "max_scale_down_rate": null,
        *           "min_replica": 2,
        *           "scale_down_delay": 63,
        *           "target_in_flight_tokens": null,
@@ -1511,6 +3677,7 @@ export type components = {
        *           "autoscaling_window": null,
        *           "concurrency_target": null,
        *           "max_replica": 3,
+       *           "max_scale_down_rate": null,
        *           "min_replica": 3,
        *           "scale_down_delay": null,
        *           "target_in_flight_tokens": null,
@@ -1521,7 +3688,7 @@ export type components = {
        *       }
        *     ]
        */
-      chainlet_settings: components["schemas"]["ChainletEnvironmentSettingsRequest"][] | null;
+      chainlet_settings?: components["schemas"]["ChainletEnvironmentSettingsRequest"][] | null;
     };
     /**
      * ChainletEnvironmentSettingsV1
@@ -1581,7 +3748,6 @@ export type components = {
     UpdateChainEnvironmentRequest: {
       /**
        * @description Promotion settings for the environment
-       * @default null
        * @example {
        *       "promotion_cleanup_strategy": null,
        *       "ramp_up_duration_seconds": 600,
@@ -1591,7 +3757,7 @@ export type components = {
        *       "rolling_deploy_config": null
        *     }
        */
-      promotion_settings: components["schemas"]["UpdatePromotionSettings"] | null;
+      promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
     };
     /**
      * UpdateChainEnvironmentResponseV1
@@ -1612,10 +3778,9 @@ export type components = {
       /**
        * Scale Down Previous Deployment
        * @description Whether to scale down the previous deployment after promoting
-       * @default true
        * @example true
        */
-      scale_down_previous_deployment: boolean;
+      scale_down_previous_deployment?: boolean;
       /**
        * Deployment Id
        * @description The id of the chain deployment to promote
@@ -1639,6 +3804,7 @@ export type components = {
        *       "autoscaling_window": 800,
        *       "concurrency_target": 3,
        *       "max_replica": 2,
+       *       "max_scale_down_rate": null,
        *       "min_replica": 1,
        *       "scale_down_delay": 60,
        *       "target_in_flight_tokens": null,
@@ -1662,6 +3828,7 @@ export type components = {
        *           "autoscaling_window": 800,
        *           "concurrency_target": 4,
        *           "max_replica": 3,
+       *           "max_scale_down_rate": null,
        *           "min_replica": 2,
        *           "scale_down_delay": 63,
        *           "target_in_flight_tokens": null,
@@ -1676,6 +3843,7 @@ export type components = {
        *           "autoscaling_window": null,
        *           "concurrency_target": null,
        *           "max_replica": null,
+       *           "max_scale_down_rate": null,
        *           "min_replica": 0,
        *           "scale_down_delay": null,
        *           "target_in_flight_tokens": null,
@@ -1688,6 +3856,7 @@ export type components = {
        *           "autoscaling_window": null,
        *           "concurrency_target": null,
        *           "max_replica": null,
+       *           "max_scale_down_rate": null,
        *           "min_replica": 0,
        *           "scale_down_delay": null,
        *           "target_in_flight_tokens": null,
@@ -1834,6 +4003,17 @@ export type components = {
        */
       checkpoint_sync_status: components["schemas"]["CheckpointSyncStatus"] | null;
       /**
+       * Priority
+       * @description Queue priority. Higher values are dequeued first. NULL is treated as 0.
+       * @default 0
+       */
+      priority: number;
+      /**
+       * @description Capacity guarantee for the job. 'dedicated' is non-preemptible on-demand capacity; 'spot' is interruptible.
+       * @default dedicated
+       */
+      availability_model: components["schemas"]["V1AvailabilityModel"];
+      /**
        * @description The user who created the training job.
        * @default null
        */
@@ -1962,18 +4142,19 @@ export type components = {
      * CreateJobWeightConfigV1
      * @description Weight source configuration for MDN (Model Distribution Network).
      *
-     *     Enables training jobs to mount external model weights from HuggingFace, S3, GCS, or R2
-     *     via MDN's caching and CSI mounting infrastructure. Weights are mirrored once and
-     *     deduplicated across training jobs.
+     *     Enables training jobs to mount external model weights from HuggingFace, S3, GCS, R2,
+     *     or CoreWeave via MDN's caching and CSI mounting infrastructure. Weights are mirrored
+     *     once and deduplicated across training jobs.
      */
     CreateJobWeightConfig: {
       /**
        * Source
-       * @description Weight source URI. Supported formats: hf://, s3://, gs://, r2://
+       * @description Weight source URI. Supported formats: hf://, s3://, gs://, r2://, cw://
        * @example hf://meta-llama/Llama-3-8B@main
        * @example s3://my-bucket/models/llama
        * @example gs://my-bucket/models/llama
        * @example r2://account_id.bucket/models/llama
+       * @example cw://my-bucket/models/llama
        */
       source: string;
       /**
@@ -1986,41 +4167,37 @@ export type components = {
       /**
        * Allow Patterns
        * @description File patterns to include (Unix-style shell patterns)
-       * @default null
        * @example [
        *       "*.safetensors",
        *       "config.json"
        *     ]
        */
-      allow_patterns: string[] | null;
+      allow_patterns?: string[] | null;
       /**
        * Ignore Patterns
        * @description File patterns to exclude (Unix-style shell patterns)
-       * @default null
        * @example [
        *       "*.bin",
        *       "*.h5"
        *     ]
        */
-      ignore_patterns: string[] | null;
+      ignore_patterns?: string[] | null;
       /**
        * Auth Secret Name
        * @description Name of the workspace secret for authentication (e.g., HuggingFace token)
-       * @default null
        * @example hf_token
        * @example aws_credentials
        */
-      auth_secret_name: string | null;
+      auth_secret_name?: string | null;
       /**
        * Auth
        * @description Authentication configuration for the weight source.
-       * @default null
        * @example {
        *       "auth_method": "CUSTOM_SECRET",
        *       "auth_secret_name": "hf_token"
        *     }
        */
-      auth: {
+      auth?: {
         [key: string]: unknown;
       } | null;
     };
@@ -2047,33 +4224,34 @@ export type components = {
       /**
        * Node Count
        * @description Number of nodes for the training job.
-       * @default 1
        * @example 1
        */
-      node_count: number;
+      node_count?: number;
       /**
        * Cpu Count
        * @description Number of cpus for the training job.
-       * @default 1
        * @example 1
        */
-      cpu_count: number;
+      cpu_count?: number;
       /**
        * Memory
        * @description Memory for the training job.
-       * @default 2Gi
        * @example 2Gi
        */
-      memory: string;
+      memory?: string;
       /**
        * @description GPU specification for the training job
-       * @default null
        * @example {
        *       "accelerator": "H100",
        *       "count": 2
        *     }
        */
-      accelerator: components["schemas"]["CreateTrainingJobAccelerator"] | null;
+      accelerator?: components["schemas"]["CreateTrainingJobAccelerator"] | null;
+      /**
+       * @description Capacity guarantee for the job. 'dedicated' (the default) runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress.
+       * @example spot
+       */
+      availability_model?: components["schemas"]["V1AvailabilityModel"];
     };
     /**
      * CreateTrainingJobImageV1
@@ -2086,11 +4264,8 @@ export type components = {
        * @example hello-world
        */
       base_image: string;
-      /**
-       * @description Docker authentication credentials
-       * @default null
-       */
-      docker_auth: components["schemas"]["DockerAuth"] | null;
+      /** @description Docker authentication credentials */
+      docker_auth?: components["schemas"]["DockerAuth"] | null;
     };
     /**
      * CreateTrainingJobRuntimeV1
@@ -2124,13 +4299,11 @@ export type components = {
       /**
        * Enable Cache
        * @description Deprecated. Use cache_config instead.
-       * @default null
        * @example true
        */
-      enable_cache: boolean | null;
+      enable_cache?: boolean | null;
       /**
        * @description Configuration for the read-write cache.
-       * @default null
        * @example {
        *       "enable_legacy_hf_mount": true,
        *       "enabled": true,
@@ -2138,7 +4311,7 @@ export type components = {
        *       "require_cache_affinity": true
        *     }
        */
-      cache_config: components["schemas"]["CreateTrainingJobCacheConfig"] | null;
+      cache_config?: components["schemas"]["CreateTrainingJobCacheConfig"] | null;
       /**
        * @description Configuration for checkpointing.
        * @example {
@@ -2148,11 +4321,8 @@ export type components = {
        *     }
        */
       checkpointing_config?: components["schemas"]["CreateTrainingJobCheckpointingConfig"];
-      /**
-       * @description Configuration for loading checkpoints
-       * @default null
-       */
-      load_checkpoint_config: components["schemas"]["LoadCheckpointConfig"] | null;
+      /** @description Configuration for loading checkpoints */
+      load_checkpoint_config?: components["schemas"]["LoadCheckpointConfig"] | null;
     };
     /**
      * CreateTrainingJobV1
@@ -2172,6 +4342,7 @@ export type components = {
        *         "accelerator": "H100",
        *         "count": 2
        *       },
+       *       "availability_model": "spot",
        *       "cpu_count": 1,
        *       "memory": "2Gi",
        *       "node_count": 1
@@ -2203,20 +4374,13 @@ export type components = {
       /**
        * Name
        * @description Name of the training job.
-       * @default null
        * @example gpt-oss-job
        */
-      name: string | null;
-      /**
-       * @description Truss user environment information
-       * @default null
-       */
-      truss_user_env: components["schemas"]["TrussUserEnv"] | null;
-      /**
-       * @description Configuration for interactive debugging sessions.
-       * @default null
-       */
-      interactive_session: components["schemas"]["InteractiveSessionConfig"] | null;
+      name?: string | null;
+      /** @description Truss user environment information */
+      truss_user_env?: components["schemas"]["TrussUserEnv"] | null;
+      /** @description Configuration for interactive debugging sessions. */
+      interactive_session?: components["schemas"]["InteractiveSessionConfig"] | null;
       /**
        * Weights
        * @description MDN weight sources to mount in the training container. Weights are mirrored and cached for fast startup.
@@ -2232,6 +4396,21 @@ export type components = {
        *     ]
        */
       weights?: components["schemas"]["CreateJobWeightConfig"][];
+      /**
+       * Enable Baseten Workdir
+       * @description When enabled, uses /b10/workspace as the working directory instead of the image WORKDIR.
+       * @example false
+       * @example true
+       */
+      enable_baseten_workdir?: boolean;
+      /**
+       * Priority
+       * @description Queue priority. Higher values are dequeued first. Defaults to 0.
+       * @example 0
+       * @example 10
+       * @example 100
+       */
+      priority?: number | null;
     };
     /**
      * DockerAuthV1
@@ -2252,33 +4431,18 @@ export type components = {
        * @example REGISTRY_SECRET
        */
       auth_method: components["schemas"]["DockerAuthType"];
-      /**
-       * @description GCP service account details for the registry
-       * @default null
-       */
-      gcp_service_account_json_docker_auth:
+      /** @description GCP service account details for the registry */
+      gcp_service_account_json_docker_auth?:
         | components["schemas"]["GcpServiceAccountJsonDockerAuth"]
         | null;
-      /**
-       * @description AWS details for the registry
-       * @default null
-       */
-      aws_iam_docker_auth: components["schemas"]["AwsIamDockerAuth"] | null;
-      /**
-       * @description AWS OIDC details for the registry
-       * @default null
-       */
-      aws_oidc_docker_auth: components["schemas"]["AwsOidcDockerAuth"] | null;
-      /**
-       * @description GCP OIDC details for the registry
-       * @default null
-       */
-      gcp_oidc_docker_auth: components["schemas"]["GcpOidcDockerAuth"] | null;
-      /**
-       * @description Required when auth_method is REGISTRY_SECRET. Supports any Docker registry (Docker Hub, GHCR, NGC, etc.) via username:password credentials stored as a Baseten secret.
-       * @default null
-       */
-      registry_secret_docker_auth: components["schemas"]["RegistrySecretDockerAuth"] | null;
+      /** @description AWS details for the registry */
+      aws_iam_docker_auth?: components["schemas"]["AwsIamDockerAuth"] | null;
+      /** @description AWS OIDC details for the registry */
+      aws_oidc_docker_auth?: components["schemas"]["AwsOidcDockerAuth"] | null;
+      /** @description GCP OIDC details for the registry */
+      gcp_oidc_docker_auth?: components["schemas"]["GcpOidcDockerAuth"] | null;
+      /** @description Required when auth_method is REGISTRY_SECRET. Supports any Docker registry (Docker Hub, GHCR, NGC, etc.) via username:password credentials stored as a Baseten secret. */
+      registry_secret_docker_auth?: components["schemas"]["RegistrySecretDockerAuth"] | null;
     };
     /**
      * GcpOidcDockerAuthV1
@@ -2309,30 +4473,20 @@ export type components = {
      * @description Configuration for interactive debugging sessions on training jobs.
      */
     InteractiveSessionConfig: {
-      /**
-       * @description When to create the interactive session. 'on_startup' creates on job start, 'on_failure' creates on job failure, 'on_demand' bypasses automatic session creation.
-       * @default on_demand
-       */
-      trigger: components["schemas"]["V1InteractiveSessionTrigger"];
+      /** @description When to create the interactive session. 'on_startup' creates on job start, 'on_failure' creates on job failure, 'on_demand' bypasses automatic session creation. */
+      trigger?: components["schemas"]["V1InteractiveSessionTrigger"];
       /**
        * Timeout Minutes
        * @description Number of minutes before the interactive session times out.
-       * @default 480
        * @example 480
        * @example 1440
        * @example 10080
        */
-      timeout_minutes: number;
-      /**
-       * @description The IDE client for the interactive session.
-       * @default vs_code
-       */
-      session_provider: components["schemas"]["V1InteractiveSessionProvider"];
-      /**
-       * @description The authentication provider for the interactive session.
-       * @default github
-       */
-      auth_provider: components["schemas"]["V1InteractiveSessionAuthProvider"];
+      timeout_minutes?: number;
+      /** @description The IDE client for the interactive session. */
+      session_provider?: components["schemas"]["V1InteractiveSessionProvider"];
+      /** @description The authentication provider for the interactive session. */
+      auth_provider?: components["schemas"]["V1InteractiveSessionAuthProvider"];
     };
     /**
      * RegistrySecretDockerAuthV1
@@ -2401,13 +4555,35 @@ export type components = {
       training_job: components["schemas"]["TrainingJob"];
     };
     /**
+     * UpdateTrainingJobRequestV1
+     * @description A request to update mutable fields on a training job.
+     */
+    UpdateTrainingJobRequest: {
+      /**
+       * Priority
+       * @description New queue priority for a PENDING training job. Higher values are dequeued first. Only jobs in the PENDING state can have their priority changed.
+       * @example 0
+       * @example 10
+       * @example 100
+       */
+      priority: number;
+    };
+    /**
+     * UpdateTrainingJobResponseV1
+     * @description A response to updating a training job.
+     */
+    UpdateTrainingJobResponse: {
+      /** @description The updated training job. */
+      training_job: components["schemas"]["TrainingJob"];
+    };
+    /**
      * DownloadTrainingJobResponseV1
-     * @description A response that includes the artifacts for a training job
+     * @description A response with presigned URLs for a training job's artifacts.
      */
     DownloadTrainingJobResponse: {
       /**
        * Artifact Presigned Urls
-       * @description Presigned URL's for the artifacts
+       * @description Presigned URLs for the job's uploaded artifacts.
        */
       artifact_presigned_urls: string[];
     };
@@ -2426,45 +4602,23 @@ export type components = {
     GetTrainingJobLogsRequest: {
       /**
        * Start Epoch Millis
-       * @description Epoch millis timestamp to start fetching logs
-       * @default null
+       * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
        */
-      start_epoch_millis: number | null;
+      start_epoch_millis?: number | null;
       /**
        * End Epoch Millis
-       * @description Epoch millis timestamp to end fetching logs
-       * @default null
+       * @description Epoch milliseconds at which to stop fetching logs. Defaults to the current time.
        */
-      end_epoch_millis: number | null;
-      /**
-       * @description Sort order for logs
-       * @default null
-       */
-      direction: components["schemas"]["SortOrder"] | null;
+      end_epoch_millis?: number | null;
+      /** @description Sort order for logs */
+      direction?: components["schemas"]["SortOrder"] | null;
       /**
        * Limit
        * @description Limit of logs to fetch in a single request
-       * @default 500
        */
-      limit: number | null;
-    };
-    /**
-     * GetTrainingJobMetricsRequestV1
-     * @description A request to fetch metrics. Allows the user to request metrics over a period of time.
-     */
-    GetTrainingJobMetricsRequest: {
-      /**
-       * End Epoch Millis
-       * @description Epoch millis timestamp to end fetching metrics
-       * @default null
-       */
-      end_epoch_millis: number | null;
-      /**
-       * Start Epoch Millis
-       * @description Epoch millis timestamp to start fetching metrics.
-       * @default null
-       */
-      start_epoch_millis: number | null;
+      limit?: number | null;
+      /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
+      min_level?: components["schemas"]["LogLevel"] | null;
     };
     /**
      * StorageMetricsV1
@@ -2583,6 +4737,27 @@ export type components = {
       per_node_metrics: components["schemas"]["TrainingJobNodeMetrics"][];
     };
     /**
+     * GetTrainingJobMetricsRequestV1
+     * @description A request to fetch metrics. Allows the user to request metrics over a period of time.
+     */
+    GetTrainingJobMetricsRequest: {
+      /**
+       * End Epoch Millis
+       * @description Epoch millis timestamp to end fetching metrics
+       */
+      end_epoch_millis?: number | null;
+      /**
+       * Start Epoch Millis
+       * @description Epoch millis timestamp to start fetching metrics.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * Step Seconds
+       * @description Resolution of the returned series, in seconds. When omitted, a step is derived from the time range so large windows return fewer points.
+       */
+      step_seconds?: number | null;
+    };
+    /**
      * StopTrainingJobRequestV1
      * @description A request to stop a training job.
      */
@@ -2600,11 +4775,6 @@ export type components = {
      * @description A checkpoint for a training job.
      */
     TrainingJobCheckpoint: {
-      /**
-       * Training Job Id
-       * @description The ID of the training job.
-       */
-      training_job_id: string;
       /**
        * Checkpoint Id
        * @description The ID of the checkpoint.
@@ -2644,6 +4814,11 @@ export type components = {
        * @default null
        */
       sync_status: string | null;
+      /**
+       * Training Job Id
+       * @description The ID of the training job.
+       */
+      training_job_id: string;
     };
     /**
      * GetTrainingJobCheckpointsResponseV1
@@ -2751,14 +4926,10 @@ export type components = {
       /**
        * Timeout Minutes
        * @description For on_startup sessions, minutes to add to the expiration. For on_demand/on_failure sessions, minutes to add to the timeout. Use -1 for infinite timeout (bumps by 10 years).
-       * @default null
        */
-      timeout_minutes: number | null;
-      /**
-       * @description Update when the interactive session is created. Cannot be changed if the session trigger is 'on_startup'.
-       * @default null
-       */
-      trigger: components["schemas"]["V1InteractiveSessionTrigger"] | null;
+      timeout_minutes?: number | null;
+      /** @description Update when the interactive session is created. Cannot be changed if the session trigger is 'on_startup'. */
+      trigger?: components["schemas"]["V1InteractiveSessionTrigger"] | null;
     };
     /**
      * InteractiveSessionV1
@@ -2923,38 +5094,29 @@ export type components = {
       /**
        * Project Id
        * @description Filter the training jobs by project ID.
-       * @default null
        * @example n4q95w5
        */
-      project_id: string | null;
+      project_id?: string | null;
       /**
        * Job Id
        * @description Filter the training jobs by job ID.
-       * @default null
        * @example p7qr9qv
        */
-      job_id: string | null;
+      job_id?: string | null;
       /**
        * Statuses
        * @description Filter the training jobs by status.
-       * @default null
        * @example [
        *       "TRAINING_JOB_RUNNING",
        *       "TRAINING_JOB_COMPLETED"
        *     ]
        */
-      statuses: string[] | null;
+      statuses?: string[] | null;
       /**
        * Order By
        * @description Order the training jobs by a field. Currently supports created_at
-       * @default [
-       *       {
-       *         "field": "created_at",
-       *         "order": "desc"
-       *       }
-       *     ]
        */
-      order_by: components["schemas"]["OrderBy"][];
+      order_by?: components["schemas"]["OrderBy"][];
     };
     /**
      * SearchTrainingJobsResponseV1
@@ -2968,25 +5130,1028 @@ export type components = {
       training_jobs: components["schemas"]["TrainingJob"][];
     };
     /**
-     * AWSCredentialsV1
-     * @description AWS credentials
+     * SupportedModelV1
+     * @description A model supported by the Loops server.
      */
-    AWSCredentials: {
+    SupportedModel: {
       /**
-       * Aws Access Key Id
-       * @description The AWS access key ID
+       * Model Name
+       * @description The name of the supported model.
        */
-      aws_access_key_id: string;
+      model_name: string;
       /**
-       * Aws Secret Access Key
-       * @description The AWS secret access key
+       * Max Context Length
+       * @description The maximum context length (in tokens) supported by this model.
        */
-      aws_secret_access_key: string;
+      max_context_length: number;
+    };
+    /**
+     * GetLoopsCapabilitiesResponseV1
+     * @description Response for ``GET /v1/loops/capabilities``.
+     */
+    GetLoopsCapabilitiesResponse: {
       /**
-       * Aws Session Token
-       * @description The AWS session token
+       * Supported Models
+       * @description List of models available on the server.
        */
-      aws_session_token: string;
+      supported_models: components["schemas"]["SupportedModel"][];
+    };
+    /** LoopsSessionV1 */
+    LoopsSession: {
+      /** Id */
+      id: string;
+    };
+    /** CreateLoopsSessionResponseV1 */
+    CreateLoopsSessionResponse: {
+      session: components["schemas"]["LoopsSession"];
+    };
+    /**
+     * GetLoopsSessionResponseV1
+     * @description Response for ``GET /v1/loops/sessions/<session_id>``.
+     */
+    GetLoopsSessionResponse: {
+      /** @description The Loops session. */
+      session: components["schemas"]["LoopsSession"];
+    };
+    /** LoopsRunV1 */
+    LoopsRun: {
+      /**
+       * Id
+       * @description The run ID.
+       */
+      id: string;
+      /**
+       * Session Id
+       * @description The session ID this run belongs to.
+       */
+      session_id: string;
+      /**
+       * Deployment Id
+       * @description The ID of the Loops deployment the run executes on.
+       */
+      deployment_id: string;
+      /**
+       * Name
+       * @description The run's display name.
+       */
+      name: string;
+      /**
+       * Base Model
+       * @description The HuggingFace base model the run is fine-tuning.
+       */
+      base_model: string;
+      /**
+       * Base Url
+       * @description The run's base URL.
+       */
+      base_url: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time the run was created in ISO 8601 format
+       */
+      created_at: string;
+      /** @description The sampler bound to this run. */
+      sampler: components["schemas"]["LoopsSampler"];
+    };
+    /**
+     * LoopsSamplerStatusV1
+     * @description The current status of a Loops sampler.
+     */
+    LoopsSamplerStatus: {
+      /** @description The current status of the Loops sampler. */
+      name: components["schemas"]["DeploymentStatus"];
+    };
+    /** LoopsSamplerV1 */
+    LoopsSampler: {
+      /** Id */
+      id: string;
+      /** Base Url */
+      base_url: string;
+      /**
+       * Base Model
+       * @description The HuggingFace base model the sampler is serving.
+       */
+      base_model: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time the sampler was created in ISO 8601 format
+       */
+      created_at: string;
+      /**
+       * Model Id
+       * @description Hashid of the underlying Baseten model.
+       */
+      model_id: string;
+      /**
+       * Deployment Id
+       * @description Hashid of the specific model deployment (version).
+       */
+      deployment_id: string;
+      /** @description The sampler's current status. */
+      status: components["schemas"]["LoopsSamplerStatus"];
+    };
+    /**
+     * ListLoopsRunsResponseV1
+     * @description Runs matching the query filters.
+     */
+    ListLoopsRunsResponse: {
+      /**
+       * Runs
+       * @description List of runs.
+       */
+      runs: components["schemas"]["LoopsRun"][];
+    };
+    /** CreateLoopsRunRequestV1 */
+    CreateLoopsRunRequest: {
+      /**
+       * Session Id
+       * @description ID of the Loops session this run belongs to.
+       */
+      session_id: string;
+      /**
+       * Base Model
+       * @description Base model ID (e.g. 'Qwen/Qwen3-8B').
+       */
+      base_model: string;
+      /**
+       * Name
+       * @description Optional display name for the run. Defaults to the base model name when omitted.
+       */
+      name?: string | null;
+      /**
+       * Max Seq Len
+       * @description Maximum prompt length (in tokens) the run must handle. Set this to the longest training example you plan to send. Defaults to the maximum supported by the model configuration.
+       */
+      max_seq_len?: number | null;
+      /**
+       * Lora Rank
+       * @description LoRA rank.
+       */
+      lora_rank?: number;
+      /**
+       * Seed
+       * @description Random seed for reproducibility.
+       */
+      seed?: number | null;
+      /**
+       * Scale Down Delay Seconds
+       * @description Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 3600.
+       */
+      scale_down_delay_seconds?: number;
+      /**
+       * Replicas
+       * @description Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.
+       */
+      replicas?: number;
+      /**
+       * Path
+       * @description Optional bt:// URI of an existing checkpoint to load weights from on startup. Form: bt://loops:<run_id>/weights/<checkpoint_name>.
+       * @example bt://loops:k4q95w5/weights/step-100
+       */
+      path?: string | null;
+      /**
+       * Reuse From Session Id
+       * @description Optional Loops session ID whose trainer deployment should be reused for this run, sharing the infrastructure across sessions instead of provisioning fresh. The named session must belong to the same team. Reuse is best-effort: if the prior deployment is stopped, failed, its sampler is unhealthy, or this run requests replicas != 1, a new deployment is provisioned instead.
+       */
+      reuse_from_session_id?: string | null;
+    };
+    /** CreateLoopsRunResponseV1 */
+    CreateLoopsRunResponse: {
+      run: components["schemas"]["LoopsRun"];
+    };
+    /**
+     * GetLoopsRunResponseV1
+     * @description Response for ``GET /v1/loops/runs/<run_id>``.
+     */
+    GetLoopsRunResponse: {
+      /** @description The Loops run with its associated sampler. */
+      run: components["schemas"]["LoopsRun"];
+    };
+    /**
+     * ListLoopsSamplersResponseV1
+     * @description Response for ``GET /v1/loops/samplers``.
+     *
+     *     Returns the caller's samplers, including those paired to runs and
+     *     standalone samplers. Ordered newest-first.
+     */
+    ListLoopsSamplersResponse: {
+      /**
+       * Samplers
+       * @description List of samplers.
+       */
+      samplers: components["schemas"]["LoopsSampler"][];
+    };
+    /** CreateLoopsSamplerRequestV1 */
+    CreateLoopsSamplerRequest: {
+      /**
+       * Session Id
+       * @description ID of the Loops session this sampler belongs to.
+       */
+      session_id: string;
+      /**
+       * Base Model
+       * @description Base model ID for standalone samplers (e.g., for baselines).
+       */
+      base_model: string;
+      /**
+       * Max Seq Length
+       * @description Maximum prompt length (in tokens) the sampler must handle. Set this to the longest prompt you plan to send. Omit to use the default for the base model.
+       */
+      max_seq_length?: number | null;
+      /**
+       * Model Path
+       * @description Optional bt:// URI of an existing sampler-target checkpoint to load weights from on startup. Form: bt://loops:<run_id>/sampler_weights/<checkpoint_name>.
+       * @example bt://loops:k4q95w5/sampler_weights/step-100
+       */
+      model_path?: string | null;
+      /**
+       * Reuse From Session Id
+       * @description Optional Loops session ID whose deployment should be reused for this sampler. Same best-effort semantics as the run endpoint.
+       */
+      reuse_from_session_id?: string | null;
+    };
+    /** CreateLoopsSamplerResponseV1 */
+    CreateLoopsSamplerResponse: {
+      sampler: components["schemas"]["LoopsSampler"];
+    };
+    /**
+     * GetLoopsSamplerResponseV1
+     * @description Response for ``GET /v1/loops/samplers/<sampler_id>``.
+     */
+    GetLoopsSamplerResponse: {
+      /** @description The Loops sampler. */
+      sampler: components["schemas"]["LoopsSampler"];
+    };
+    /**
+     * LoopsCheckpointV1
+     * @description A checkpoint saved by a Loops run.
+     */
+    LoopsCheckpoint: {
+      /**
+       * Checkpoint Id
+       * @description The ID of the checkpoint.
+       */
+      checkpoint_id: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description The timestamp of the checkpoint in ISO 8601 format.
+       */
+      created_at: string;
+      /**
+       * Checkpoint Type
+       * @description The type of checkpoint.
+       */
+      checkpoint_type: string;
+      /**
+       * Base Model
+       * @description The base model of the checkpoint.
+       */
+      base_model: string | null;
+      /**
+       * Lora Adapter Config
+       * @description The adapter config of the checkpoint.
+       */
+      lora_adapter_config: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Size Bytes
+       * @description The size of the checkpoint in bytes.
+       */
+      size_bytes: number;
+      /**
+       * Sync Status
+       * @description Sync state of the checkpoint: SYNCING or COMPLETE.
+       * @default null
+       */
+      sync_status: string | null;
+      /**
+       * Id
+       * @description The checkpoint ID.
+       */
+      id: string;
+      /**
+       * Run Id
+       * @description The ID of the run that produced the checkpoint.
+       */
+      run_id: string;
+      /** @description Whether this checkpoint is loadable by the sampler or by the run. */
+      target: components["schemas"]["TrainerCheckpointTarget"];
+    };
+    /**
+     * ListLoopsCheckpointsResponseV1
+     * @description Checkpoints matching the query filter.
+     */
+    ListLoopsCheckpointsResponse: {
+      /**
+       * Checkpoints
+       * @description Matching checkpoints.
+       */
+      checkpoints: components["schemas"]["LoopsCheckpoint"][];
+    };
+    /**
+     * ValidateLoopsCheckpointRequestV1
+     * @description Request body for ``POST /v1/loops/checkpoints/validate``.
+     */
+    ValidateLoopsCheckpointRequest: {
+      /**
+       * Checkpoint Path
+       * @description bt:// URI of a sampler checkpoint. Form: bt://loops:<run_id>/sampler_weights/<checkpoint_name>.
+       * @example bt://loops:k4q95w5/sampler_weights/step-100
+       */
+      checkpoint_path: string;
+    };
+    /**
+     * ValidateLoopsCheckpointResponseV1
+     * @description Response for ``POST /v1/loops/checkpoints/validate``. Empty on success;
+     *     inaccessible or malformed paths raise 400.
+     */
+    ValidateLoopsCheckpointResponse: Record<string, unknown>;
+    /**
+     * LoopsCheckpointFilesResponseV1
+     * @description Response with presigned URLs for files under a Loops checkpoint.
+     */
+    LoopsCheckpointFilesResponse: {
+      /**
+       * Presigned Urls
+       * @description List of presigned URLs for checkpoint files.
+       */
+      presigned_urls: components["schemas"]["CheckpointFile"][];
+      /**
+       * Next Page Token
+       * @description Token to use for fetching the next page of results. None when there are no more results.
+       * @default null
+       */
+      next_page_token: number | null;
+      /**
+       * Total Count
+       * @description Total number of checkpoint files available.
+       */
+      total_count: number;
+    };
+    /**
+     * LoopsDeploymentStatusV1
+     * @description Latest deployment status for a Loops deployment.
+     */
+    LoopsDeploymentStatus: {
+      /** @description Latest status of the Loops deployment. */
+      name: components["schemas"]["Name"];
+    };
+    /**
+     * LoopsDeploymentV1
+     * @description A Loops deployment — the long-lived run + sampler pair owned by a user.
+     *
+     *     The deployment's current sampler is included inline. The full list of
+     *     samplers visible to the caller (across all deployments) lives at
+     *     ``GET /v1/loops/samplers``.
+     */
+    LoopsDeployment: {
+      /**
+       * Id
+       * @description The Loops deployment ID.
+       */
+      id: string;
+      /**
+       * Active Run Id
+       * @description The ID of the run currently active on this deployment, if any. Null when the deployment's runs have been marked inactive (e.g. scale-to-zero) without a successor.
+       * @default null
+       */
+      active_run_id: string | null;
+      /**
+       * Base Model
+       * @description The HuggingFace base model the deployment is fine-tuning.
+       */
+      base_model: string;
+      /**
+       * Base Url
+       * @description The run's base URL.
+       */
+      base_url: string;
+      /** @description Latest deployment status. */
+      status: components["schemas"]["LoopsDeploymentStatus"];
+      /** @description The user who owns the Loops deployment. */
+      user: components["schemas"]["User"];
+      /**
+       * @description The sampler bound to this deployment.
+       * @default null
+       */
+      sampler: components["schemas"]["LoopsSampler"] | null;
+    };
+    /**
+     * ListLoopsDeploymentsResponseV1
+     * @description Response for ``GET /v1/loops/deployments``.
+     *
+     *     Defaults to the caller's own; pass ``?scope=org`` to list every deployment in
+     *     the caller's organization. Returns every deployment regardless of status;
+     *     clients filter terminal states.
+     */
+    ListLoopsDeploymentsResponse: {
+      /**
+       * Deployments
+       * @description Active Loops deployments.
+       */
+      deployments: components["schemas"]["LoopsDeployment"][];
+    };
+    /**
+     * DeactivateLoopsDeploymentResponseV1
+     * @description Response for ``POST /v1/loops/deployments/<deployment_id>/deactivate``.
+     */
+    DeactivateLoopsDeploymentResponse: {
+      /**
+       * Id
+       * @description The deactivated Loops deployment ID.
+       */
+      id: string;
+      /**
+       * Base Model
+       * @description The base model whose Loops deployment was deactivated.
+       */
+      base_model: string;
+      /** @description The user who owned the Loops deployment. */
+      user: components["schemas"]["User"];
+    };
+    /**
+     * GetLoopsDeploymentResponseV1
+     * @description Response for ``GET /v1/loops/deployments/<deployment_id>``.
+     */
+    GetLoopsDeploymentResponse: {
+      /** @description The Loops deployment. */
+      deployment: components["schemas"]["LoopsDeployment"];
+    };
+    /**
+     * GetLoopsDeploymentMetricsRequestV1
+     * @description Time-range request for trainer deployment metrics.
+     */
+    GetLoopsDeploymentMetricsRequest: {
+      /**
+       * End Epoch Millis
+       * @description Epoch millis to end fetching metrics.
+       */
+      end_epoch_millis?: number | null;
+      /**
+       * Start Epoch Millis
+       * @description Epoch millis to start fetching metrics.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * Step Seconds
+       * @description Resolution of the returned series, in seconds. When omitted, a step is derived from the time range so large windows return fewer points.
+       */
+      step_seconds?: number | null;
+      /**
+       * Time Divisor Seconds
+       * @description Unit of time for request-volume metrics, in seconds (e.g. 60 for requests/minute). Defaults to per-second.
+       */
+      time_divisor_seconds?: number | null;
+    };
+    /**
+     * InferenceVolumeByStatusDatapointV1
+     * @description Request rate split by HTTP response code class.
+     */
+    InferenceVolumeByStatusDatapoint: {
+      /**
+       * Timestamp
+       * Format: date-time
+       * @description ISO 8601 timestamp.
+       */
+      timestamp: string;
+      /**
+       * Status 2Xx
+       * @description 2xx requests per second.
+       */
+      status_2xx: number;
+      /**
+       * Status 4Xx
+       * @description 4xx requests per second.
+       */
+      status_4xx: number;
+      /**
+       * Status 5Xx
+       * @description 5xx requests per second.
+       */
+      status_5xx: number;
+    };
+    /**
+     * LoopsDeploymentMetricsV1
+     * @description Metrics for a trainer (Loops) deployment.
+     *
+     *     Service-level fields summarize HTTP traffic into the trainer pods (the
+     *     Knative queue-proxy is the source). Compute fields are the leader-pod
+     *     aggregate; ``per_node_metrics`` carries the full multinode breakdown.
+     */
+    LoopsDeploymentMetrics: {
+      /**
+       * Inference Volume
+       * @description Number of inference requests per unit time (requests per second).
+       */
+      inference_volume: components["schemas"]["TrainingJobMetric"][];
+      /**
+       * Concurrent Requests
+       * @description Number of in-progress concurrent inference requests. Source: the queue-proxy ``revision_queue_depth`` gauge on ``http-usermetric``.
+       */
+      concurrent_requests: components["schemas"]["TrainingJobMetric"][];
+      /**
+       * Response Time Stats
+       * @description Percentiles of the response time distribution.
+       */
+      response_time_stats: components["schemas"]["ResponseTimeDatapoint"][];
+      /**
+       * Inference Volume By Status
+       * @description Request rate split by response code class.
+       */
+      inference_volume_by_status: components["schemas"]["InferenceVolumeByStatusDatapoint"][];
+      /**
+       * Gpu Memory Usage Bytes
+       * @description Leader-pod GPU memory bytes per GPU rank.
+       */
+      gpu_memory_usage_bytes: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Utilization
+       * @description Leader-pod fractional GPU utilization per GPU rank.
+       */
+      gpu_utilization: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Cpu Usage
+       * @description Leader-pod CPU usage in cores.
+       */
+      cpu_usage: components["schemas"]["TrainingJobMetric"][];
+      /**
+       * Cpu Memory Usage Bytes
+       * @description Leader-pod CPU memory usage bytes.
+       */
+      cpu_memory_usage_bytes: components["schemas"]["TrainingJobMetric"][];
+      /** @description Leader-pod ephemeral storage usage. */
+      ephemeral_storage: components["schemas"]["StorageMetrics"];
+      /**
+       * Per Node Metrics
+       * @description Per-node compute breakdown for multinode trainer deployments.
+       */
+      per_node_metrics: components["schemas"]["LoopsDeploymentNodeMetrics"][];
+    };
+    /**
+     * LoopsDeploymentNodeMetricsV1
+     * @description Per-node compute metrics for a multinode trainer deployment.
+     */
+    LoopsDeploymentNodeMetrics: {
+      /**
+       * Node Id
+       * @description Identifier for the node.
+       */
+      node_id: string;
+      /**
+       * Gpu Memory Usage Bytes
+       * @description GPU memory usage bytes per GPU rank.
+       */
+      gpu_memory_usage_bytes: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Utilization
+       * @description Fractional GPU utilization per GPU rank.
+       */
+      gpu_utilization: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Cpu Usage
+       * @description CPU usage in cores.
+       */
+      cpu_usage: components["schemas"]["TrainingJobMetric"][];
+      /**
+       * Cpu Memory Usage Bytes
+       * @description CPU memory usage bytes.
+       */
+      cpu_memory_usage_bytes: components["schemas"]["TrainingJobMetric"][];
+      /** @description Ephemeral storage usage. */
+      ephemeral_storage: components["schemas"]["StorageMetrics"];
+    };
+    /**
+     * ResponseTimeDatapointV1
+     * @description Latency quantile datapoint.
+     *
+     *     Values are reported in **milliseconds** to match the oracle/inference
+     *     ``response_time_stats`` convention. Source histogram is the queue-proxy's
+     *     ``revision_request_latencies_bucket`` whose bucket boundaries are in ms.
+     */
+    ResponseTimeDatapoint: {
+      /**
+       * Timestamp
+       * Format: date-time
+       * @description ISO 8601 timestamp.
+       */
+      timestamp: string;
+      /**
+       * P50
+       * @description 50th percentile request latency (milliseconds).
+       * @default null
+       */
+      p50: number | null;
+      /**
+       * P95
+       * @description 95th percentile request latency (milliseconds).
+       * @default null
+       */
+      p95: number | null;
+      /**
+       * P99
+       * @description 99th percentile request latency (milliseconds).
+       * @default null
+       */
+      p99: number | null;
+    };
+    /**
+     * GetLoopsDeploymentMetricsResponseV1
+     * @description Response for ``POST /v1/loops/deployments/<id>/metrics``.
+     */
+    GetLoopsDeploymentMetricsResponse: {
+      /**
+       * Deployment Id
+       * @description The trainer deployment ID.
+       */
+      deployment_id: string;
+      /** @description Metrics for the deployment. */
+      metrics: components["schemas"]["LoopsDeploymentMetrics"];
+    };
+    /**
+     * TeamTrainingGpuCapacityItemV1
+     * @description Per-team GPU capacity and current usage for one GPU type.
+     */
+    TeamTrainingGpuCapacityItem: {
+      /**
+       * Team Id
+       * @description Team identifier
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Team name
+       */
+      team_name: string;
+      /**
+       * Gpu Type
+       * @description GPU type identifier (e.g. H100, A100-40GB)
+       */
+      gpu_type: string;
+      /**
+       * Baseline
+       * @description Baseline GPU allocation for the team. 0 if not configured.
+       */
+      baseline: number;
+      /**
+       * Limit
+       * @description Maximum concurrent GPUs of this type for this team
+       */
+      limit: number;
+      /**
+       * Usage Count
+       * @description GPUs currently in use by the team's active training jobs
+       */
+      usage_count: number;
+      /**
+       * Dedicated Usage Count
+       * @description Portion of usage_count from dedicated (on-demand) jobs.
+       * @default 0
+       */
+      dedicated_usage_count: number;
+      /**
+       * Spot Usage Count
+       * @description Portion of usage_count from spot jobs.
+       * @default 0
+       */
+      spot_usage_count: number;
+    };
+    /**
+     * TrainingGpuCapacityItemV1
+     * @description GPU capacity and current usage for one GPU type.
+     */
+    TrainingGpuCapacityItem: {
+      /**
+       * Gpu Type
+       * @description GPU type identifier (e.g. H100, A100-40GB)
+       */
+      gpu_type: string;
+      /**
+       * Baseline
+       * @description Baseline GPU allocation; jobs below this threshold are expected to run immediately. 0 if not configured.
+       */
+      baseline: number;
+      /**
+       * Limit
+       * @description Maximum concurrent GPUs of this type for this org
+       */
+      limit: number;
+      /**
+       * Usage Count
+       * @description GPUs currently in use by active training jobs
+       */
+      usage_count: number;
+      /**
+       * Dedicated Usage Count
+       * @description Portion of usage_count from dedicated (on-demand) jobs, which run against the baseline.
+       * @default 0
+       */
+      dedicated_usage_count: number;
+      /**
+       * Spot Usage Count
+       * @description Portion of usage_count from spot jobs, which burst into the peak and may push usage above the limit.
+       * @default 0
+       */
+      spot_usage_count: number;
+    };
+    /**
+     * GetTrainingGpuCapacityResponseV1
+     * @description Response for the training GPU capacity endpoint.
+     */
+    GetTrainingGpuCapacityResponse: {
+      /**
+       * Gpu Capacities
+       * @description Org-level GPU capacity limits and current usage per GPU type
+       */
+      gpu_capacities: components["schemas"]["TrainingGpuCapacityItem"][];
+      /**
+       * Team Gpu Capacities
+       * @description Per-team GPU capacity limits and current usage per GPU type
+       */
+      team_gpu_capacities?: components["schemas"]["TeamTrainingGpuCapacityItem"][];
+    };
+    /**
+     * PatchTeamTrainingGpuCapacityRequestV1
+     * @description A request to set the GPU capacity ceiling for a (team, gpu_type) pair.
+     *
+     *     Creates the limit if one doesn't already exist for this team and GPU type,
+     *     otherwise updates it in place.
+     */
+    PatchTeamTrainingGpuCapacityRequest: {
+      /**
+       * Team Id
+       * @description Team identifier
+       */
+      team_id: string;
+      /**
+       * Gpu Type
+       * @description GPU type identifier (e.g. H100, A100-40GB)
+       */
+      gpu_type: string;
+      /**
+       * Max Gpus
+       * @description Max concurrent GPUs of this type the team may use
+       * @example 8
+       * @example 16
+       * @example 32
+       */
+      max_gpus: number;
+    };
+    /**
+     * PatchTeamTrainingGpuCapacityResponseV1
+     * @description Response for setting a team's GPU capacity ceiling.
+     */
+    PatchTeamTrainingGpuCapacityResponse: {
+      /** @description The updated per-team GPU capacity limit */
+      team_gpu_capacity: components["schemas"]["TeamTrainingGpuCapacityItem"];
+    };
+    /**
+     * ActiveJobAtSubmitV1
+     * @description One other job in the same (org, gpu_type) pool that was holding GPU
+     *     capacity at the moment the target was submitted.
+     */
+    ActiveJobAtSubmit: {
+      /**
+       * Training Job Id
+       * @description Hashid of the other training job
+       */
+      training_job_id: string;
+      /**
+       * Training Job Name
+       * @description Other job's name
+       * @default null
+       */
+      training_job_name: string | null;
+      /**
+       * Instance Type Name
+       * @description Instance type of the other job
+       */
+      instance_type_name: string;
+      /**
+       * Total Gpus
+       * @description gpu_count * effective_node_count
+       */
+      total_gpus: number;
+      /**
+       * Workload Plane Name
+       * @description Workload plane the other job was on
+       */
+      workload_plane_name: string;
+      /**
+       * Status At Submit
+       * @description Other job's status as of submitted_at (one of ACTIVE_STATES)
+       */
+      status_at_submit: string;
+      /**
+       * Status Set At
+       * Format: date-time
+       * @description When that status was set
+       */
+      status_set_at: string;
+    };
+    /**
+     * CapacityAtSubmitV1
+     * @description A GPU capacity row as it stands now, with ``last_modified`` so callers
+     *     can judge whether the value matches what the dequeue gate saw at submit
+     *     time. Capacity rows are not historicized: edits overwrite in place. Compare
+     *     ``last_modified`` against the response's ``submitted_at`` — if it's later,
+     *     the value may have changed.
+     */
+    CapacityAtSubmit: {
+      /**
+       * Gpu Type
+       * @description GPU type identifier (e.g. H100, A100-40GB)
+       */
+      gpu_type: string;
+      /**
+       * Max Gpus
+       * @description Current max concurrent GPUs of this type
+       */
+      max_gpus: number;
+      /**
+       * Min Gpus
+       * @description Current baseline GPU allocation, if configured
+       * @default null
+       */
+      min_gpus: number | null;
+      /**
+       * Last Modified
+       * Format: date-time
+       * @description When the capacity row was last modified
+       */
+      last_modified: string;
+    };
+    /**
+     * PendingJobAheadAtSubmitV1
+     * @description A PENDING job in the same (org, gpu_type) pool that was ahead of the
+     *     target in dequeue FIFO order at submitted_at — higher priority, or same
+     *     priority and earlier submission.
+     */
+    PendingJobAheadAtSubmit: {
+      /**
+       * Training Job Id
+       * @description Hashid of the other training job
+       */
+      training_job_id: string;
+      /**
+       * Training Job Name
+       * @description Other job's name
+       * @default null
+       */
+      training_job_name: string | null;
+      /**
+       * Instance Type Name
+       * @description Instance type of the other job
+       */
+      instance_type_name: string;
+      /**
+       * Requested Gpus
+       * @description gpu_count * effective_node_count
+       */
+      requested_gpus: number;
+      /**
+       * Priority
+       * @description Effective priority (NULL coalesced to 0)
+       */
+      priority: number;
+      /**
+       * Submitted At
+       * Format: date-time
+       * @description The other job's submission time
+       */
+      submitted_at: string;
+    };
+    /**
+     * QueueEventV1
+     * @description A single ``TrainingJobStatus`` row inside the queue-context window.
+     */
+    QueueEvent: {
+      /**
+       * Training Job Id
+       * @description Hashid of the training job this event is for
+       */
+      training_job_id: string;
+      /**
+       * Training Job Name
+       * @description Job name
+       * @default null
+       */
+      training_job_name: string | null;
+      /**
+       * Status
+       * @description TrainingJobStatus.Name value
+       */
+      status: string;
+      /**
+       * Created
+       * Format: date-time
+       * @description When the status row was inserted
+       */
+      created: string;
+      /**
+       * Event Message
+       * @description Human-readable event message from the status metadata
+       * @default null
+       */
+      event_message: string | null;
+      /**
+       * Exit Code
+       * @description Exit code from the status metadata, if any
+       * @default null
+       */
+      exit_code: number | null;
+    };
+    /**
+     * GetTrainingJobQueueContextResponseV1
+     * @description Read-only diagnostic for a training job's PENDING window.
+     *
+     *     Returns the (org, gpu_type) capacity pool the job was gated by, jobs that
+     *     were holding GPU capacity in that pool when this job was submitted, and
+     *     every status event in [submitted_at, released_at] for those jobs (or up to
+     *     "now" if the target is still PENDING).
+     */
+    GetTrainingJobQueueContextResponse: {
+      /**
+       * Target Job Id
+       * @description Hashid of the target training job
+       */
+      target_job_id: string;
+      /**
+       * Target Job Name
+       * @description Target job's name
+       * @default null
+       */
+      target_job_name: string | null;
+      /**
+       * Gpu Type
+       * @description GPU type the target requested
+       */
+      gpu_type: string;
+      /**
+       * Requested Gpus
+       * @description GPUs the target requested (gpu_count * effective_node_count)
+       */
+      requested_gpus: number;
+      /**
+       * Submitted At
+       * Format: date-time
+       * @description When the job row was inserted (= API POST time)
+       */
+      submitted_at: string;
+      /**
+       * Released At
+       * @description When the job's TRAINING_JOB_CREATED status was set, i.e. the moment it was released from PENDING. None if still PENDING.
+       * @default null
+       */
+      released_at: string | null;
+      /**
+       * Pending Seconds
+       * @description released_at - submitted_at in seconds. None if still PENDING.
+       * @default null
+       */
+      pending_seconds: number | null;
+      /**
+       * @description Org-level cap for (org, gpu_type). None if no cap is configured.
+       * @default null
+       */
+      org_capacity: components["schemas"]["CapacityAtSubmit"] | null;
+      /**
+       * @description Team-level cap for (team, gpu_type). None if no team cap is configured.
+       * @default null
+       */
+      team_capacity: components["schemas"]["CapacityAtSubmit"] | null;
+      /**
+       * Active At Submit
+       * @description Jobs in the same (org, gpu_type) pool that were holding capacity at submitted_at
+       */
+      active_at_submit: components["schemas"]["ActiveJobAtSubmit"][];
+      /**
+       * Pending Ahead At Submit
+       * @description PENDING jobs in the same (org, gpu_type) pool that were ahead of the target in dequeue FIFO order at submitted_at (priority DESC then created ASC). These also block the target's release.
+       */
+      pending_ahead_at_submit: components["schemas"]["PendingJobAheadAtSubmit"][];
+      /**
+       * Events
+       * @description Every status event in [submitted_at, events_window_end] for the target job, every job in active_at_submit, and every job in pending_ahead_at_submit, oldest first.
+       */
+      events: components["schemas"]["QueueEvent"][];
+      /**
+       * Events Window End
+       * Format: date-time
+       * @description released_at if set, else 'now' (events ongoing)
+       */
+      events_window_end: string;
     };
     /**
      * GetBlobCredentialsResponseV1
@@ -3014,10 +6179,9 @@ export type components = {
       /**
        * Name
        * @description Optional name for the API key
-       * @default null
        * @example my-api-key
        */
-      name: string | null;
+      name?: string | null;
       /**
        * @description Type of the API key.
        * @example PERSONAL
@@ -3029,12 +6193,11 @@ export type components = {
       /**
        * Model Ids
        * @description List of model IDs to scope the API key to, only present if type is 'WORKSPACE_EXPORT_METRICS' or 'WORKSPACE_INVOKE'
-       * @default null
        * @example [
        *       "aaaaaaaa"
        *     ]
        */
-      model_ids: string[] | null;
+      model_ids?: string[] | null;
     };
     /**
      * APIKeyV1
@@ -3087,6 +6250,34 @@ export type components = {
        * @default null
        */
       team_name: string | null;
+      /**
+       * @description The user who owns the API key. Only present for personal API keys.
+       * @default null
+       */
+      owner: components["schemas"]["APIKeyOwner"] | null;
+    };
+    /**
+     * APIKeyOwnerV1
+     * @description The user who owns a personal API key.
+     */
+    APIKeyOwner: {
+      /**
+       * User Id
+       * @description Unique identifier for the user
+       */
+      user_id: string;
+      /**
+       * Email
+       * @description Email address of the user
+       * @default null
+       */
+      email: string | null;
+      /**
+       * Name
+       * @description Display name of the user
+       * @default null
+       */
+      name: string | null;
     };
     /**
      * APIKeysV1
@@ -3149,8 +6340,143 @@ export type components = {
       snapshot_uri: string;
     };
     /**
+     * LimitTypeV1
+     * @enum {string}
+     */
+    LimitType: "REQUEST" | "TOKEN";
+    /**
+     * ModelAPIOrgDetailsV1
+     * @description Workspace-specific state for a Model API.
+     */
+    ModelAPIOrgDetails: {
+      /**
+       * Added At
+       * Format: date-time
+       * @description When the workspace first added this Model API.
+       */
+      added_at: string;
+      /**
+       * Last Used At
+       * @description When the workspace last invoked this Model API. Null if the workspace has never invoked it.
+       * @default null
+       */
+      last_used_at: string | null;
+    };
+    /**
+     * ModelAPIV1
+     * @description A Model API catalog row, optionally enriched with workspace-specific state.
+     */
+    ModelAPI: {
+      /**
+       * Name
+       * @description Identifier of the Model API. Stable, URL-safe slug used as the public identifier.
+       * @example llama-3-3-70b-instruct
+       */
+      name: string;
+      /**
+       * Display Name
+       * @description Human-readable name of the Model API.
+       * @example Llama 3.3 70B Instruct
+       */
+      display_name: string;
+      /**
+       * Description
+       * @description Description of the Model API.
+       */
+      description: string;
+      /**
+       * Model Family
+       * @description Family the underlying model belongs to.
+       * @default null
+       * @example META
+       * @example DEEPSEEK
+       * @example QWEN
+       */
+      model_family: string | null;
+      /**
+       * Release Date
+       * Format: date
+       * @description Date the Model API was made available.
+       */
+      release_date: string;
+      /**
+       * Invoke Url
+       * @description Base URL for invoking the Model API. OpenAI-shaped routes (e.g. /v1/chat/completions) live underneath this host.
+       * @example https://inference.baseten.co
+       */
+      invoke_url: string;
+      /**
+       * Context Length
+       * @description The model's context window length, in tokens.
+       * @example 8192
+       */
+      context_length: number;
+      /**
+       * Cost Per Million Input Tokens
+       * @description Cost per million input tokens, in dollars.
+       * @example 0.13
+       */
+      cost_per_million_input_tokens: number | string;
+      /**
+       * Cost Per Million Output Tokens
+       * @description Cost per million output tokens, in dollars.
+       * @example 0.50
+       */
+      cost_per_million_output_tokens: number | string;
+      /**
+       * Rate Limits
+       * @description Rate limits in effect for the workspace. Workspace-specific overrides are returned when the workspace has added this Model API and configured them; otherwise the catalog default rate limits are returned.
+       */
+      rate_limits: components["schemas"]["RateLimit"][];
+      /**
+       * @description Workspace-specific state. Null when the workspace has not added this Model API.
+       * @default null
+       */
+      org_details: components["schemas"]["ModelAPIOrgDetails"] | null;
+    };
+    /**
+     * RateLimitUnitV1
+     * @enum {string}
+     */
+    RateLimitUnit: "SECOND" | "MINUTE";
+    /** RateLimitV1 */
+    RateLimit: {
+      /**
+       * @description The type of the rate limit
+       * @example TOKEN
+       * @example REQUEST
+       */
+      type: components["schemas"]["LimitType"];
+      /**
+       * @description The unit of the rate limit
+       * @example SECOND
+       * @example MINUTE
+       */
+      unit: components["schemas"]["RateLimitUnit"];
+      /**
+       * Threshold
+       * @description The threshold for the rate limit
+       * @example 1000
+       * @example 50000
+       */
+      threshold: number;
+    };
+    /**
+     * ModelAPIsResponseV1
+     * @description Page of Model APIs visible to the caller.
+     */
+    ModelAPIsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["ModelAPI"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
      * CreateLLMModelRequestV1
-     * @description A request to create a BIS LLM model
+     * @description A request to create a BIS-LLM model
      */
     CreateLLMModelRequest: {
       /**
@@ -3162,10 +6488,9 @@ export type components = {
       };
       /**
        * Llm Version
-       * @description Version of the helm chart to use
-       * @default 1.0
+       * @description Version of the helm chart to use.
        */
-      llm_version: string;
+      llm_version?: string | null;
       /**
        * Llm Config
        * @description Configuration specific to the LLM model
@@ -3181,23 +6506,29 @@ export type components = {
         [key: string]: unknown;
       };
       /**
+       * Model Metadata
+       * @description Model metadata persisted into model_config
+       */
+      model_metadata?: {
+        [key: string]: unknown;
+      } | null;
+      /**
        * @description Autoscaling settings for the model
-       * @default null
        * @example {
        *       "autoscaling_window": 600,
        *       "concurrency_target": null,
        *       "max_replica": 5,
+       *       "max_scale_down_rate": null,
        *       "min_replica": 1,
        *       "scale_down_delay": 300,
        *       "target_in_flight_tokens": null,
        *       "target_utilization_percentage": null
        *     }
        */
-      autoscaling_settings: components["schemas"]["UpdateAutoscalingSettings"] | null;
+      autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
       /**
        * Additional Autoscaling Config
        * @description Additional autoscaling configuration (e.g. target in-flight tokens)
-       * @default null
        * @example {
        *       "metrics": [
        *         {
@@ -3207,52 +6538,71 @@ export type components = {
        *       ]
        *     }
        */
-      additional_autoscaling_config: {
+      additional_autoscaling_config?: {
         [key: string]: unknown;
       } | null;
       /**
        * Metadata
        * @description User-defined metadata for the deployment
-       * @default null
        * @example {
        *       "environment": "production",
        *       "git_sha": "abc123"
        *     }
        */
-      metadata: {
+      metadata?: {
         [key: string]: unknown;
       } | null;
       /**
+       * Weights
+       * @description Weight configurations for BDN model weight distribution
+       * @example [
+       *       {
+       *         "mount_location": "/models/base",
+       *         "source": "hf://meta-llama/Llama-3-8B"
+       *       }
+       *     ]
+       */
+      weights?:
+        | {
+            [key: string]: unknown;
+          }[]
+        | null;
+      /**
        * Name
        * @description Name of the model
        */
       name: string;
     };
     /**
-     * LLMModelV1
-     * @description A BIS LLM model
+     * LLMModelHandleV1
+     * @description Handle for a BIS-LLM model deployment.
      */
-    LLMModel: {
+    LLMModelHandle: {
       /**
-       * Id
+       * Model Id
        * @description Unique identifier of the model
        */
-      id: string;
+      model_id: string;
       /**
-       * Created At
-       * Format: date-time
-       * @description Time the model was created in ISO 8601 format
+       * Version Id
+       * @description Unique identifier of the model version
        */
-      created_at: string;
+      version_id: string;
       /**
-       * Name
-       * @description Name of the model
+       * Hostname
+       * @description Hostname used to invoke the model
        */
-      name: string;
+      hostname: string;
+      /**
+       * Instance Type Name
+       * @description Name of the instance type the model deployment is running on
+       * @default null
+       */
+      instance_type_name: string | null;
     };
     /**
      * CreateLLMModelVersionRequestV1
-     * @description A request to create a BIS LLM model version
+     * @description A request to create a BIS-LLM model version
      */
     CreateLLMModelVersionRequest: {
       /**
@@ -3264,10 +6614,9 @@ export type components = {
       };
       /**
        * Llm Version
-       * @description Version of the helm chart to use
-       * @default 1.0
+       * @description Version of the helm chart to use.
        */
-      llm_version: string;
+      llm_version?: string | null;
       /**
        * Llm Config
        * @description Configuration specific to the LLM model
@@ -3283,23 +6632,29 @@ export type components = {
         [key: string]: unknown;
       };
       /**
+       * Model Metadata
+       * @description Model metadata persisted into model_config
+       */
+      model_metadata?: {
+        [key: string]: unknown;
+      } | null;
+      /**
        * @description Autoscaling settings for the model
-       * @default null
        * @example {
        *       "autoscaling_window": 600,
        *       "concurrency_target": null,
        *       "max_replica": 5,
+       *       "max_scale_down_rate": null,
        *       "min_replica": 1,
        *       "scale_down_delay": 300,
        *       "target_in_flight_tokens": null,
        *       "target_utilization_percentage": null
        *     }
        */
-      autoscaling_settings: components["schemas"]["UpdateAutoscalingSettings"] | null;
+      autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
       /**
        * Additional Autoscaling Config
        * @description Additional autoscaling configuration (e.g. target in-flight tokens)
-       * @default null
        * @example {
        *       "metrics": [
        *         {
@@ -3309,43 +6664,35 @@ export type components = {
        *       ]
        *     }
        */
-      additional_autoscaling_config: {
+      additional_autoscaling_config?: {
         [key: string]: unknown;
       } | null;
       /**
        * Metadata
        * @description User-defined metadata for the deployment
-       * @default null
        * @example {
        *       "environment": "production",
        *       "git_sha": "abc123"
        *     }
        */
-      metadata: {
+      metadata?: {
         [key: string]: unknown;
       } | null;
-    };
-    /**
-     * LLMModelVersionV1
-     * @description A BIS LLM model version
-     */
-    LLMModelVersion: {
       /**
-       * Id
-       * @description Unique identifier of the model version
+       * Weights
+       * @description Weight configurations for BDN model weight distribution
+       * @example [
+       *       {
+       *         "mount_location": "/models/base",
+       *         "source": "hf://meta-llama/Llama-3-8B"
+       *       }
+       *     ]
        */
-      id: string;
-      /**
-       * Created At
-       * Format: date-time
-       * @description Time the model was created in ISO 8601 format
-       */
-      created_at: string;
-      /**
-       * Name
-       * @description Name of the model version
-       */
-      name: string;
+      weights?:
+        | {
+            [key: string]: unknown;
+          }[]
+        | null;
     };
     /**
      * LibraryListingV1
@@ -3367,6 +6714,11 @@ export type components = {
        * @description Whether the listing is publicly accessible
        */
       is_public: boolean;
+      /**
+       * Closed Source
+       * @description Whether the listing is closed source (deployers cannot view or download the Truss, and forks copy mirrored weights instead of re-mirroring from upstream)
+       */
+      closed_source: boolean;
       /**
        * Created At
        * Format: date-time
@@ -3406,9 +6758,13 @@ export type components = {
       /**
        * Is Public
        * @description Whether the listing is publicly accessible
-       * @default false
        */
-      is_public: boolean;
+      is_public?: boolean;
+      /**
+       * Closed Source
+       * @description Whether the listing is closed source (deployers cannot view or download the Truss, and forks copy mirrored weights instead of re-mirroring from upstream)
+       */
+      closed_source?: boolean;
     };
     /**
      * LibraryListingTombstoneV1
@@ -3434,15 +6790,13 @@ export type components = {
       /**
        * Display Name
        * @description New display name for the library listing
-       * @default null
        */
-      display_name: string | null;
+      display_name?: string | null;
       /**
        * Is Public
        * @description Whether the listing is publicly accessible
-       * @default null
        */
-      is_public: boolean | null;
+      is_public?: boolean | null;
     };
     /**
      * LibraryListingVersionV1
@@ -3498,15 +6852,13 @@ export type components = {
       /**
        * Display Name
        * @description Display name of the library listing. Required when creating a new listing.
-       * @default null
        */
-      display_name: string | null;
+      display_name?: string | null;
       /**
        * Is Public
        * @description Whether the listing is publicly accessible. Only used when creating a new listing.
-       * @default false
        */
-      is_public: boolean;
+      is_public?: boolean;
       /**
        * Oracle Version Id
        * @description Id of the source model version to publish
@@ -3515,9 +6867,13 @@ export type components = {
       /**
        * Allow Truss Download
        * @description Whether users deploying this model can download the Truss
-       * @default false
        */
-      allow_truss_download: boolean;
+      allow_truss_download?: boolean;
+      /**
+       * Closed Source
+       * @description Whether the listing is closed source (deployers cannot view or download the Truss, and forks copy mirrored weights instead of re-mirroring from upstream). Only used when creating a new listing.
+       */
+      closed_source?: boolean;
       /**
        * Version Tag
        * @description Human-readable tag for this version
@@ -3548,15 +6904,13 @@ export type components = {
       /**
        * Is Live
        * @description Whether this version should be the live version. Setting to true demotes the current live version.
-       * @default null
        */
-      is_live: boolean | null;
+      is_live?: boolean | null;
       /**
        * Allow Truss Download
        * @description Whether users deploying this model can download the Truss
-       * @default null
        */
-      allow_truss_download: boolean | null;
+      allow_truss_download?: boolean | null;
     };
     /** BillableResourceV1 */
     BillableResource: {
@@ -3573,6 +6927,12 @@ export type components = {
        * @default null
        */
       name: string | null;
+      /**
+       * Model Name
+       * @description Name of the parent resource (e.g., model name for model deployments, training project name for training jobs)
+       * @default null
+       */
+      model_name: string | null;
       /**
        * Is Deleted
        * @description Indicates if the resource has been deleted
@@ -3628,6 +6988,16 @@ export type components = {
        * @description Subtotal cost incurred on this date in dollars
        */
       subtotal: number | string;
+      /**
+       * Compute Cost
+       * @description Compute cost incurred on this date in dollars
+       */
+      compute_cost: number | string;
+      /**
+       * Surcharge Cost
+       * @description Model distribution surcharge incurred on this date in dollars
+       */
+      surcharge_cost: number | string;
       /**
        * Minutes
        * @description Minutes used on this date
@@ -3696,6 +7066,16 @@ export type components = {
        * @description Subtotal cost in dollars for this billable resource
        */
       subtotal: number | string;
+      /**
+       * Compute Cost
+       * @description Compute cost in dollars for this billable resource
+       */
+      compute_cost: number | string;
+      /**
+       * Surcharge Cost
+       * @description Model distribution surcharge in dollars for this billable resource
+       */
+      surcharge_cost: number | string;
       /**
        * Minutes
        * @description Total minutes used for this billable resource
@@ -3871,28 +7251,1151 @@ export type components = {
        */
       model_apis_usage: components["schemas"]["ModelApisUsage"] | null;
     };
+    /**
+     * UserInfoV1
+     * @description A Baseten user.
+     */
+    UserInfo: {
+      /**
+       * User Id
+       * @description Unique identifier for the user
+       */
+      user_id: string;
+      /**
+       * Email
+       * @description Email address of the user
+       * @default null
+       */
+      email: string | null;
+      /**
+       * Name
+       * @description Display name of the user
+       * @default null
+       */
+      name: string | null;
+      /**
+       * Workspace Name
+       * @description Name of the user's workspace
+       * @default null
+       */
+      workspace_name: string | null;
+    };
+    /**
+     * UsersResponseV1
+     * @description A page of users in the caller's workspace.
+     */
+    UsersResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["UserInfo"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * EndpointTargetV1
+     * @description One configured upstream target of an endpoint.
+     */
+    EndpointTarget: {
+      /** @description Upstream provider. */
+      provider: components["schemas"]["GatewayProvider"];
+      /**
+       * Secret Id
+       * @description Referenced secret, if any.
+       * @default null
+       */
+      secret_id: string | null;
+      /**
+       * Target Model
+       * @description Upstream model name, if any.
+       * @default null
+       */
+      target_model: string | null;
+      /**
+       * Base Url
+       * @description Custom OpenAI-compatible base URL, if any.
+       * @default null
+       */
+      base_url: string | null;
+      /**
+       * Model Id
+       * @description Baseten model, if any.
+       * @default null
+       */
+      model_id: string | null;
+      /**
+       * Environment Name
+       * @description Baseten model environment, if non-production.
+       * @default null
+       */
+      environment_name: string | null;
+      /**
+       * @description Google Vertex configuration, if any.
+       * @default null
+       */
+      vertex_config: components["schemas"]["VertexTargetConfig"] | null;
+    };
+    /**
+     * EndpointV1
+     * @description A Gateway endpoint: a slug and its priority-ordered targets (index 0 tried first).
+     */
+    Endpoint: {
+      /**
+       * Id
+       * @description Stable identifier for the endpoint.
+       */
+      id: string;
+      /**
+       * Slug
+       * @description Globally-unique routing slug.
+       * @example baseten/mymodel-4
+       */
+      slug: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time, ISO 8601.
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description Last update time, ISO 8601.
+       */
+      updated_at: string;
+      /**
+       * Targets
+       * @description The endpoint's upstream targets. Exactly one target is supported at this time.
+       */
+      targets: components["schemas"]["EndpointTarget"][];
+    };
+    /** VertexTargetConfigV1 */
+    VertexTargetConfig: {
+      /**
+       * Project Id
+       * @description Google Cloud project ID or project number.
+       * @example my-gcp-project
+       * @example 464036093014
+       */
+      project_id: string;
+      /**
+       * Location
+       * @description Google Cloud location.
+       * @example global
+       */
+      location: string;
+    };
+    /** EndpointsResponseV1 */
+    EndpointsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["Endpoint"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * EndpointTargetRequestV1
+     * @description One desired upstream target. The customer picks a provider; Baseten owns the
+     *     upstream host and protocol adapter.
+     */
+    EndpointTargetRequest: {
+      /**
+       * @description Upstream provider for this target.
+       * @example ANTHROPIC
+       * @example OPENAI
+       * @example OPENAI_COMPATIBLE
+       * @example BASETEN
+       */
+      provider: components["schemas"]["GatewayProvider"];
+      /**
+       * Secret Id
+       * @description Secret holding the provider credential. Required for external providers.
+       * @example 3kZ9xqd
+       */
+      secret_id?: string | null;
+      /**
+       * Target Model
+       * @description Model name to send upstream. Required for external providers and optional for BASETEN targets.
+       * @example gpt-4o
+       */
+      target_model?: string | null;
+      /**
+       * Base Url
+       * @description HTTPS base URL of the upstream OpenAI-compatible server. Must not include a port. Required for and only valid with OPENAI_COMPATIBLE.
+       * @example https://my-vllm.example.com
+       */
+      base_url?: string | null;
+      /**
+       * Model Id
+       * @description Baseten model to route to. Required for and only valid with BASETEN.
+       * @example 3kZ9xqd
+       */
+      model_id?: string | null;
+      /**
+       * Environment Name
+       * @description Baseten model environment to route to. Only valid with BASETEN. Omit or pass `production` to target production.
+       * @example staging
+       */
+      environment_name?: string | null;
+      /** @description Google Vertex configuration. Required for and only valid with VERTEX. */
+      vertex_config?: components["schemas"]["VertexTargetConfig"] | null;
+    };
+    /** CreateEndpointRequestV1 */
+    CreateEndpointRequest: {
+      /**
+       * Slug
+       * @description Globally-unique slug of the form '{org_prefix}/{name}'.
+       * @example baseten/mymodel-4
+       */
+      slug: string;
+      /**
+       * Targets
+       * @description The endpoint's upstream targets. Exactly one target is supported at this time.
+       * @example [
+       *       {
+       *         "environment_name": "staging",
+       *         "model_id": "3kZ9xqd",
+       *         "provider": "BASETEN",
+       *         "target_model": "custom/model-name"
+       *       }
+       *     ]
+       * @example [
+       *       {
+       *         "provider": "OPENAI",
+       *         "secret_id": "3kZ9xqd",
+       *         "target_model": "gpt-4o"
+       *       }
+       *     ]
+       * @example [
+       *       {
+       *         "base_url": "https://my-vllm.example.com",
+       *         "provider": "OPENAI_COMPATIBLE",
+       *         "secret_id": "3kZ9xqd",
+       *         "target_model": "my-model"
+       *       }
+       *     ]
+       */
+      targets: components["schemas"]["EndpointTargetRequest"][];
+    };
+    /** EndpointTombstoneV1 */
+    EndpointTombstone: {
+      /**
+       * Id
+       * @description Identifier of the deleted endpoint.
+       */
+      id: string;
+      /**
+       * Slug
+       * @description Slug of the deleted endpoint.
+       */
+      slug: string;
+    };
+    /**
+     * UpdateEndpointRequestV1
+     * @description PATCH body. Replaces the endpoint's full target list. The slug is immutable
+     *     after creation; to change it, create a new endpoint and delete this one.
+     */
+    UpdateEndpointRequest: {
+      /**
+       * Targets
+       * @description The endpoint's upstream targets. Exactly one target is supported at this time.
+       * @example [
+       *       {
+       *         "environment_name": "staging",
+       *         "model_id": "3kZ9xqd",
+       *         "provider": "BASETEN",
+       *         "target_model": "custom/model-name"
+       *       }
+       *     ]
+       * @example [
+       *       {
+       *         "provider": "OPENAI",
+       *         "secret_id": "3kZ9xqd",
+       *         "target_model": "gpt-4o"
+       *       }
+       *     ]
+       * @example [
+       *       {
+       *         "base_url": "https://my-vllm.example.com",
+       *         "provider": "OPENAI_COMPATIBLE",
+       *         "secret_id": "3kZ9xqd",
+       *         "target_model": "my-model"
+       *       }
+       *     ]
+       */
+      targets?: components["schemas"]["EndpointTargetRequest"][] | null;
+    };
+    /** EffectiveModelConfigV1 */
+    EffectiveModelConfig: {
+      /**
+       * Slug
+       * @description Shared endpoint slug.
+       */
+      slug: string;
+      /** Rate Limits */
+      rate_limits?: components["schemas"]["EffectiveRateLimit"][];
+      /** Usage Limits */
+      usage_limits?: components["schemas"]["EffectiveUsageLimit"][];
+    };
+    /** EffectiveRateLimitV1 */
+    EffectiveRateLimit: {
+      /**
+       * @description The type of the rate limit
+       * @example TOKEN
+       * @example REQUEST
+       */
+      type: components["schemas"]["LimitType"];
+      /**
+       * @description The unit of the rate limit
+       * @example SECOND
+       * @example MINUTE
+       */
+      unit: components["schemas"]["RateLimitUnit"];
+      /**
+       * Threshold
+       * @description The threshold for the rate limit
+       * @example 1000
+       * @example 50000
+       */
+      threshold: number;
+      /**
+       * Source Group
+       * @description ID of the group in the hierarchy this limit is anchored to.
+       * @example abc123
+       */
+      source_group: string;
+    };
+    /** EffectiveUsageLimitV1 */
+    EffectiveUsageLimit: {
+      /**
+       * @description The type of the usage limit
+       * @example REQUEST
+       * @example TOKEN
+       */
+      type: components["schemas"]["LimitType"];
+      /**
+       * @description The unit of the usage limit
+       * @example DAY
+       */
+      unit: components["schemas"]["UsageLimitUnit"];
+      /**
+       * Threshold
+       * @description The threshold for the usage limit
+       * @example 10000000
+       */
+      threshold: number;
+      /**
+       * Source Group
+       * @description ID of the group in the hierarchy this limit is anchored to.
+       * @example abc123
+       */
+      source_group: string;
+    };
+    /** GroupHierarchyV1 */
+    GroupHierarchy: {
+      /**
+       * @example CASCADING
+       * @example INDEPENDENT
+       */
+      limit_enforcement?: components["schemas"]["LimitEnforcement"];
+      /**
+       * Parent Group Id
+       * @example abc123
+       */
+      parent_group_id?: string | null;
+    };
+    /** GroupMetadataV1 */
+    GroupMetadata: {
+      /**
+       * Name
+       * @description Optional display name for the group.
+       * @example Acme prod
+       */
+      name?: string | null;
+      /**
+       * External Entity Id
+       * @description External-system identifier for this group. Unique within the caller's org.
+       * @example cust_42
+       */
+      external_entity_id: string;
+    };
+    /** GroupV1 */
+    Group: {
+      /**
+       * Id
+       * @description Internal Baseten ID for the group.
+       */
+      id: string;
+      /** @description Group identity + display metadata. */
+      metadata: components["schemas"]["GroupMetadata"];
+      /** Models */
+      models?: components["schemas"]["ModelConfig"][];
+      /** Effective Models */
+      effective_models?: components["schemas"]["EffectiveModelConfig"][];
+      /** @description Parent linkage and limit enforcement mode. Parent is null for root groups. */
+      hierarchy: components["schemas"]["GroupHierarchy"];
+      /**
+       * Created At
+       * Format: date-time
+       * @description When this group was created.
+       */
+      created_at: string;
+    };
+    /**
+     * LimitEnforcementV1
+     * @enum {string}
+     */
+    LimitEnforcement: "CASCADING" | "INDEPENDENT";
+    /** ModelConfigV1 */
+    ModelConfig: {
+      /**
+       * Slug
+       * @description Shared endpoint slug.
+       */
+      slug: string;
+      /** Rate Limits */
+      rate_limits?: components["schemas"]["RateLimit"][];
+      /** Usage Limits */
+      usage_limits?: components["schemas"]["UsageLimit"][];
+    };
+    /**
+     * UsageLimitUnitV1
+     * @enum {string}
+     */
+    UsageLimitUnit: "DAY";
+    /** UsageLimitV1 */
+    UsageLimit: {
+      /**
+       * @description The type of the usage limit
+       * @example REQUEST
+       * @example TOKEN
+       */
+      type: components["schemas"]["LimitType"];
+      /**
+       * @description The unit of the usage limit
+       * @example DAY
+       */
+      unit: components["schemas"]["UsageLimitUnit"];
+      /**
+       * Threshold
+       * @description The threshold for the usage limit
+       * @example 10000000
+       */
+      threshold: number;
+    };
+    /** GroupsResponseV1 */
+    GroupsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["Group"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** CreateGroupRequestV1 */
+    CreateGroupRequest: {
+      /** @description Group identity + display metadata. */
+      metadata: components["schemas"]["GroupMetadata"];
+      /**
+       * Models
+       * @description Per-model rate and usage limit configuration. Defines the group's complete model set. Must be non-empty.
+       */
+      models: components["schemas"]["ModelConfig"][];
+      /** @description Parent linkage and limit enforcement mode. Immutable after creation. */
+      hierarchy: components["schemas"]["GroupHierarchy"];
+    };
+    /** UpdateGroupMetadataV1 */
+    UpdateGroupMetadata: {
+      /**
+       * Name
+       * @description Optional display name for the group.
+       * @example Acme prod
+       */
+      name?: string | null;
+    };
+    /** UpdateGroupRequestV1 */
+    UpdateGroupRequest: {
+      /**
+       * @description Mutable group metadata.
+       * @example {
+       *       "name": "Acme Prod"
+       *     }
+       */
+      metadata?: components["schemas"]["UpdateGroupMetadata"] | null;
+      /**
+       * Models
+       * @description Per-model rate and usage limit configuration.
+       */
+      models?: components["schemas"]["ModelConfig"][] | null;
+    };
+    /** GatewayKeyInfoV1 */
+    GatewayKeyInfo: {
+      /**
+       * Prefix
+       * @description The prefix of the Model API key.
+       */
+      prefix: string;
+      /**
+       * Name
+       * @description Optional display name.
+       * @default null
+       */
+      name: string | null;
+    };
+    /** KeysForGroupResponseV1 */
+    KeysForGroupResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["GatewayKeyInfo"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** CreateApiKeyForGroupRequestV1 */
+    CreateApiKeyForGroupRequest: {
+      /**
+       * Name
+       * @description Optional display name for the new key.
+       * @example prod-key-1
+       */
+      name?: string | null;
+    };
+    /** CreateApiKeyForGroupResponseV1 */
+    CreateApiKeyForGroupResponse: {
+      /**
+       * Api Key
+       * @description Plaintext key string, returned exactly once.
+       */
+      api_key: string;
+      /**
+       * Prefix
+       * @description Key prefix (the part before the dot).
+       */
+      prefix: string;
+      /**
+       * Name
+       * @description Display name of the key.
+       * @default null
+       */
+      name: string | null;
+    };
+    /**
+     * RegisterAPIKeyRequestV1
+     * @description Request to register a caller-supplied API key against an existing FederatedGroup.
+     */
+    RegisterAPIKeyRequest: {
+      /**
+       * Name
+       * @description Optional name for the Model API key
+       * @example my-model-api-key
+       */
+      name?: string | null;
+      /**
+       * Key
+       * @description Value of the API key to register
+       * @example my-secure-api-key-value
+       */
+      key: string;
+    };
+    /** RegisterAPIKeyResponseV1 */
+    RegisterAPIKeyResponse: {
+      /**
+       * Ok
+       * @description Whether the registration was successful
+       */
+      ok: boolean;
+    };
+    GetTeamsRequest: {
+      /**
+       * Name
+       * @description When set, returns only the team with this exact name, if any.
+       */
+      name?: string | null;
+    };
+    GetAuditLogsRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.
+       */
+      limit?: number;
+      /** @description Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor. */
+      direction?: components["schemas"]["AuditLogSortDirection"];
+      /**
+       * Search
+       * @description Case-insensitive substring matched against resource names and IDs in the entry.
+       */
+      search?: string | null;
+      /**
+       * Event Type Groups
+       * @description When set, returns only entries whose event type falls in one of these groups.
+       */
+      event_type_groups?: components["schemas"]["AuditLogEventTypeGroup"][];
+      /**
+       * User Ids
+       * @description When set, returns only entries whose acting user is one of these IDs.
+       */
+      user_ids?: string[];
+      /**
+       * Deployment Ids
+       * @description When set, returns only entries referencing one of these model deployment IDs.
+       */
+      deployment_ids?: string[];
+      /**
+       * Chain Deployment Ids
+       * @description When set, returns only entries referencing one of these chain deployment IDs.
+       */
+      chain_deployment_ids?: string[];
+      /**
+       * Environment Names
+       * @description When set, returns only entries for one of these environments.
+       */
+      environment_names?: string[];
+      /**
+       * Sources
+       * @description When set, returns only entries issued from one of these surfaces.
+       */
+      sources?: components["schemas"]["AuditLogSource"][];
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds for the start of the window. Defaults to the beginning of the audit-log history.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds for the end of the window. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+    };
+    GetModelsRequest: {
+      /**
+       * Name
+       * @description When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.
+       */
+      name?: string | null;
+    };
+    GetTeamsModelsRequest: {
+      /**
+       * Name
+       * @description When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.
+       */
+      name?: string | null;
+    };
+    GetModelsAuditLogsRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.
+       */
+      limit?: number;
+      /** @description Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor. */
+      direction?: components["schemas"]["AuditLogSortDirection"];
+      /**
+       * Search
+       * @description Case-insensitive substring matched against resource names and IDs in the entry.
+       */
+      search?: string | null;
+      /**
+       * Event Type Groups
+       * @description When set, returns only entries whose event type falls in one of these groups.
+       */
+      event_type_groups?: components["schemas"]["AuditLogEventTypeGroup"][];
+      /**
+       * User Ids
+       * @description When set, returns only entries whose acting user is one of these IDs.
+       */
+      user_ids?: string[];
+      /**
+       * Deployment Ids
+       * @description When set, returns only entries referencing one of these model deployment IDs.
+       */
+      deployment_ids?: string[];
+      /**
+       * Chain Deployment Ids
+       * @description When set, returns only entries referencing one of these chain deployment IDs.
+       */
+      chain_deployment_ids?: string[];
+      /**
+       * Environment Names
+       * @description When set, returns only entries for one of these environments.
+       */
+      environment_names?: string[];
+      /**
+       * Sources
+       * @description When set, returns only entries issued from one of these surfaces.
+       */
+      sources?: components["schemas"]["AuditLogSource"][];
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds for the start of the window. Defaults to the beginning of the audit-log history.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds for the end of the window. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+    };
+    GetModelsDeploymentsRequest: {
+      /**
+       * Name
+       * @description When set, returns only the deployment with this exact name, if any.
+       */
+      name?: string | null;
+    };
+    GetModelsDeploymentsConfigRequest: {
+      /** @description 'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated. */
+      output_format?: components["schemas"]["DeploymentConfigOutputFormat"];
+    };
+    GetModelsDeploymentsLogsRequest: {
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds at which to stop fetching logs. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+      /** @description Sort order for logs */
+      direction?: components["schemas"]["SortOrder"] | null;
+      /**
+       * Limit
+       * @description Limit of logs to fetch in a single request
+       */
+      limit?: number | null;
+      /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
+      min_level?: components["schemas"]["LogLevel"] | null;
+      /**
+       * Replica
+       * @description Only return logs emitted by this replica (5-char short ID).
+       */
+      replica?: string | null;
+      /**
+       * Request Id
+       * @description Only return logs tagged with this inference request ID.
+       */
+      request_id?: string | null;
+      /**
+       * Component
+       * @description Only return logs from this component.
+       */
+      component?: string | null;
+      /**
+       * Search Pattern
+       * @description RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.
+       */
+      search_pattern?: string | null;
+      /**
+       * Includes
+       * @description Case-sensitive substrings that must all appear in the log message.
+       */
+      includes?: string[];
+      /**
+       * Excludes
+       * @description Case-sensitive substrings; lines containing any of these are dropped.
+       */
+      excludes?: string[];
+    };
+    GetModelsDeploymentsMetricsRequest: {
+      /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
+      mode?: components["schemas"]["ModelMetricMode"];
+      /**
+       * Start Epoch Millis
+       * @description Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.
+       */
+      end_epoch_millis?: number | null;
+      /**
+       * Metrics
+       * @description Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.
+       */
+      metrics?: string[];
+    };
+    GetModelsEnvironmentsLogsRequest: {
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds at which to stop fetching logs. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+      /** @description Sort order for logs */
+      direction?: components["schemas"]["SortOrder"] | null;
+      /**
+       * Limit
+       * @description Limit of logs to fetch in a single request
+       */
+      limit?: number | null;
+      /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
+      min_level?: components["schemas"]["LogLevel"] | null;
+      /**
+       * Replica
+       * @description Only return logs emitted by this replica (5-char short ID).
+       */
+      replica?: string | null;
+      /**
+       * Request Id
+       * @description Only return logs tagged with this inference request ID.
+       */
+      request_id?: string | null;
+      /**
+       * Component
+       * @description Only return logs from this component.
+       */
+      component?: string | null;
+      /**
+       * Search Pattern
+       * @description RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.
+       */
+      search_pattern?: string | null;
+      /**
+       * Includes
+       * @description Case-sensitive substrings that must all appear in the log message.
+       */
+      includes?: string[];
+      /**
+       * Excludes
+       * @description Case-sensitive substrings; lines containing any of these are dropped.
+       */
+      excludes?: string[];
+    };
+    GetModelsEnvironmentsMetricsRequest: {
+      /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
+      mode?: components["schemas"]["ModelMetricMode"];
+      /**
+       * Start Epoch Millis
+       * @description Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.
+       */
+      end_epoch_millis?: number | null;
+      /**
+       * Metrics
+       * @description Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.
+       */
+      metrics?: string[];
+    };
+    GetChainsAuditLogsRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.
+       */
+      limit?: number;
+      /** @description Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor. */
+      direction?: components["schemas"]["AuditLogSortDirection"];
+      /**
+       * Search
+       * @description Case-insensitive substring matched against resource names and IDs in the entry.
+       */
+      search?: string | null;
+      /**
+       * Event Type Groups
+       * @description When set, returns only entries whose event type falls in one of these groups.
+       */
+      event_type_groups?: components["schemas"]["AuditLogEventTypeGroup"][];
+      /**
+       * User Ids
+       * @description When set, returns only entries whose acting user is one of these IDs.
+       */
+      user_ids?: string[];
+      /**
+       * Deployment Ids
+       * @description When set, returns only entries referencing one of these model deployment IDs.
+       */
+      deployment_ids?: string[];
+      /**
+       * Chain Deployment Ids
+       * @description When set, returns only entries referencing one of these chain deployment IDs.
+       */
+      chain_deployment_ids?: string[];
+      /**
+       * Environment Names
+       * @description When set, returns only entries for one of these environments.
+       */
+      environment_names?: string[];
+      /**
+       * Sources
+       * @description When set, returns only entries issued from one of these surfaces.
+       */
+      sources?: components["schemas"]["AuditLogSource"][];
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds for the start of the window. Defaults to the beginning of the audit-log history.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds for the end of the window. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+    };
+    GetChainsDeploymentsChainletsLogsRequest: {
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds at which to stop fetching logs. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+      /** @description Sort order for logs */
+      direction?: components["schemas"]["SortOrder"] | null;
+      /**
+       * Limit
+       * @description Limit of logs to fetch in a single request
+       */
+      limit?: number | null;
+      /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
+      min_level?: components["schemas"]["LogLevel"] | null;
+      /**
+       * Replica
+       * @description Only return logs emitted by this replica (5-char short ID).
+       */
+      replica?: string | null;
+      /**
+       * Request Id
+       * @description Only return logs tagged with this inference request ID.
+       */
+      request_id?: string | null;
+      /**
+       * Component
+       * @description Only return logs from this component.
+       */
+      component?: string | null;
+      /**
+       * Search Pattern
+       * @description RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.
+       */
+      search_pattern?: string | null;
+      /**
+       * Includes
+       * @description Case-sensitive substrings that must all appear in the log message.
+       */
+      includes?: string[];
+      /**
+       * Excludes
+       * @description Case-sensitive substrings; lines containing any of these are dropped.
+       */
+      excludes?: string[];
+    };
+    GetTrainingProjectsJobsLogsRequest: {
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds at which to stop fetching logs. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+      /** @description Sort order for logs */
+      direction?: components["schemas"]["SortOrder"] | null;
+      /**
+       * Limit
+       * @description Limit of logs to fetch in a single request
+       */
+      limit?: number | null;
+      /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
+      min_level?: components["schemas"]["LogLevel"] | null;
+    };
+    GetTrainingProjectsJobsMetricsRequest: {
+      /**
+       * End Epoch Millis
+       * @description Epoch millis timestamp to end fetching metrics
+       */
+      end_epoch_millis?: number | null;
+      /**
+       * Start Epoch Millis
+       * @description Epoch millis timestamp to start fetching metrics.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * Step Seconds
+       * @description Resolution of the returned series, in seconds. When omitted, a step is derived from the time range so large windows return fewer points.
+       */
+      step_seconds?: number | null;
+    };
+    GetTrainingProjectsJobsCheckpointFilesRequest: {
+      /**
+       * Page Size
+       * @description Max files per page (default 1000).
+       */
+      page_size?: number;
+      /**
+       * Page Token
+       * @description Offset into the file list (default 0).
+       */
+      page_token?: number;
+    };
+    GetLoopsRunsRequest: {
+      /**
+       * Run Id
+       * @description Filter by run ID.
+       * @example k4q95w5
+       */
+      run_id?: string | null;
+      /**
+       * Base Model
+       * @description Filter runs by base model name.
+       * @example Qwen/Qwen3-8B
+       */
+      base_model?: string | null;
+    };
+    GetLoopsCheckpointsRequest: {
+      /**
+       * Run Id
+       * @description Filter by run ID. Returns all checkpoints saved by the run.
+       * @example k4q95w5
+       */
+      run_id?: string | null;
+      /**
+       * Base Model
+       * @description Filter by base model. Returns checkpoints across the caller's runs of this base model.
+       * @example Qwen/Qwen3-8B
+       */
+      base_model?: string | null;
+      /**
+       * Checkpoint Path
+       * @description bt:// URI of a Loops checkpoint. Form: bt://loops:<run_id>/(weights|sampler_weights)/<checkpoint_name>.
+       * @example bt://loops:k4q95w5/sampler_weights/step-100
+       */
+      checkpoint_path?: string | null;
+    };
+    GetLoopsDeploymentsLogsRequest: {
+      /**
+       * Start Epoch Millis
+       * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch milliseconds at which to stop fetching logs. Defaults to the current time.
+       */
+      end_epoch_millis?: number | null;
+      /** @description Sort order for logs */
+      direction?: components["schemas"]["SortOrder"] | null;
+      /**
+       * Limit
+       * @description Limit of logs to fetch in a single request
+       */
+      limit?: number | null;
+      /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
+      min_level?: components["schemas"]["LogLevel"] | null;
+    };
+    GetModelApisRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Added Only
+       * @description When true, restrict the result to Model APIs the workspace has added. Defaults to the full visible catalog.
+       */
+      added_only?: boolean;
+    };
+    GetBillingUsageSummaryRequest: {
+      /**
+       * Start Date
+       * Format: date-time
+       * @description Start date (ISO 8601, UTC). Earliest queryable: 2026-01-01.
+       */
+      start_date: string;
+      /**
+       * End Date
+       * Format: date-time
+       * @description End date in ISO 8601 format (UTC). Date range cannot exceed 31 days.
+       */
+      end_date: string;
+    };
+    GetUsersRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Email
+       * @description When set, returns only users with this exact email, if any.
+       */
+      email?: string | null;
+    };
   };
   responses: never;
   parameters: {
+    secret_name: string;
     team_id: string;
+    env_name: string;
     model_id: string;
     deployment_id: string;
     replica_id: string;
-    env_name: string;
     chain_id: string;
     chain_deployment_id: string;
+    chainlet_id: string;
     training_project_id: string;
     training_job_id: string;
     session_id: string;
+    run_id: string;
+    sampler_id: string;
+    checkpoint_id: string;
     api_key_prefix: string;
+    model_api_name: string;
     user_defined_listing_id: string;
     version_tag: string;
+    user_id: string;
+    endpoint_id: string;
+    group_id: string;
   };
   requestBodies: never;
   headers: never;
   pathItems: never;
 };
+export type DeploymentConfigOutputFormat = components["schemas"]["DeploymentConfigOutputFormat"];
 export type CheckpointSyncStatus = components["schemas"]["CheckpointSyncStatus"];
+export type V1AvailabilityModel = components["schemas"]["V1AvailabilityModel"];
 export type BasetenLatestCheckpointConfig = components["schemas"]["BasetenLatestCheckpointConfig"];
 export type BasetenNamedCheckpointConfig = components["schemas"]["BasetenNamedCheckpointConfig"];
 export type CreateTrainingJobCacheConfig = components["schemas"]["CreateTrainingJobCacheConfig"];
@@ -3902,6 +8405,7 @@ export type CreateTrainingJobS3Artifact = components["schemas"]["CreateTrainingJ
 export type DockerAuthType = components["schemas"]["DockerAuthType"];
 export type GitInfo = components["schemas"]["GitInfo"];
 export type LoadCheckpointConfig = components["schemas"]["LoadCheckpointConfig"];
+export type LoopsCheckpointConfig = components["schemas"]["LoopsCheckpointConfig"];
 export type TrussUserEnv = components["schemas"]["TrussUserEnv"];
 export type V1InteractiveSessionAuthProvider =
   components["schemas"]["V1InteractiveSessionAuthProvider"];
@@ -3909,24 +8413,136 @@ export type V1InteractiveSessionProvider = components["schemas"]["V1InteractiveS
 export type V1InteractiveSessionTrigger = components["schemas"]["V1InteractiveSessionTrigger"];
 export type CheckpointFile = components["schemas"]["CheckpointFile"];
 export type FileSummary = components["schemas"]["FileSummary"];
+export type TrainerCheckpointTarget = components["schemas"]["TrainerCheckpointTarget"];
+export type Name = components["schemas"]["Name"];
 export type ApiKeyCategory = components["schemas"]["APIKeyCategory"];
 export type ResourceKind = components["schemas"]["ResourceKind"];
+export type GatewayProvider = components["schemas"]["GatewayProvider"];
 export type Secret = components["schemas"]["Secret"];
 export type Secrets = components["schemas"]["Secrets"];
 export type UpsertSecretRequest = components["schemas"]["UpsertSecretRequest"];
+export type SecretTombstone = components["schemas"]["SecretTombstone"];
+export type EnvironmentGroupManageAccess = components["schemas"]["EnvironmentGroupManageAccess"];
+export type EnvironmentGroupUser = components["schemas"]["EnvironmentGroupUser"];
+export type EnvironmentGroup = components["schemas"]["EnvironmentGroup"];
+export type PaginationResponse = components["schemas"]["PaginationResponse"];
+export type EnvironmentGroups = components["schemas"]["EnvironmentGroups"];
+export type UpdateEnvironmentGroupManageAccess =
+  components["schemas"]["UpdateEnvironmentGroupManageAccess"];
+export type UpdateEnvironmentGroupRequest = components["schemas"]["UpdateEnvironmentGroupRequest"];
 export type Team = components["schemas"]["Team"];
 export type Teams = components["schemas"]["Teams"];
 export type InstanceType = components["schemas"]["InstanceType"];
 export type InstanceTypes = components["schemas"]["InstanceTypes"];
+export type LoopsUserConfig = components["schemas"]["LoopsUserConfig"];
+export type GetLoopsUserConfigResponse = components["schemas"]["GetLoopsUserConfigResponse"];
+export type PatchLoopsUserConfigRequest = components["schemas"]["PatchLoopsUserConfigRequest"];
+export type PatchLoopsUserConfigResponse = components["schemas"]["PatchLoopsUserConfigResponse"];
 export type InstanceTypeWithPrice = components["schemas"]["InstanceTypeWithPrice"];
 export type InstanceTypePrices = components["schemas"]["InstanceTypePrices"];
+export type DeploymentArchivePayload = components["schemas"]["DeploymentArchivePayload"];
+export type PrepareModelUploadRequest = components["schemas"]["PrepareModelUploadRequest"];
+export type AwsCredentials = components["schemas"]["AWSCredentials"];
+export type PrepareModelUploadResponse = components["schemas"]["PrepareModelUploadResponse"];
+export type AuditLogActorType = components["schemas"]["AuditLogActorType"];
+export type AuditLogActor = components["schemas"]["AuditLogActor"];
+export type AuditLogApiKeyType = components["schemas"]["AuditLogApiKeyType"];
+export type AuditLogEntry = components["schemas"]["AuditLogEntry"];
+export type AuditLogEventApiKeyCreated = components["schemas"]["AuditLogEventApiKeyCreated"];
+export type AuditLogEventApiKeyDeleted = components["schemas"]["AuditLogEventApiKeyDeleted"];
+export type AuditLogEventAutoscalingSettings =
+  components["schemas"]["AuditLogEventAutoscalingSettings"];
+export type AuditLogEventChainDeleted = components["schemas"]["AuditLogEventChainDeleted"];
+export type AuditLogEventChainDeployed = components["schemas"]["AuditLogEventChainDeployed"];
+export type AuditLogEventChainDeploymentActivated =
+  components["schemas"]["AuditLogEventChainDeploymentActivated"];
+export type AuditLogEventChainDeploymentDeactivated =
+  components["schemas"]["AuditLogEventChainDeploymentDeactivated"];
+export type AuditLogEventChainDeploymentDeleted =
+  components["schemas"]["AuditLogEventChainDeploymentDeleted"];
+export type AuditLogEventChainDeploymentPromoted =
+  components["schemas"]["AuditLogEventChainDeploymentPromoted"];
+export type AuditLogEventChainEnvironmentCreated =
+  components["schemas"]["AuditLogEventChainEnvironmentCreated"];
+export type AuditLogEventChainEnvironmentUpdated =
+  components["schemas"]["AuditLogEventChainEnvironmentUpdated"];
+export type AuditLogEventChainletAutoscalingSettingsChanged =
+  components["schemas"]["AuditLogEventChainletAutoscalingSettingsChanged"];
+export type AuditLogEventChainletInstanceTypeChanged =
+  components["schemas"]["AuditLogEventChainletInstanceTypeChanged"];
+export type AuditLogEventDirectoryGroupRoleUpdated =
+  components["schemas"]["AuditLogEventDirectoryGroupRoleUpdated"];
+export type AuditLogEventEnvironmentCreated =
+  components["schemas"]["AuditLogEventEnvironmentCreated"];
+export type AuditLogEventEnvironmentDeleted =
+  components["schemas"]["AuditLogEventEnvironmentDeleted"];
+export type AuditLogEventEnvironmentUpdated =
+  components["schemas"]["AuditLogEventEnvironmentUpdated"];
+export type AuditLogEventGatewayEndpointCreated =
+  components["schemas"]["AuditLogEventGatewayEndpointCreated"];
+export type AuditLogEventGatewayEndpointDeleted =
+  components["schemas"]["AuditLogEventGatewayEndpointDeleted"];
+export type AuditLogEventGatewayEndpointUpdated =
+  components["schemas"]["AuditLogEventGatewayEndpointUpdated"];
+export type AuditLogEventModelDeleted = components["schemas"]["AuditLogEventModelDeleted"];
+export type AuditLogEventModelDeployed = components["schemas"]["AuditLogEventModelDeployed"];
+export type AuditLogEventModelDeploymentActivated =
+  components["schemas"]["AuditLogEventModelDeploymentActivated"];
+export type AuditLogEventModelDeploymentAutoscalingSettingsChanged =
+  components["schemas"]["AuditLogEventModelDeploymentAutoscalingSettingsChanged"];
+export type AuditLogEventModelDeploymentDeactivated =
+  components["schemas"]["AuditLogEventModelDeploymentDeactivated"];
+export type AuditLogEventModelDeploymentDeleted =
+  components["schemas"]["AuditLogEventModelDeploymentDeleted"];
+export type AuditLogEventModelDeploymentInstanceTypeChanged =
+  components["schemas"]["AuditLogEventModelDeploymentInstanceTypeChanged"];
+export type AuditLogEventModelDeploymentPromoted =
+  components["schemas"]["AuditLogEventModelDeploymentPromoted"];
+export type AuditLogEventModelDeploymentRetried =
+  components["schemas"]["AuditLogEventModelDeploymentRetried"];
+export type AuditLogEventModelPromotionControlAction =
+  components["schemas"]["AuditLogEventModelPromotionControlAction"];
+export type AuditLogEventReplicaTerminated =
+  components["schemas"]["AuditLogEventReplicaTerminated"];
+export type AuditLogEventRequireGroupBasedAdminsEnabled =
+  components["schemas"]["AuditLogEventRequireGroupBasedAdminsEnabled"];
+export type AuditLogEventSecretDeleted = components["schemas"]["AuditLogEventSecretDeleted"];
+export type AuditLogEventSecretUpdated = components["schemas"]["AuditLogEventSecretUpdated"];
+export type AuditLogEventSshCertificateSigned =
+  components["schemas"]["AuditLogEventSshCertificateSigned"];
+export type AuditLogEventType = components["schemas"]["AuditLogEventType"];
+export type AuditLogEventUserInvited = components["schemas"]["AuditLogEventUserInvited"];
+export type AuditLogEventUserJoinedOrganization =
+  components["schemas"]["AuditLogEventUserJoinedOrganization"];
+export type AuditLogEventUserRemoved = components["schemas"]["AuditLogEventUserRemoved"];
+export type AuditLogEventUserRoleUpdated = components["schemas"]["AuditLogEventUserRoleUpdated"];
+export type AuditLogEventUserTeamRoleUpdated =
+  components["schemas"]["AuditLogEventUserTeamRoleUpdated"];
+export type AuditLogEventWebhookSigningSecretCreated =
+  components["schemas"]["AuditLogEventWebhookSigningSecretCreated"];
+export type AuditLogEventWebhookSigningSecretDeleted =
+  components["schemas"]["AuditLogEventWebhookSigningSecretDeleted"];
+export type AuditLogEventWebhookSigningSecretRotated =
+  components["schemas"]["AuditLogEventWebhookSigningSecretRotated"];
+export type AuditLogPromotionControlAction =
+  components["schemas"]["AuditLogPromotionControlAction"];
+export type AuditLogSource = components["schemas"]["AuditLogSource"];
+export type ListAuditLogsResponse = components["schemas"]["ListAuditLogsResponse"];
+export type AuditLogEventTypeGroup = components["schemas"]["AuditLogEventTypeGroup"];
+export type AuditLogSortDirection = components["schemas"]["AuditLogSortDirection"];
 export type Model = components["schemas"]["Model"];
 export type Models = components["schemas"]["Models"];
-export type ModelTombstone = components["schemas"]["ModelTombstone"];
+export type LibraryListingSource = components["schemas"]["LibraryListingSource"];
+export type ModelArchiveSource = components["schemas"]["ModelArchiveSource"];
+export type CreateModelRequest = components["schemas"]["CreateModelRequest"];
 export type AutoscalingSettings = components["schemas"]["AutoscalingSettings"];
 export type DeploymentStatus = components["schemas"]["DeploymentStatus"];
 export type Deployment = components["schemas"]["Deployment"];
+export type CreatedModelDeployment = components["schemas"]["CreatedModelDeployment"];
+export type ModelTombstone = components["schemas"]["ModelTombstone"];
 export type Deployments = components["schemas"]["Deployments"];
+export type DeploymentArchiveSource = components["schemas"]["DeploymentArchiveSource"];
+export type CreateModelDeploymentRequest = components["schemas"]["CreateModelDeploymentRequest"];
 export type DeploymentTombstone = components["schemas"]["DeploymentTombstone"];
 export type UpdateAutoscalingSettings = components["schemas"]["UpdateAutoscalingSettings"];
 export type UpdateAutoscalingSettingsStatus =
@@ -3937,11 +8553,38 @@ export type PromoteRequest = components["schemas"]["PromoteRequest"];
 export type ActivateResponse = components["schemas"]["ActivateResponse"];
 export type DeactivateResponse = components["schemas"]["DeactivateResponse"];
 export type RetryDeploymentResponse = components["schemas"]["RetryDeploymentResponse"];
-export type SortOrder = components["schemas"]["SortOrder"];
-export type GetDeploymentLogsRequest = components["schemas"]["GetDeploymentLogsRequest"];
+export type DownloadDeploymentResponse = components["schemas"]["DownloadDeploymentResponse"];
+export type DeploymentConfigResponse = components["schemas"]["DeploymentConfigResponse"];
+export type LogLevel = components["schemas"]["LogLevel"];
 export type Log = components["schemas"]["Log"];
 export type GetLogsResponse = components["schemas"]["GetLogsResponse"];
+export type SortOrder = components["schemas"]["SortOrder"];
+export type GetDeploymentLogsRequest = components["schemas"]["GetDeploymentLogsRequest"];
+export type DeploymentPatchAction = components["schemas"]["DeploymentPatchAction"];
+export type DeploymentPatchOpConfig = components["schemas"]["DeploymentPatchOpConfig"];
+export type DeploymentPatchOpEnvVar = components["schemas"]["DeploymentPatchOpEnvVar"];
+export type DeploymentPatchOpExternalData = components["schemas"]["DeploymentPatchOpExternalData"];
+export type DeploymentPatchOpModelCode = components["schemas"]["DeploymentPatchOpModelCode"];
+export type DeploymentPatchOpPackage = components["schemas"]["DeploymentPatchOpPackage"];
+export type DeploymentPatchOpPythonRequirement =
+  components["schemas"]["DeploymentPatchOpPythonRequirement"];
+export type DeploymentPatchPoint = components["schemas"]["DeploymentPatchPoint"];
+export type CreateDeploymentPatchRequest = components["schemas"]["CreateDeploymentPatchRequest"];
+export type DeploymentPatchPointWithHash = components["schemas"]["DeploymentPatchPointWithHash"];
+export type CreateDeploymentPatchResponse = components["schemas"]["CreateDeploymentPatchResponse"];
+export type GetDeploymentPatchesStateResponse =
+  components["schemas"]["GetDeploymentPatchesStateResponse"];
+export type SyncDeploymentPatchesRequest = components["schemas"]["SyncDeploymentPatchesRequest"];
+export type SyncDeploymentPatchesResponse = components["schemas"]["SyncDeploymentPatchesResponse"];
+export type ModelMetricDescriptor = components["schemas"]["ModelMetricDescriptor"];
+export type ModelMetricKind = components["schemas"]["ModelMetricKind"];
+export type ModelMetricMode = components["schemas"]["ModelMetricMode"];
+export type ModelMetricUnitHint = components["schemas"]["ModelMetricUnitHint"];
+export type ModelMetricValueSet = components["schemas"]["ModelMetricValueSet"];
+export type GetModelMetricsResponse = components["schemas"]["GetModelMetricsResponse"];
 export type TerminateReplicaResponse = components["schemas"]["TerminateReplicaResponse"];
+export type SignSshCertificateRequest = components["schemas"]["SignSSHCertificateRequest"];
+export type SignSshCertificateResponse = components["schemas"]["SignSSHCertificateResponse"];
 export type Environment = components["schemas"]["Environment"];
 export type InProgressPromotionStatus = components["schemas"]["InProgressPromotionStatus"];
 export type InProgressPromotion = components["schemas"]["InProgressPromotion"];
@@ -4013,15 +8656,17 @@ export type CreateTrainingJobRequest = components["schemas"]["CreateTrainingJobR
 export type CreateTrainingJobResponse = components["schemas"]["CreateTrainingJobResponse"];
 export type TrainingJobTombstone = components["schemas"]["TrainingJobTombstone"];
 export type GetTrainingJobResponse = components["schemas"]["GetTrainingJobResponse"];
+export type UpdateTrainingJobRequest = components["schemas"]["UpdateTrainingJobRequest"];
+export type UpdateTrainingJobResponse = components["schemas"]["UpdateTrainingJobResponse"];
 export type DownloadTrainingJobResponse = components["schemas"]["DownloadTrainingJobResponse"];
 export type RecreateTrainingJobResponse = components["schemas"]["RecreateTrainingJobResponse"];
 export type GetTrainingJobLogsRequest = components["schemas"]["GetTrainingJobLogsRequest"];
-export type GetTrainingJobMetricsRequest = components["schemas"]["GetTrainingJobMetricsRequest"];
 export type StorageMetrics = components["schemas"]["StorageMetrics"];
 export type TrainingJobMetric = components["schemas"]["TrainingJobMetric"];
 export type TrainingJobMetrics = components["schemas"]["TrainingJobMetrics"];
 export type TrainingJobNodeMetrics = components["schemas"]["TrainingJobNodeMetrics"];
 export type GetTrainingJobMetricsResponse = components["schemas"]["GetTrainingJobMetricsResponse"];
+export type GetTrainingJobMetricsRequest = components["schemas"]["GetTrainingJobMetricsRequest"];
 export type StopTrainingJobRequest = components["schemas"]["StopTrainingJobRequest"];
 export type StopTrainingJobResponse = components["schemas"]["StopTrainingJobResponse"];
 export type TrainingJobCheckpoint = components["schemas"]["TrainingJobCheckpoint"];
@@ -4042,20 +8687,76 @@ export type GetTrainingProjectResponse = components["schemas"]["GetTrainingProje
 export type OrderBy = components["schemas"]["OrderBy"];
 export type SearchTrainingJobsRequest = components["schemas"]["SearchTrainingJobsRequest"];
 export type SearchTrainingJobsResponse = components["schemas"]["SearchTrainingJobsResponse"];
-export type AwsCredentials = components["schemas"]["AWSCredentials"];
+export type SupportedModel = components["schemas"]["SupportedModel"];
+export type GetLoopsCapabilitiesResponse = components["schemas"]["GetLoopsCapabilitiesResponse"];
+export type LoopsSession = components["schemas"]["LoopsSession"];
+export type CreateLoopsSessionResponse = components["schemas"]["CreateLoopsSessionResponse"];
+export type GetLoopsSessionResponse = components["schemas"]["GetLoopsSessionResponse"];
+export type LoopsRun = components["schemas"]["LoopsRun"];
+export type LoopsSamplerStatus = components["schemas"]["LoopsSamplerStatus"];
+export type LoopsSampler = components["schemas"]["LoopsSampler"];
+export type ListLoopsRunsResponse = components["schemas"]["ListLoopsRunsResponse"];
+export type CreateLoopsRunRequest = components["schemas"]["CreateLoopsRunRequest"];
+export type CreateLoopsRunResponse = components["schemas"]["CreateLoopsRunResponse"];
+export type GetLoopsRunResponse = components["schemas"]["GetLoopsRunResponse"];
+export type ListLoopsSamplersResponse = components["schemas"]["ListLoopsSamplersResponse"];
+export type CreateLoopsSamplerRequest = components["schemas"]["CreateLoopsSamplerRequest"];
+export type CreateLoopsSamplerResponse = components["schemas"]["CreateLoopsSamplerResponse"];
+export type GetLoopsSamplerResponse = components["schemas"]["GetLoopsSamplerResponse"];
+export type LoopsCheckpoint = components["schemas"]["LoopsCheckpoint"];
+export type ListLoopsCheckpointsResponse = components["schemas"]["ListLoopsCheckpointsResponse"];
+export type ValidateLoopsCheckpointRequest =
+  components["schemas"]["ValidateLoopsCheckpointRequest"];
+export type ValidateLoopsCheckpointResponse =
+  components["schemas"]["ValidateLoopsCheckpointResponse"];
+export type LoopsCheckpointFilesResponse = components["schemas"]["LoopsCheckpointFilesResponse"];
+export type LoopsDeploymentStatus = components["schemas"]["LoopsDeploymentStatus"];
+export type LoopsDeployment = components["schemas"]["LoopsDeployment"];
+export type ListLoopsDeploymentsResponse = components["schemas"]["ListLoopsDeploymentsResponse"];
+export type DeactivateLoopsDeploymentResponse =
+  components["schemas"]["DeactivateLoopsDeploymentResponse"];
+export type GetLoopsDeploymentResponse = components["schemas"]["GetLoopsDeploymentResponse"];
+export type GetLoopsDeploymentMetricsRequest =
+  components["schemas"]["GetLoopsDeploymentMetricsRequest"];
+export type InferenceVolumeByStatusDatapoint =
+  components["schemas"]["InferenceVolumeByStatusDatapoint"];
+export type LoopsDeploymentMetrics = components["schemas"]["LoopsDeploymentMetrics"];
+export type LoopsDeploymentNodeMetrics = components["schemas"]["LoopsDeploymentNodeMetrics"];
+export type GetLoopsDeploymentMetricsResponse =
+  components["schemas"]["GetLoopsDeploymentMetricsResponse"];
+export type TeamTrainingGpuCapacityItem = components["schemas"]["TeamTrainingGpuCapacityItem"];
+export type TrainingGpuCapacityItem = components["schemas"]["TrainingGpuCapacityItem"];
+export type GetTrainingGpuCapacityResponse =
+  components["schemas"]["GetTrainingGpuCapacityResponse"];
+export type PatchTeamTrainingGpuCapacityRequest =
+  components["schemas"]["PatchTeamTrainingGpuCapacityRequest"];
+export type PatchTeamTrainingGpuCapacityResponse =
+  components["schemas"]["PatchTeamTrainingGpuCapacityResponse"];
+export type ActiveJobAtSubmit = components["schemas"]["ActiveJobAtSubmit"];
+export type CapacityAtSubmit = components["schemas"]["CapacityAtSubmit"];
+export type PendingJobAheadAtSubmit = components["schemas"]["PendingJobAheadAtSubmit"];
+export type QueueEvent = components["schemas"]["QueueEvent"];
+export type GetTrainingJobQueueContextResponse =
+  components["schemas"]["GetTrainingJobQueueContextResponse"];
 export type GetBlobCredentialsResponse = components["schemas"]["GetBlobCredentialsResponse"];
 export type CreateApiKeyRequest = components["schemas"]["CreateAPIKeyRequest"];
 export type ApiKey = components["schemas"]["APIKey"];
 export type ApiKeyInfo = components["schemas"]["APIKeyInfo"];
+export type ApiKeyOwner = components["schemas"]["APIKeyOwner"];
 export type ApiKeys = components["schemas"]["APIKeys"];
 export type ApiKeyTombstone = components["schemas"]["APIKeyTombstone"];
 export type ModelWeightSnapshot = components["schemas"]["ModelWeightSnapshot"];
 export type CreateModelWeightSnapshotRequest =
   components["schemas"]["CreateModelWeightSnapshotRequest"];
+export type LimitType = components["schemas"]["LimitType"];
+export type ModelApiOrgDetails = components["schemas"]["ModelAPIOrgDetails"];
+export type ModelApi = components["schemas"]["ModelAPI"];
+export type RateLimitUnit = components["schemas"]["RateLimitUnit"];
+export type RateLimit = components["schemas"]["RateLimit"];
+export type ModelApIsResponse = components["schemas"]["ModelAPIsResponse"];
 export type CreateLlmModelRequest = components["schemas"]["CreateLLMModelRequest"];
-export type LlmModel = components["schemas"]["LLMModel"];
+export type LlmModelHandle = components["schemas"]["LLMModelHandle"];
 export type CreateLlmModelVersionRequest = components["schemas"]["CreateLLMModelVersionRequest"];
-export type LlmModelVersion = components["schemas"]["LLMModelVersion"];
 export type LibraryListing = components["schemas"]["LibraryListing"];
 export type LibraryListings = components["schemas"]["LibraryListings"];
 export type CreateLibraryListingRequest = components["schemas"]["CreateLibraryListingRequest"];
@@ -4081,3 +8782,65 @@ export type ModelApisUsage = components["schemas"]["ModelApisUsage"];
 export type TrainingItem = components["schemas"]["TrainingItem"];
 export type TrainingUsage = components["schemas"]["TrainingUsage"];
 export type UsageSummary = components["schemas"]["UsageSummary"];
+export type UserInfo = components["schemas"]["UserInfo"];
+export type UsersResponse = components["schemas"]["UsersResponse"];
+export type EndpointTarget = components["schemas"]["EndpointTarget"];
+export type Endpoint = components["schemas"]["Endpoint"];
+export type VertexTargetConfig = components["schemas"]["VertexTargetConfig"];
+export type EndpointsResponse = components["schemas"]["EndpointsResponse"];
+export type EndpointTargetRequest = components["schemas"]["EndpointTargetRequest"];
+export type CreateEndpointRequest = components["schemas"]["CreateEndpointRequest"];
+export type EndpointTombstone = components["schemas"]["EndpointTombstone"];
+export type UpdateEndpointRequest = components["schemas"]["UpdateEndpointRequest"];
+export type EffectiveModelConfig = components["schemas"]["EffectiveModelConfig"];
+export type EffectiveRateLimit = components["schemas"]["EffectiveRateLimit"];
+export type EffectiveUsageLimit = components["schemas"]["EffectiveUsageLimit"];
+export type GroupHierarchy = components["schemas"]["GroupHierarchy"];
+export type GroupMetadata = components["schemas"]["GroupMetadata"];
+export type Group = components["schemas"]["Group"];
+export type LimitEnforcement = components["schemas"]["LimitEnforcement"];
+export type ModelConfig = components["schemas"]["ModelConfig"];
+export type UsageLimitUnit = components["schemas"]["UsageLimitUnit"];
+export type UsageLimit = components["schemas"]["UsageLimit"];
+export type GroupsResponse = components["schemas"]["GroupsResponse"];
+export type CreateGroupRequest = components["schemas"]["CreateGroupRequest"];
+export type UpdateGroupMetadata = components["schemas"]["UpdateGroupMetadata"];
+export type UpdateGroupRequest = components["schemas"]["UpdateGroupRequest"];
+export type GatewayKeyInfo = components["schemas"]["GatewayKeyInfo"];
+export type KeysForGroupResponse = components["schemas"]["KeysForGroupResponse"];
+export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyForGroupRequest"];
+export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
+export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
+export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
+export type GetTeamsRequest = components["schemas"]["GetTeamsRequest"];
+export type GetAuditLogsRequest = components["schemas"]["GetAuditLogsRequest"];
+export type GetModelsRequest = components["schemas"]["GetModelsRequest"];
+export type GetTeamsModelsRequest = components["schemas"]["GetTeamsModelsRequest"];
+export type GetModelsAuditLogsRequest = components["schemas"]["GetModelsAuditLogsRequest"];
+export type GetModelsDeploymentsRequest = components["schemas"]["GetModelsDeploymentsRequest"];
+export type GetModelsDeploymentsConfigRequest =
+  components["schemas"]["GetModelsDeploymentsConfigRequest"];
+export type GetModelsDeploymentsLogsRequest =
+  components["schemas"]["GetModelsDeploymentsLogsRequest"];
+export type GetModelsDeploymentsMetricsRequest =
+  components["schemas"]["GetModelsDeploymentsMetricsRequest"];
+export type GetModelsEnvironmentsLogsRequest =
+  components["schemas"]["GetModelsEnvironmentsLogsRequest"];
+export type GetModelsEnvironmentsMetricsRequest =
+  components["schemas"]["GetModelsEnvironmentsMetricsRequest"];
+export type GetChainsAuditLogsRequest = components["schemas"]["GetChainsAuditLogsRequest"];
+export type GetChainsDeploymentsChainletsLogsRequest =
+  components["schemas"]["GetChainsDeploymentsChainletsLogsRequest"];
+export type GetTrainingProjectsJobsLogsRequest =
+  components["schemas"]["GetTrainingProjectsJobsLogsRequest"];
+export type GetTrainingProjectsJobsMetricsRequest =
+  components["schemas"]["GetTrainingProjectsJobsMetricsRequest"];
+export type GetTrainingProjectsJobsCheckpointFilesRequest =
+  components["schemas"]["GetTrainingProjectsJobsCheckpointFilesRequest"];
+export type GetLoopsRunsRequest = components["schemas"]["GetLoopsRunsRequest"];
+export type GetLoopsCheckpointsRequest = components["schemas"]["GetLoopsCheckpointsRequest"];
+export type GetLoopsDeploymentsLogsRequest =
+  components["schemas"]["GetLoopsDeploymentsLogsRequest"];
+export type GetModelApisRequest = components["schemas"]["GetModelApisRequest"];
+export type GetBillingUsageSummaryRequest = components["schemas"]["GetBillingUsageSummaryRequest"];
+export type GetUsersRequest = components["schemas"]["GetUsersRequest"];

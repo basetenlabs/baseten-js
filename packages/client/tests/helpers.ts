@@ -1,6 +1,7 @@
 export interface CapturedRequest {
   url: string;
   path: string;
+  search: string;
   method: string;
   headers: Record<string, string>;
   body: unknown;
@@ -34,7 +35,14 @@ export function fakeFetch(
       reqBody = JSON.parse(init.body as string);
     }
     const parsedUrl = new URL(url);
-    captured = { url, path: parsedUrl.pathname, method, headers, body: reqBody };
+    captured = {
+      url,
+      path: parsedUrl.pathname,
+      search: parsedUrl.search,
+      method,
+      headers,
+      body: reqBody,
+    };
 
     const responseBody = body !== null ? JSON.stringify(body) : "";
     const responseHeaders: Record<string, string> = {};

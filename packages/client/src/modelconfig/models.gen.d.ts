@@ -335,7 +335,12 @@ export interface Runtime {
    */
   is_websocket_endpoint?: boolean | null;
   health_checks?: HealthChecks;
+  oidc?: OIDC;
   remote_ssh?: RemoteSSH;
+  /**
+   * Egress network restrictions for the model version. When unset, all egress is allowed (default).
+   */
+  egress_restrictions?: EgressRestrictions | null;
   /**
    * By default, truss servers are built from the same release as the CLI used to push. This field allows specifying a pinned/specific version instead.
    */
@@ -376,6 +381,16 @@ export interface HealthChecks {
   [k: string]: unknown;
 }
 /**
+ * Configuration for runtime-mounting of an OIDC bearer token.
+ */
+export interface OIDC {
+  /**
+   * If true, mounts an OIDC bearer token for your model to access at runtime.
+   */
+  enabled?: boolean | null;
+  [k: string]: unknown;
+}
+/**
  * Configuration for SSH access to running model instances.
  */
 export interface RemoteSSH {
@@ -383,6 +398,25 @@ export interface RemoteSSH {
    * If true, enables SSH access to running model instances.
    */
   enabled?: boolean;
+  [k: string]: unknown;
+}
+/**
+ * Egress network restrictions for a model version.
+ *
+ * Setting both ``ip_allow_list`` and ``fqdn_allow_list`` to ``null`` or
+ * ``[]`` blocks all outbound network egress. Omitting the
+ * ``egress_restrictions`` block (or setting it to ``null``) preserves the
+ * default behavior of allowing all egress.
+ */
+export interface EgressRestrictions {
+  /**
+   * Allowed outbound IPv4 addresses or CIDR ranges. Use null or [] alongside an equally restrictive fqdn_allow_list to block all egress.
+   */
+  ip_allow_list?: string[] | null;
+  /**
+   * Allowed outbound fully-qualified domain names. Supports wildcards: '*' may appear anywhere in a label.
+   */
+  fqdn_allow_list?: string[] | null;
   [k: string]: unknown;
 }
 /**
@@ -456,6 +490,7 @@ export interface ModelRepo {
  * - gs:// -> Google Cloud Storage (e.g., "gs://bucket/path")
  * - azure:// -> Azure Blob Storage (e.g., "azure://account/container/path")
  * - r2:// -> CloudFlare R2 Storage (e.g., "r2://account_id.bucket/path")
+ * - cw:// -> CoreWeave AI Object Storage (e.g., "cw://bucket/path")
  * - https:// -> Direct URL download (e.g., "https://example.com/model.bin")
  *
  * For HuggingFace sources, you can specify a revision (branch, tag, or commit SHA)
@@ -471,7 +506,7 @@ export interface ModelRepo {
  */
 export interface WeightsSource {
   /**
-   * URI with scheme prefix. Use hf://, s3://, gs://, azure://, r2://, or https://. For HuggingFace, use @revision suffix (e.g., hf://owner/repo@main).
+   * URI with scheme prefix. Use hf://, s3://, gs://, azure://, r2://, cw://, or https://. For HuggingFace, use @revision suffix (e.g., hf://owner/repo@main).
    */
   source: string;
   /**
@@ -680,9 +715,9 @@ export interface CheckpointList {
   download_folder?: string;
   artifact_references?: TrainingArtifactReference[];
   /**
-   * Trainer checkpoint IDs to deploy. Mutually exclusive with artifact_references.
+   * Loops checkpoint IDs to deploy. Mutually exclusive with artifact_references.
    */
-  trainer_checkpoint_ids?: string[];
+  loops_checkpoint_ids?: string[];
   [k: string]: unknown;
 }
 export interface TrainingArtifactReference {

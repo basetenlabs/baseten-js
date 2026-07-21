@@ -13,35 +13,20 @@ export type components = {
        * @description HTTPS URL to receive the prediction result via webhook. Both HTTP/2 and HTTP/1.1 are supported. If omitted, the model must save outputs so they can be accessed later.
        */
       webhook_endpoint?: string;
-      /**
-       * @description Priority of the request. Lower values are higher priority.
-       * @default 0
-       */
-      priority: number;
-      /**
-       * @description Maximum time in seconds a request will spend in the queue before expiring. Must be between 10 seconds and 72 hours.
-       * @default 600
-       */
-      max_time_in_queue_seconds: number;
+      /** @description Priority of the request. Lower values are higher priority. */
+      priority?: number;
+      /** @description Maximum time in seconds a request will spend in the queue before expiring. Must be between 10 seconds and 72 hours. */
+      max_time_in_queue_seconds?: number;
       inference_retry_config?: components["schemas"]["InferenceRetryConfig"];
     };
     /** @description Exponential backoff parameters for retrying predict requests. */
     InferenceRetryConfig: {
-      /**
-       * @description Number of predict request attempts.
-       * @default 3
-       */
-      max_attempts: number;
-      /**
-       * @description Minimum time between retries in milliseconds.
-       * @default 1000
-       */
-      initial_delay_ms: number;
-      /**
-       * @description Maximum time between retries in milliseconds.
-       * @default 5000
-       */
-      max_delay_ms: number;
+      /** @description Number of predict request attempts. */
+      max_attempts?: number;
+      /** @description Minimum time between retries in milliseconds. */
+      initial_delay_ms?: number;
+      /** @description Maximum time between retries in milliseconds. */
+      max_delay_ms?: number;
     };
     AsyncRequestStatusResponse: {
       /** @description The ID of the async request. */

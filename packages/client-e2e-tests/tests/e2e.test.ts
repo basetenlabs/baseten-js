@@ -70,7 +70,7 @@ describe.runIf(ensureE2EEnv())("e2e", () => {
 
   it("runs inference", { timeout: 30_000 }, async () => {
     const result = await inferenceClient().api.predictProduction({
-      body: { prompt: "hello" },
+      request: { prompt: "hello" },
     });
     expect(result).toBeDefined();
   });
@@ -82,7 +82,7 @@ describe.runIf(ensureE2EEnv())("e2e", () => {
 
     try {
       const created = await client.api.postApiKeys({
-        body: { name: keyName, type: "PERSONAL", model_ids: null },
+        request: { name: keyName, type: "PERSONAL", model_ids: null },
       });
       expect(created.api_key).toBeTruthy();
       createdPrefix = created.api_key.split(".")[0]!;
