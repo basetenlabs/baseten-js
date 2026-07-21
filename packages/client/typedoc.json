@@ -1,0 +1,11 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/managementapi/index.ts",
+    "src/inferenceapi/index.ts",
+    "src/modelconfig/index.ts"
+  ],
+  "out": "_site/client",
+  "includeVersion": true
+}

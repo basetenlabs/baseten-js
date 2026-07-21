@@ -1,0 +1,51 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment, cancelling in-progress runs.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate docs
+        run: pnpm --filter @basetenlabs/client run generate-docs
+
+      # Root landing page redirects to the client package docs; future packages
+      # get their own subdirectory alongside client/.
+      - name: Root redirect to client docs
+        run: |
+          cat > packages/client/_site/index.html <<'EOF'
+          <!doctype html><meta http-equiv="refresh" content="0; url=client/">
+          <a href="client/">Baseten JS SDK docs</a>
+          EOF
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/client/_site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

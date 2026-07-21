@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@basetenlabs/client.svg)](https://www.npmjs.com/package/@basetenlabs/client)
 
-JS/TS SDK for Baseten.
+JS/TS SDK for Baseten. See the [API documentation](https://basetenlabs.github.io/baseten-js/) and [usage](#usage) below.
 
 ⚠️ SDK may change in incompatible ways between releases until the SDK reaches 1.0.
 
