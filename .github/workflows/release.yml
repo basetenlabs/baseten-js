@@ -26,8 +26,15 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      # Publishes every public workspace package whose version is not yet on
-      # npm; private packages (e2e tests) are skipped. Uses npm trusted
-      # publishing (OIDC) so no token is needed.
+      # npm trusted publishing (tokenless OIDC) is implemented in the npm CLI,
+      # not pnpm, so publish with npm. It landed in npm 11.5.1, newer than the
+      # npm bundled with Node 22, so pin a known-good major (npm versions are
+      # independent of the Node major).
+      - name: Install npm with trusted publishing support
+        run: npm install -g npm@^11.5.1
+
+      # Fails if the version is already on npm, so bump the version before
+      # cutting a release. The private e2e-tests package is not published here.
       - name: Publish
-        run: pnpm -r publish --access public --no-git-checks --provenance
+        working-directory: packages/client
+        run: npm publish --provenance --access public
