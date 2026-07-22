@@ -38,6 +38,7 @@
     "generate-api": "tsx scripts/apigen/main.ts",
     "sync-version": "tsx scripts/sync-version.ts",
     "build": "pnpm run sync-version && tsdown",
+    "generate-docs": "typedoc",
     "lint": "oxlint --ignore-pattern dist && oxfmt --check . \"!dist/**\" \"!scripts/apigen/specs/**\" && tsc --noEmit",
     "format": "oxfmt --write . \"!dist/**\" \"!scripts/apigen/specs/**\"",
     "test": "vitest run"
@@ -46,7 +47,8 @@
     "@types/js-yaml": "^4.0.9",
     "js-yaml": "^4.1.1",
     "json-schema-to-typescript": "^15.0.4",
-    "openapi-typescript": "^7.13.0"
+    "openapi-typescript": "^7.13.0",
+    "typedoc": "^0.28.20"
   },
   "engines": {
     "node": ">=22"
