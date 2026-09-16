@@ -21,7 +21,8 @@ export type DockerAuthType =
   | "AWS_IAM"
   | "AWS_OIDC"
   | "GCP_OIDC"
-  | "REGISTRY_SECRET";
+  | "REGISTRY_SECRET"
+  | "AWS_ASSUME_ROLE";
 /**
  * To determine the image builder path for trusses built from alternative server backends.
  * This enum is also used to gate development deployments to BasetenRemote
@@ -39,11 +40,15 @@ export type ModelCache = ModelRepo[];
 /**
  * Authentication method for downloading weights from the source.
  */
-export type WeightsAuthMethod = "CUSTOM_SECRET" | "AWS_OIDC" | "GCP_OIDC";
+export type WeightsAuthMethod = "CUSTOM_SECRET" | "AWS_OIDC" | "GCP_OIDC" | "AWS_ASSUME_ROLE";
 /**
  * Configure Baseten Delivery Network (BDN) for model weight delivery with multi-tier caching.
  */
 export type Weights = WeightsSource[];
+/**
+ * An operation a deployment may perform in a BDN namespace.
+ */
+export type BDNAccessGrant = "pull" | "push" | "tag" | "inspect" | "delete";
 export type TRTLLMConfiguration = TRTLLMConfigurationV1 | TRTLLMConfigurationV2;
 export type ModelTRTLLMModel =
   | "encoder"
@@ -72,6 +77,7 @@ export type ModelTRTLLMQuantizationType =
   | "smooth_quant"
   | "fp8"
   | "fp8_kv"
+  | "fp8_mlp_only"
   | "fp4"
   | "fp4_kv"
   | "fp4_mlp_only";
@@ -168,6 +174,7 @@ export interface ModelConfig {
   docker_server?: DockerServer | null;
   model_cache?: ModelCache;
   weights?: Weights;
+  bdn?: BDNConfig;
   /**
    * TensorRT-LLM configuration for optimized LLM inference.
    */
@@ -273,6 +280,14 @@ export interface DockerAuthSettings {
    * GCP workload identity provider for OIDC authentication.
    */
   gcp_oidc_workload_id_provider?: string | null;
+  /**
+   * AWS IAM role ARN that Baseten assumes with its own AWS principal, scoped by the sts:ExternalId Baseten assigns to your organization.
+   */
+  aws_assume_role_arn?: string | null;
+  /**
+   * AWS region for AWS AssumeRole authentication.
+   */
+  aws_assume_role_region?: string | null;
   auth_method: DockerAuthType;
   registry?: string | null;
   secret_name?: string | null;
@@ -304,6 +319,24 @@ export interface Resources {
    * Number of nodes for multi-node deployments.
    */
   node_count?: number | null;
+  /**
+   * Network fabric requirements for this deployment.
+   */
+  fabric?: FabricRequirement | null;
+  [k: string]: unknown;
+}
+/**
+ * Network fabric requirements for a deployment.
+ */
+export interface FabricRequirement {
+  /**
+   * Whether to use RDMA with any supported fabric.
+   */
+  use_rdma?: boolean | null;
+  /**
+   * Exhaustive list of acceptable network fabrics, in preference order. An empty list requires no fabric.
+   */
+  preferences?: string[] | null;
   [k: string]: unknown;
 }
 /**
@@ -497,11 +530,16 @@ export interface ModelRepo {
  * using the @{rev} suffix: "hf://owner/repo@revision"
  *
  * Authentication can be specified either:
- * - Using the `auth` section (required for OIDC):
+ * - Using the `auth` section (required for OIDC and AWS AssumeRole):
  *     auth:
  *       auth_method: AWS_OIDC
  *       aws_oidc_role_arn: <role_arn>
  *       aws_oidc_region: <region>
+ *   or, for native AWS AssumeRole:
+ *     auth:
+ *       auth_method: AWS_ASSUME_ROLE
+ *       aws_assume_role_arn: <role_arn>
+ *       aws_assume_role_region: <region>
  * - Using `auth_secret_name` at the top level (or in the `auth` section)
  */
 export interface WeightsSource {
@@ -554,11 +592,93 @@ export interface WeightsAuth {
    * GCP workload identity provider for OIDC authentication.
    */
   gcp_oidc_workload_id_provider?: string | null;
+  /**
+   * AWS IAM role ARN that Baseten assumes with its own AWS principal, scoped by the sts:ExternalId Baseten assigns to your organization.
+   */
+  aws_assume_role_arn?: string | null;
+  /**
+   * AWS region for AWS AssumeRole authentication.
+   */
+  aws_assume_role_region?: string | null;
   auth_method: WeightsAuthMethod;
   /**
    * Baseten secret name containing credentials for accessing the source.
    */
   auth_secret_name?: string | null;
+  [k: string]: unknown;
+}
+/**
+ * Configure BDN volume mounts, access grants, and hot-loading.
+ */
+export interface BDNConfig {
+  /**
+   * Existing BDN volumes to mount when the model starts.
+   */
+  mounts?: BDNVolumeMount[];
+  /**
+   * Namespace-level BDN access grants for the deployment.
+   */
+  access?: BDNAccess[];
+  hotload?: BDNHotload;
+  [k: string]: unknown;
+}
+/**
+ * An existing BDN volume mounted into a model container.
+ *
+ * BDN vocabulary, read off a reference like `bdn:weights/llama-8b:prod`:
+ *
+ * - A *namespace* (`weights`) groups volumes within your organization, and is
+ *   the unit that access grants and storage are scoped to. Names are
+ *   lowercase alphanumeric plus hyphens, at least two characters, and may not
+ *   begin with a digit; `namespaces` and `resolve` are reserved.
+ * - A *volume* (`llama-8b`) is one versioned collection of files. Every
+ *   published version is immutable and identified by its content digest.
+ * - A *tag* (`prod`) is a mutable, case-sensitive name pointing at one
+ *   version, repointed as newer versions are published. A reference carrying
+ *   neither tag nor digest resolves to the volume's head, its latest version.
+ *
+ * ```
+ * bdn:
+ *   mounts:
+ *     - source: bdn:weights/llama-8b:prod
+ *       path: /models/llama
+ * ```
+ */
+export interface BDNVolumeMount {
+  /**
+   * BDN volume reference to mount (for example, bdn:weights/llama-8b:prod).
+   */
+  source: string;
+  /**
+   * Absolute path where the volume will be mounted at runtime.
+   */
+  path: string;
+  [k: string]: unknown;
+}
+/**
+ * Access grants for a BDN namespace.
+ */
+export interface BDNAccess {
+  /**
+   * BDN namespace to grant access to.
+   */
+  namespace: string;
+  /**
+   * Operations granted in this namespace.
+   *
+   * @minItems 1
+   */
+  grants: [BDNAccessGrant, ...BDNAccessGrant[]];
+  [k: string]: unknown;
+}
+/**
+ * Configure loading BDN data while the deployment is running.
+ */
+export interface BDNHotload {
+  /**
+   * If true, enables BDN hot-loading.
+   */
+  enabled?: boolean;
   [k: string]: unknown;
 }
 export interface TRTLLMConfigurationV1 {
@@ -642,6 +762,10 @@ export interface ModelSpeculatorConfiguration {
 export interface ModelTRTLLMRuntimeConfiguration {
   kv_cache_free_gpu_mem_fraction?: number;
   kv_cache_host_memory_bytes?: number | null;
+  lora_cache_max_adapter_size?: number | null;
+  lora_cache_optimal_adapter_size?: number | null;
+  lora_cache_gpu_memory_fraction?: number | null;
+  lora_cache_host_memory_bytes?: number | null;
   enable_chunked_context?: boolean;
   batch_scheduler_policy?: ModelTRTLLMBatchSchedulerPolicy;
   request_default_max_tokens?: number | null;
@@ -658,6 +782,10 @@ export interface ModelTRTLLMLoraConfiguration {
 export interface ModelTRTLLMRuntimeConfiguration1 {
   kv_cache_free_gpu_mem_fraction?: number;
   kv_cache_host_memory_bytes?: number | null;
+  lora_cache_max_adapter_size?: number | null;
+  lora_cache_optimal_adapter_size?: number | null;
+  lora_cache_gpu_memory_fraction?: number | null;
+  lora_cache_host_memory_bytes?: number | null;
   enable_chunked_context?: boolean;
   batch_scheduler_policy?: ModelTRTLLMBatchSchedulerPolicy;
   request_default_max_tokens?: number | null;

@@ -28,6 +28,11 @@ export type components = {
      * @enum {string}
      */
     V1AvailabilityModel: "dedicated" | "spot";
+    /**
+     * AuthMethod
+     * @enum {string}
+     */
+    AuthMethod: "CUSTOM_SECRET" | "AWS_OIDC" | "GCP_OIDC" | "AWS_ASSUME_ROLE";
     /** BasetenLatestCheckpointConfig */
     BasetenLatestCheckpointConfig: {
       /**
@@ -143,7 +148,8 @@ export type components = {
       | "AWS_IAM"
       | "AWS_OIDC"
       | "GCP_OIDC"
-      | "REGISTRY_SECRET";
+      | "REGISTRY_SECRET"
+      | "AWS_ASSUME_ROLE";
     /** GitInfo */
     GitInfo: {
       /** Latest Commit Sha */
@@ -298,7 +304,14 @@ export type components = {
      * LoopsDeploymentStatus
      * @enum {string}
      */
-    Name: "CREATED" | "DEPLOYING" | "RUNNING" | "SCALED_TO_ZERO" | "FAILED" | "STOPPED";
+    Name:
+      | "CREATED"
+      | "DEPLOYING"
+      | "RUNNING"
+      | "SCALED_TO_ZERO"
+      | "FAILED"
+      | "STOPPED"
+      | "PREEMPTED";
     /**
      * APIKeyCategory
      * @description Enum representing the category of an API key.
@@ -306,14 +319,31 @@ export type components = {
      */
     APIKeyCategory:
       | "PERSONAL"
+      | "ROUTES"
       | "WORKSPACE_MANAGE_ALL"
       | "WORKSPACE_EXPORT_METRICS"
-      | "WORKSPACE_INVOKE";
+      | "WORKSPACE_INVOKE"
+      | "WORKSPACE_MANAGE_API_KEYS";
+    /**
+     * BucketWidth
+     * @enum {string}
+     */
+    BucketWidth: "1m" | "1h" | "1d";
+    /**
+     * LibraryListingModality
+     * @enum {string}
+     */
+    LibraryListingModality: "text" | "image" | "audio" | "video" | "embedding" | "rerank";
     /**
      * ResourceKind
      * @enum {string}
      */
-    ResourceKind: "MODEL_DEPLOYMENT" | "TRAINING_JOB" | "CHAINLET";
+    ResourceKind:
+      | "LOOPS_SAMPLER"
+      | "LOOPS_TRAINER"
+      | "MODEL_DEPLOYMENT"
+      | "TRAINING_JOB"
+      | "CHAINLET";
     /**
      * GatewayProvider
      * @description Customer-facing provider for an endpoint target.
@@ -325,10 +355,487 @@ export type components = {
     GatewayProvider:
       | "ANTHROPIC"
       | "OPENAI"
+      | "XAI"
       | "BASETEN"
       | "BASETEN_MODEL_API"
       | "VERTEX"
       | "OPENAI_COMPATIBLE";
+    /** PaginationResponseV1 */
+    PaginationResponse: {
+      /**
+       * Has More
+       * @description Whether more items exist after this page.
+       */
+      has_more: boolean;
+      /**
+       * Cursor
+       * @description Opaque cursor to pass into the next request. Null when there is no next page.
+       * @default null
+       */
+      cursor: string | null;
+    };
+    /** VolumeTagV1 */
+    VolumeTag: {
+      /**
+       * Name
+       * @description Tag name. Tags are case-sensitive.
+       */
+      name: string;
+      /**
+       * Digest
+       * @description Digest of the version the tag points at, as `b3:<hex>`.
+       */
+      digest: string;
+    };
+    /** VolumeV1 */
+    Volume: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Name
+       * @description Name of the volume, in lowercase.
+       */
+      name: string;
+      /**
+       * Version Ref
+       * @description Full address of the volume, as `bdn:<namespace>/<volume>`. Paste this into the `bdn.mounts` section of a config.yaml.
+       */
+      version_ref: string;
+      /**
+       * Sequence
+       * @description Revision counter for the volume, incremented on every commit and tag change. Use it to detect that a volume changed.
+       */
+      sequence: number;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description When the volume last changed, in ISO 8601 format.
+       */
+      updated_at: string;
+      /** @description Version that the reserved `head` tag points at, which a reference with no tag or digest resolves to. Null when the volume has no head, or when your API key cannot read it. */
+      head: components["schemas"]["VolumeVersionSummary"] | null;
+      /**
+       * Tags
+       * @description Tags on the volume that your API key can read.
+       */
+      tags: components["schemas"]["VolumeTag"][];
+      /**
+       * Tag Count
+       * @description Total number of tags on the volume, which can exceed the length of `tags` when your API key cannot read all of them.
+       */
+      tag_count: number;
+      /**
+       * Versions Alive
+       * @description Number of versions that have not been deleted.
+       */
+      versions_alive: number;
+      /**
+       * Versions Tombstoned
+       * @description Number of versions that have been deleted.
+       */
+      versions_tombstoned: number;
+      /**
+       * Versions Untagged
+       * @description Number of versions that no tag points at.
+       */
+      versions_untagged: number;
+    };
+    /** VolumeVersionSummaryV1 */
+    VolumeVersionSummary: {
+      /**
+       * Digest
+       * @description Content digest of the version, as `b3:<hex>`.
+       */
+      digest: string;
+      /**
+       * Total Size Bytes
+       * @description Total size of the version's files in bytes.
+       */
+      total_size_bytes: number;
+      /**
+       * Created At
+       * Format: date-time
+       * @description When the version was committed, in ISO 8601 format.
+       */
+      created_at: string;
+    };
+    /**
+     * ListVolumesResponseV1
+     * @description A page of volumes in one namespace.
+     */
+    ListVolumesResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["Volume"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * VolumeTokenScopeV1
+     * @description Capability a volume token grants.
+     *
+     *     - ``PULL``: read volume data.
+     *     - ``INSPECT``: read volume metadata without data access.
+     *     - ``PUSH``: upload and commit volume versions.
+     *     - ``TAG``: move or remove tags.
+     * @enum {string}
+     */
+    VolumeTokenScope: "PULL" | "INSPECT" | "PUSH" | "TAG";
+    /** CreateVolumeTokenRequestV1 */
+    CreateVolumeTokenRequest: {
+      /**
+       * Scopes
+       * @description Capabilities the token grants, at least one. Requesting PUSH or TAG requires organization-level model management permission.
+       */
+      scopes: components["schemas"]["VolumeTokenScope"][];
+      /**
+       * Namespaces
+       * @description Volume namespaces the token is limited to, lowercase ASCII, at least one. Pass only the namespaces the operation needs.
+       */
+      namespaces: string[];
+      /**
+       * Volumes
+       * @description Volume names the token is limited to, lowercase ASCII, exact names only, at least one. The limit applies to every requested scope in every requested namespace.
+       */
+      volumes: string[];
+      /**
+       * Correlation Id
+       * @description Optional client-chosen identifier, at most 128 printable ASCII characters. Echoed into server logs to link the issued token to a client operation.
+       */
+      correlation_id?: string | null;
+    };
+    /** CreateVolumeTokenResponseV1 */
+    CreateVolumeTokenResponse: {
+      /**
+       * Token
+       * @description Volume access token. Pass as a bearer token to the volume APIs.
+       */
+      token: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description Token expiry in ISO 8601 format. Tokens cannot be renewed; exchange again for a fresh token.
+       */
+      expires_at: string;
+      /**
+       * Scopes
+       * @description Effective capabilities granted.
+       */
+      scopes: components["schemas"]["VolumeTokenScope"][];
+      /**
+       * Namespaces
+       * @description Effective namespaces granted, in canonical lowercase form.
+       */
+      namespaces: string[];
+      /**
+       * Volumes
+       * @description Effective volume names granted, in canonical lowercase form.
+       */
+      volumes: string[];
+      /**
+       * Bdn Endpoint
+       * @description Base URL of the volume API this token authenticates against. Null when the environment does not expose a public volume API yet.
+       */
+      bdn_endpoint: string | null;
+    };
+    /**
+     * ListVolumeNamespacesResponseV1
+     * @description A page of namespaces the caller can read.
+     */
+    ListVolumeNamespacesResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: string[];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** DeleteVolumeRequestV1 */
+    DeleteVolumeRequest: {
+      /**
+       * Expected Sequence
+       * @description Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so it cannot act on a volume someone else has pushed to. Take the value from a volume's sequence, or from volume_sequence.
+       */
+      expected_sequence?: number | null;
+    };
+    /** DeleteVolumeResponseV1 */
+    DeleteVolumeResponse: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Name
+       * @description Name of the volume, in lowercase.
+       */
+      name: string;
+      /**
+       * Versions Deleted
+       * @description Number of versions this request deleted. Zero when the volume had no live versions left, which is not an error.
+       */
+      versions_deleted: number;
+      /**
+       * Volume Sequence
+       * @description Revision of the volume after the delete.
+       */
+      volume_sequence: number;
+    };
+    /** VolumeVersionV1 */
+    VolumeVersion: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Volume
+       * @description Name of the volume, in lowercase.
+       */
+      volume: string;
+      /**
+       * Version Ref
+       * @description Full address of this version, as `bdn:<namespace>/<volume>@<digest>`. Paste this into the `bdn.mounts` section of a config.yaml to pin to it.
+       */
+      version_ref: string;
+      /**
+       * Digest
+       * @description Content digest of the version, as `b3:<hex>`.
+       */
+      digest: string;
+      /**
+       * Sequence
+       * @description Revision the version was committed at. Null for versions committed before the volume service recorded it.
+       */
+      sequence: number | null;
+      /**
+       * Lifecycle
+       * @description Lifecycle state of the version, for example ALIVE or TOMBSTONED.
+       */
+      lifecycle: string;
+      /**
+       * Is Head
+       * @description Whether the reserved `head` tag points at this version.
+       */
+      is_head: boolean;
+      /**
+       * Tags
+       * @description Tags pointing at this version that your API key can read.
+       */
+      tags: string[];
+      /**
+       * Total Size Bytes
+       * @description Total size of the version's files in bytes. Null when not recorded.
+       */
+      total_size_bytes: number | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description When the version was committed, in ISO 8601 format.
+       */
+      created_at: string;
+      /**
+       * Tombstoned At
+       * @description When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       */
+      tombstoned_at: string | null;
+      /**
+       * Delete After
+       * @description When the version stops being restorable, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       */
+      delete_after: string | null;
+    };
+    /**
+     * ListVolumeVersionsResponseV1
+     * @description Every version of a volume, newest first.
+     *
+     *     Unpaginated: `limit` and `cursor` are absent rather than accepted and
+     *     ignored, so adding them once the volume service pages this listing is a
+     *     purely additive change.
+     */
+    ListVolumeVersionsResponse: {
+      /**
+       * Versions
+       * @description Versions of the volume, newest first.
+       */
+      versions: components["schemas"]["VolumeVersion"][];
+      /**
+       * Volume Sequence
+       * @description Revision of the volume as a whole when the versions were read. Pass it as expected_sequence on a later delete to make that delete conditional on the volume not having changed since. Distinct from the per-version sequence, which is the revision a version was committed at.
+       */
+      volume_sequence: number;
+    };
+    /** DeleteVolumeVersionRequestV1 */
+    DeleteVolumeVersionRequest: {
+      /**
+       * Expected Sequence
+       * @description Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so a read followed by a delete cannot act on a version a tag has since been moved off. Take the value from volume_sequence.
+       */
+      expected_sequence?: number | null;
+    };
+    /** DeleteVolumeVersionResponseV1 */
+    DeleteVolumeVersionResponse: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Volume
+       * @description Name of the volume, in lowercase.
+       */
+      volume: string;
+      /**
+       * Version Ref
+       * @description Full address of the deleted version, as `bdn:<namespace>/<volume>@<digest>`.
+       */
+      version_ref: string;
+      /**
+       * Digest
+       * @description Content digest of the deleted version, as `b3:<hex>`.
+       */
+      digest: string;
+      /**
+       * Lifecycle
+       * @description Lifecycle state of the version after the delete.
+       */
+      lifecycle: string;
+      /**
+       * Delete After
+       * Format: date-time
+       * @description When the version stops being restorable, in ISO 8601 format. Until then it can be returned to service.
+       */
+      delete_after: string;
+      /**
+       * Volume Sequence
+       * @description Revision of the volume after the delete.
+       */
+      volume_sequence: number;
+    };
+    /**
+     * VolumeVersionDetailV1
+     * @description One version, with the fields only a single-version read reports.
+     */
+    VolumeVersionDetail: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Volume
+       * @description Name of the volume, in lowercase.
+       */
+      volume: string;
+      /**
+       * Version Ref
+       * @description Full address of this version, as `bdn:<namespace>/<volume>@<digest>`. Paste this into the `bdn.mounts` section of a config.yaml to pin to it.
+       */
+      version_ref: string;
+      /**
+       * Digest
+       * @description Content digest of the version, as `b3:<hex>`.
+       */
+      digest: string;
+      /**
+       * Sequence
+       * @description Revision the version was committed at. Null for versions committed before the volume service recorded it.
+       */
+      sequence: number | null;
+      /**
+       * Lifecycle
+       * @description Lifecycle state of the version, for example ALIVE or TOMBSTONED.
+       */
+      lifecycle: string;
+      /**
+       * Is Head
+       * @description Whether the reserved `head` tag points at this version.
+       */
+      is_head: boolean;
+      /**
+       * Tags
+       * @description Tags pointing at this version that your API key can read.
+       */
+      tags: string[];
+      /**
+       * Total Size Bytes
+       * @description Total size of the version's files in bytes. Null when not recorded.
+       */
+      total_size_bytes: number | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description When the version was committed, in ISO 8601 format.
+       */
+      created_at: string;
+      /**
+       * Tombstoned At
+       * @description When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       */
+      tombstoned_at: string | null;
+      /**
+       * Delete After
+       * @description When the version stops being restorable, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       */
+      delete_after: string | null;
+      /**
+       * Entry Count
+       * @description Number of files in the version. Null when not recorded.
+       */
+      entry_count: number | null;
+      /**
+       * Volume Sequence
+       * @description Revision of the volume as a whole when this version was read. Pass it as expected_sequence on a later delete to make that delete conditional on the volume not having changed since.
+       */
+      volume_sequence: number;
+    };
+    /** RestoreVolumeVersionRequestV1 */
+    RestoreVolumeVersionRequest: {
+      /**
+       * Expected Sequence
+       * @description Revision the volume is expected to be at. When set, the restore fails with a conflict if the volume has changed since. Take the value from volume_sequence.
+       */
+      expected_sequence?: number | null;
+    };
+    /** RestoreVolumeVersionResponseV1 */
+    RestoreVolumeVersionResponse: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Volume
+       * @description Name of the volume, in lowercase.
+       */
+      volume: string;
+      /**
+       * Version Ref
+       * @description Full address of the restored version, as `bdn:<namespace>/<volume>@<digest>`.
+       */
+      version_ref: string;
+      /**
+       * Digest
+       * @description Content digest of the restored version, as `b3:<hex>`.
+       */
+      digest: string;
+      /**
+       * Lifecycle
+       * @description Lifecycle state of the version after the restore.
+       */
+      lifecycle: string;
+      /**
+       * Volume Sequence
+       * @description Revision of the volume after the restore.
+       */
+      volume_sequence: number;
+    };
     /**
      * SecretV1
      * @description A Baseten secret. Note that we do not support retrieving secret values.
@@ -460,20 +967,6 @@ export type components = {
       /** @description Settings controlling who can manage this environment group. */
       manage_access: components["schemas"]["EnvironmentGroupManageAccess"];
     };
-    /** PaginationResponseV1 */
-    PaginationResponse: {
-      /**
-       * Has More
-       * @description Whether more items exist after this page.
-       */
-      has_more: boolean;
-      /**
-       * Cursor
-       * @description Opaque cursor to pass into the next request. Null when there is no next page.
-       * @default null
-       */
-      cursor: string | null;
-    };
     /**
      * EnvironmentGroupsV1
      * @description A page of environment groups.
@@ -548,6 +1041,32 @@ export type components = {
        * @description A list of teams
        */
       teams: components["schemas"]["Team"][];
+    };
+    /**
+     * RegionV1
+     * @description A region that deployments can be placed in.
+     */
+    Region: {
+      /**
+       * Slug
+       * @description Stable identifier for the region, used when selecting a deployment region.
+       * @example us
+       */
+      slug: string;
+      /**
+       * Display Name
+       * @description Human-readable name of the region.
+       * @example United States
+       */
+      display_name: string;
+    };
+    /**
+     * RegionsV1
+     * @description A list of regions.
+     */
+    Regions: {
+      /** Regions */
+      regions: components["schemas"]["Region"][];
     };
     /**
      * InstanceTypeV1
@@ -720,6 +1239,16 @@ export type components = {
        */
       environment_name?: string | null;
       /**
+       * Create Environment If Missing
+       * @description Create the environment named by `environment_name` if it does not exist yet. If false, a push to an environment that does not exist is rejected. Only meaningful when `environment_name` is set to something other than `production`, which always exists. This field currently defaults to true, but that default will change to false in a future release. Set it explicitly to avoid a behavior change.
+       */
+      create_environment_if_missing?: boolean;
+      /**
+       * Region
+       * @description Region in which to deploy the model
+       */
+      region?: string | null;
+      /**
        * Preserve Env Instance Type
        * @description Retain the target environment's current instance type rather than the one in `config`. Only meaningful when `environment_name` is set and that environment already exists.
        */
@@ -862,6 +1391,12 @@ export type components = {
        * @default null
        */
       api_key_prefix: string | null;
+      /**
+       * Api Key Name
+       * @description Display name of the acting API key, when the actor is an API key.
+       * @default null
+       */
+      api_key_name: string | null;
     };
     /**
      * AuditLogApiKeyTypeV1
@@ -871,13 +1406,15 @@ export type components = {
     AuditLogApiKeyType:
       | "PERSONAL"
       | "CREATOR_SERVICE_ACCOUNT"
+      | "MANAGE_API_KEYS_SERVICE_ACCOUNT"
       | "INVOKE_ALL_MODELS_SERVICE_ACCOUNT"
       | "INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT"
       | "INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT"
       | "EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT"
       | "EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT"
       | "INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT"
-      | "INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT";
+      | "INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT"
+      | "INVOKE_ALL_ROUTES";
     /**
      * AuditLogEntryV1
      * @description A single audit-log entry.
@@ -907,6 +1444,7 @@ export type components = {
         | components["schemas"]["AuditLogEventModelDeploymentRetried"]
         | components["schemas"]["AuditLogEventModelDeploymentPromoted"]
         | components["schemas"]["AuditLogEventModelDeploymentAutoscalingSettingsChanged"]
+        | components["schemas"]["AuditLogEventModelDeploymentRequestBackpressureSettingsChanged"]
         | components["schemas"]["AuditLogEventModelDeploymentInstanceTypeChanged"]
         | components["schemas"]["AuditLogEventModelDeploymentDeleted"]
         | components["schemas"]["AuditLogEventModelDeleted"]
@@ -942,7 +1480,10 @@ export type components = {
         | components["schemas"]["AuditLogEventEnvironmentDeleted"]
         | components["schemas"]["AuditLogEventReplicaTerminated"]
         | components["schemas"]["AuditLogEventModelPromotionControlAction"]
-        | components["schemas"]["AuditLogEventSshCertificateSigned"];
+        | components["schemas"]["AuditLogEventSshCertificateSigned"]
+        | components["schemas"]["AuditLogEventVolumeDeleted"]
+        | components["schemas"]["AuditLogEventVolumeVersionDeleted"]
+        | components["schemas"]["AuditLogEventVolumeVersionRestored"];
       /**
        * @description Surface that issued the action, if known.
        * @default null
@@ -1000,6 +1541,75 @@ export type components = {
       api_key_type: components["schemas"]["AuditLogApiKeyType"];
       /** Prefix */
       prefix: string;
+    };
+    /**
+     * AuditLogEventAutoscalingScheduleActionV1
+     * @description What an autoscaling change did to one schedule.
+     * @enum {string}
+     */
+    AuditLogEventAutoscalingScheduleAction: "CREATED" | "UPDATED" | "DELETED" | "UNCHANGED";
+    /**
+     * AuditLogEventAutoscalingScheduleChangeV1
+     * @description What an autoscaling change did to one schedule, and the schedule on either side of it.
+     *     `previous` is null on a create, `current` on a delete, and an unchanged schedule carries only
+     *     `current`. Not itself a payload in the discriminated union.
+     */
+    AuditLogEventAutoscalingScheduleChange: {
+      action: components["schemas"]["AuditLogEventAutoscalingScheduleAction"];
+      /** Schedule Id */
+      schedule_id: string;
+      previous: components["schemas"]["AuditLogEventAutoscalingScheduleSettings"] | null;
+      current: components["schemas"]["AuditLogEventAutoscalingScheduleSettings"] | null;
+    };
+    /**
+     * AuditLogEventAutoscalingScheduleSettingsV1
+     * @description One autoscaling schedule's timing and autoscaling settings. Not itself a union payload.
+     */
+    AuditLogEventAutoscalingScheduleSettings: {
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number | null;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+      /** Schedule Name */
+      schedule_name: string;
+      /** Enabled */
+      enabled: boolean;
+      /** Cadence */
+      cadence: string;
+      /** Timezone */
+      timezone: string;
+      /** Weekdays */
+      weekdays: string[] | null;
+      /** Start Hour */
+      start_hour: number | null;
+      /** Start Minute */
+      start_minute: number | null;
+      /** End Hour */
+      end_hour: number | null;
+      /** End Minute */
+      end_minute: number | null;
+      /**
+       * Start At
+       * @default null
+       */
+      start_at: string | null;
+      /**
+       * End At
+       * @default null
+       */
+      end_at: string | null;
     };
     /**
      * AuditLogEventAutoscalingSettingsV1
@@ -1296,22 +1906,8 @@ export type components = {
       target_in_flight_tokens: number | null;
       /** Max Scale Down Rate */
       max_scale_down_rate: number | null;
-      /** Model Id */
-      model_id: string;
-      /** Model Name */
-      model_name: string;
-      /** Environment Name */
-      environment_name: string;
-      /** Deployment Type */
-      deployment_type: string | null;
       /** Redeploy On Promotion */
       redeploy_on_promotion: boolean | null;
-      /** Ramp Up While Promoting */
-      ramp_up_while_promoting: boolean | null;
-      /** Ramp Up Duration Seconds */
-      ramp_up_duration_seconds: number | null;
-      /** Ramp Up Step Size */
-      ramp_up_step_size: number | null;
       /** Rolling Deploy */
       rolling_deploy: boolean | null;
       /** Rolling Deploy Strategy */
@@ -1326,6 +1922,25 @@ export type components = {
       replica_overhead_percent: number | null;
       /** Promotion Cleanup Strategy */
       promotion_cleanup_strategy: string | null;
+      /** Ramp Up While Promoting */
+      ramp_up_while_promoting: boolean | null;
+      /** Ramp Up Duration Seconds */
+      ramp_up_duration_seconds: number | null;
+      /** Ramp Up Step Size */
+      ramp_up_step_size: number | null;
+      /**
+       * Request Backpressure Policy
+       * @default null
+       */
+      request_backpressure_policy: string | null;
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Environment Name */
+      environment_name: string;
+      /** Deployment Type */
+      deployment_type: string | null;
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
@@ -1350,10 +1965,12 @@ export type components = {
       environment_name: string;
     };
     /**
-     * AuditLogEventEnvironmentUpdatedV1
-     * @description A model environment's settings were updated.
+     * AuditLogEventEnvironmentSettingsV1
+     * @description Full environment settings (autoscaling + rolling promotion + deprecated canary);
+     *     shared base for the environment events and the type of their previous_settings
+     *     snapshots. Not itself a payload in the discriminated union.
      */
-    AuditLogEventEnvironmentUpdated: {
+    AuditLogEventEnvironmentSettings: {
       /** Min Replica */
       min_replica: number;
       /** Max Replica */
@@ -1370,22 +1987,8 @@ export type components = {
       target_in_flight_tokens: number | null;
       /** Max Scale Down Rate */
       max_scale_down_rate: number | null;
-      /** Model Id */
-      model_id: string;
-      /** Model Name */
-      model_name: string;
-      /** Environment Name */
-      environment_name: string;
-      /** Deployment Type */
-      deployment_type: string | null;
       /** Redeploy On Promotion */
       redeploy_on_promotion: boolean | null;
-      /** Ramp Up While Promoting */
-      ramp_up_while_promoting: boolean | null;
-      /** Ramp Up Duration Seconds */
-      ramp_up_duration_seconds: number | null;
-      /** Ramp Up Step Size */
-      ramp_up_step_size: number | null;
       /** Rolling Deploy */
       rolling_deploy: boolean | null;
       /** Rolling Deploy Strategy */
@@ -1400,12 +2003,82 @@ export type components = {
       replica_overhead_percent: number | null;
       /** Promotion Cleanup Strategy */
       promotion_cleanup_strategy: string | null;
+      /** Ramp Up While Promoting */
+      ramp_up_while_promoting: boolean | null;
+      /** Ramp Up Duration Seconds */
+      ramp_up_duration_seconds: number | null;
+      /** Ramp Up Step Size */
+      ramp_up_step_size: number | null;
+      /**
+       * Request Backpressure Policy
+       * @default null
+       */
+      request_backpressure_policy: string | null;
+    };
+    /**
+     * AuditLogEventEnvironmentUpdatedV1
+     * @description A model environment's settings were updated.
+     */
+    AuditLogEventEnvironmentUpdated: {
+      /** Schedules */
+      schedules: components["schemas"]["AuditLogEventAutoscalingScheduleChange"][] | null;
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+      /** Redeploy On Promotion */
+      redeploy_on_promotion: boolean | null;
+      /** Rolling Deploy */
+      rolling_deploy: boolean | null;
+      /** Rolling Deploy Strategy */
+      rolling_deploy_strategy: string | null;
+      /** Max Unavailable Percent */
+      max_unavailable_percent: number | null;
+      /** Max Surge Percent */
+      max_surge_percent: number | null;
+      /** Stabilization Time Seconds */
+      stabilization_time_seconds: number | null;
+      /** Replica Overhead Percent */
+      replica_overhead_percent: number | null;
+      /** Promotion Cleanup Strategy */
+      promotion_cleanup_strategy: string | null;
+      /** Ramp Up While Promoting */
+      ramp_up_while_promoting: boolean | null;
+      /** Ramp Up Duration Seconds */
+      ramp_up_duration_seconds: number | null;
+      /** Ramp Up Step Size */
+      ramp_up_step_size: number | null;
+      /**
+       * Request Backpressure Policy
+       * @default null
+       */
+      request_backpressure_policy: string | null;
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Environment Name */
+      environment_name: string;
+      /** Deployment Type */
+      deployment_type: string | null;
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
        */
       event_type: "ENVIRONMENT_UPDATED";
-      previous_settings: components["schemas"]["AuditLogEventAutoscalingSettings"] | null;
+      previous_settings: components["schemas"]["AuditLogEventEnvironmentSettings"] | null;
     };
     /**
      * AuditLogEventGatewayEndpointCreatedV1
@@ -1520,6 +2193,8 @@ export type components = {
      * @description A model deployment's autoscaling settings were changed.
      */
     AuditLogEventModelDeploymentAutoscalingSettingsChanged: {
+      /** Schedules */
+      schedules: components["schemas"]["AuditLogEventAutoscalingScheduleChange"][] | null;
       /** Min Replica */
       min_replica: number;
       /** Max Replica */
@@ -1634,6 +2309,35 @@ export type components = {
       environment_name: string | null;
       /** Environment Id */
       environment_id: string | null;
+    };
+    /**
+     * AuditLogEventModelDeploymentRequestBackpressureSettingsChangedV1
+     * @description A model deployment's request backpressure settings were changed.
+     */
+    AuditLogEventModelDeploymentRequestBackpressureSettingsChanged: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_DEPLOYMENT_REQUEST_BACKPRESSURE_SETTINGS_CHANGED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Deployment Id */
+      deployment_id: string;
+      /** Deployment Name */
+      deployment_name: string;
+      /**
+       * Policy
+       * @default null
+       */
+      policy: string | null;
+      /**
+       * Previous Policy
+       * @default null
+       */
+      previous_policy: string | null;
     };
     /**
      * AuditLogEventModelDeploymentRetriedV1
@@ -1779,6 +2483,7 @@ export type components = {
       | "MODEL_DEPLOYMENT_RETRIED"
       | "MODEL_DEPLOYMENT_PROMOTED"
       | "MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED"
+      | "MODEL_DEPLOYMENT_REQUEST_BACKPRESSURE_SETTINGS_CHANGED"
       | "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"
       | "MODEL_DEPLOYMENT_DELETED"
       | "MODEL_DELETED"
@@ -1814,7 +2519,10 @@ export type components = {
       | "ENVIRONMENT_DELETED"
       | "REPLICA_TERMINATED"
       | "MODEL_PROMOTION_CONTROL_ACTION"
-      | "SSH_CERTIFICATE_SIGNED";
+      | "SSH_CERTIFICATE_SIGNED"
+      | "VOLUME_DELETED"
+      | "VOLUME_VERSION_DELETED"
+      | "VOLUME_VERSION_RESTORED";
     /**
      * AuditLogEventUserInvitedV1
      * @description A user was invited to the organization.
@@ -1897,6 +2605,67 @@ export type components = {
       new_role_name: string;
     };
     /**
+     * AuditLogEventVolumeDeletedV1
+     * @description A volume was deleted, tombstoning every version it still held.
+     */
+    AuditLogEventVolumeDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "VOLUME_DELETED";
+      /** Volume Ref */
+      volume_ref: string;
+      /** Namespace */
+      namespace: string;
+      /** Volume Name */
+      volume_name: string;
+      /** Versions Deleted */
+      versions_deleted: number;
+    };
+    /**
+     * AuditLogEventVolumeVersionDeletedV1
+     * @description One version of a volume was deleted.
+     */
+    AuditLogEventVolumeVersionDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "VOLUME_VERSION_DELETED";
+      /** Volume Ref */
+      volume_ref: string;
+      /** Namespace */
+      namespace: string;
+      /** Volume Name */
+      volume_name: string;
+      /** Version */
+      version: string;
+      /** Digest */
+      digest: string;
+    };
+    /**
+     * AuditLogEventVolumeVersionRestoredV1
+     * @description A deleted version of a volume was restored.
+     */
+    AuditLogEventVolumeVersionRestored: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "VOLUME_VERSION_RESTORED";
+      /** Volume Ref */
+      volume_ref: string;
+      /** Namespace */
+      namespace: string;
+      /** Volume Name */
+      volume_name: string;
+      /** Version */
+      version: string;
+      /** Digest */
+      digest: string;
+    };
+    /**
      * AuditLogEventWebhookSigningSecretCreatedV1
      * @description A webhook signing secret was created.
      */
@@ -1951,7 +2720,7 @@ export type components = {
      * @description Surface that issued the audited action.
      * @enum {string}
      */
-    AuditLogSource: "UI" | "API" | "MCP" | "OTHER";
+    AuditLogSource: "UI" | "API" | "MCP" | "SYSTEM" | "OTHER";
     /**
      * ListAuditLogsResponseV1
      * @description A page of audit-log entries, newest first by default.
@@ -1975,6 +2744,7 @@ export type components = {
       | "PROMOTED"
       | "ACTIVATED_DEACTIVATED"
       | "AUTOSCALING_SETTINGS"
+      | "REQUEST_BACKPRESSURE_SETTINGS"
       | "INSTANCE_TYPE_CHANGED"
       | "ENVIRONMENT_SETTINGS"
       | "REPLICA_TERMINATED"
@@ -2246,6 +3016,29 @@ export type components = {
       labels: {
         [key: string]: unknown;
       } | null;
+      /**
+       * @description The selected region for the deployment, if any
+       * @default null
+       */
+      region: components["schemas"]["Region"] | null;
+      /** @description Effective request backpressure settings for the deployment. */
+      request_backpressure_settings: components["schemas"]["RequestBackpressureSettings"];
+    };
+    /**
+     * RequestBackpressurePolicyV1
+     * @enum {string}
+     */
+    RequestBackpressurePolicy: "QUEUE_ON_FULL" | "REJECT_ON_FULL";
+    /**
+     * RequestBackpressureSettingsV1
+     * @description Request backpressure settings for a deployment or environment.
+     */
+    RequestBackpressureSettings: {
+      /**
+       * @description Backpressure policy. Null when no policy is set.
+       * @default null
+       */
+      policy: components["schemas"]["RequestBackpressurePolicy"] | null;
     };
     /**
      * CreatedModelDeploymentV1
@@ -2337,6 +3130,18 @@ export type components = {
       model_id: string;
     };
     /**
+     * UpdateDeploymentRequestV1
+     * @description A request to update a deployment.
+     */
+    UpdateDeploymentRequest: {
+      /**
+       * Name
+       * @description New name for the deployment, unique among the model's deployments. Only alphanumeric characters, hyphens, underscores, and periods are allowed.
+       * @example my-deployment
+       */
+      name?: string | null;
+    };
+    /**
      * UpdateAutoscalingSettingsV1
      * @description A request to update autoscaling settings for a deployment. All fields are optional, and we only update ones passed in.
      */
@@ -2410,6 +3215,17 @@ export type components = {
       message: string;
     };
     /**
+     * UpdateRequestBackpressureSettingsV1
+     * @description A request to update request backpressure settings.
+     */
+    UpdateRequestBackpressureSettings: {
+      /**
+       * @description Backpressure policy to apply. Null indicates no policy (on update, clears an existing one).
+       * @example REJECT_ON_FULL
+       */
+      policy?: components["schemas"]["RequestBackpressurePolicy"] | null;
+    };
+    /**
      * PromoteRequestV1
      * @description A request to promote a deployment to production.
      */
@@ -2438,6 +3254,12 @@ export type components = {
        * @default true
        */
       success: boolean;
+      /**
+       * No Op
+       * @description Whether the request did nothing because the deployment was already active or on its way to becoming active
+       * @default false
+       */
+      no_op: boolean;
     };
     /**
      * DeactivateResponseV1
@@ -2450,6 +3272,12 @@ export type components = {
        * @default true
        */
       success: boolean;
+      /**
+       * No Op
+       * @description Whether the request did nothing because the deployment was already inactive
+       * @default false
+       */
+      no_op: boolean;
     };
     /**
      * RetryDeploymentResponseV1
@@ -2516,7 +3344,7 @@ export type components = {
       timestamp: string;
       /**
        * Message
-       * @description The contents of the log message.
+       * @description The contents of the log message. When the logger captured an exception, the traceback is appended after the message.
        */
       message: string;
       /**
@@ -3067,6 +3895,142 @@ export type components = {
        */
       ssh_cert_expires_at: string;
     };
+    /** AutoscalingScheduleSettingsV1 */
+    AutoscalingScheduleSettings: {
+      /**
+       * Min Replica
+       * @description Minimum number of replicas
+       */
+      min_replica: number;
+      /**
+       * Max Replica
+       * @description Maximum number of replicas
+       */
+      max_replica: number;
+      /**
+       * Autoscaling Window
+       * @description Timeframe of traffic considered for autoscaling decisions. Null inherits the environment value.
+       */
+      autoscaling_window: number | null;
+      /**
+       * Scale Down Delay
+       * @description Waiting period before scaling down any active replica. Null inherits the environment value.
+       */
+      scale_down_delay: number | null;
+      /**
+       * Concurrency Target
+       * @description Number of requests per replica before scaling up. Null inherits the environment value.
+       */
+      concurrency_target: number | null;
+      /**
+       * Target Utilization Percentage
+       * @description Target utilization percentage for scaling up/down. Null inherits the environment value.
+       */
+      target_utilization_percentage: number | null;
+      /**
+       * Target In Flight Tokens
+       * @description Target number of in-flight tokens for autoscaling decisions. Null inherits the environment value. Early access only.
+       */
+      target_in_flight_tokens: number | null;
+      /**
+       * Max Scale Down Rate
+       * @description Maximum percentage of replicas that can be removed per autoscaling window. Null inherits the environment value.
+       */
+      max_scale_down_rate: number | null;
+    };
+    /** AutoscalingScheduleStateV1 */
+    AutoscalingScheduleState: {
+      /**
+       * Schedule Id
+       * @description Stable schedule identifier, or null when the baseline settings apply
+       */
+      schedule_id: string | null;
+      /** @description Autoscaling settings on the current serving deployment. In a PATCH response, this snapshot can precede asynchronous schedule reconciliation; poll the GET endpoint for the applied state. */
+      autoscaling_settings: components["schemas"]["AutoscalingSettings"];
+    };
+    /** AutoscalingScheduleV1 */
+    AutoscalingSchedule: {
+      /**
+       * Id
+       * @description Stable unique identifier of the schedule
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Raw autoscaling overrides applied during the schedule window */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettings"];
+      /**
+       * @description Cadence of the schedule. DAILY runs once per selected weekday; HOURLY repeats the minute window every hour on selected weekdays. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "DAILY" | "HOURLY";
+      /**
+       * Weekdays
+       * @description Weekdays on which the schedule runs
+       */
+      weekdays: components["schemas"]["AutoscalingScheduleWeekday"][];
+      /**
+       * Start Hour
+       * @description Start hour in the environment schedule timezone. Omitted for unrestricted HOURLY schedules.
+       * @default null
+       */
+      start_hour: number | null;
+      /**
+       * Start Minute
+       * @description Start minute of the schedule window
+       */
+      start_minute: number;
+      /**
+       * End Hour
+       * @description End hour in the environment schedule timezone. Omitted for unrestricted HOURLY schedules.
+       * @default null
+       */
+      end_hour: number | null;
+      /**
+       * End Minute
+       * @description End minute of the schedule window
+       */
+      end_minute: number;
+    };
+    /**
+     * AutoscalingScheduleWeekdayV1
+     * @enum {string}
+     */
+    AutoscalingScheduleWeekday:
+      | "SUNDAY"
+      | "MONDAY"
+      | "TUESDAY"
+      | "WEDNESDAY"
+      | "THURSDAY"
+      | "FRIDAY"
+      | "SATURDAY";
+    /** EnvironmentAutoscalingSchedulesV1 */
+    EnvironmentAutoscalingSchedules: {
+      /**
+       * Timezone
+       * @description IANA timezone shared by all schedules. Omitted when no schedules exist.
+       * @default null
+       */
+      timezone: string | null;
+      /**
+       * Schedules
+       * @description Autoscaling schedules ordered by creation time and stable identifier
+       */
+      schedules: (
+        | components["schemas"]["AutoscalingSchedule"]
+        | components["schemas"]["OneTimeAutoscalingSchedule"]
+      )[];
+      /** @description Autoscaling state on the current serving deployment, or null when no deployment exists */
+      applied_state: components["schemas"]["AutoscalingScheduleState"] | null;
+    };
     /**
      * EnvironmentV1
      * @description Environment for oracles.
@@ -3106,6 +4070,13 @@ export type components = {
       promotion_settings: components["schemas"]["PromotionSettings"];
       /** @description Instance type for the environment */
       instance_type: components["schemas"]["InstanceType"];
+      /** @description Request backpressure settings for the environment. */
+      request_backpressure_settings: components["schemas"]["RequestBackpressureSettings"];
+      /**
+       * @description Autoscaling schedules and their evaluated state
+       * @default null
+       */
+      autoscaling_schedules: components["schemas"]["EnvironmentAutoscalingSchedules"] | null;
     };
     /**
      * InProgressPromotionStatusV1
@@ -3143,6 +4114,43 @@ export type components = {
        * @default null
        */
       rolling_deploy: boolean | null;
+    };
+    /** OneTimeAutoscalingScheduleV1 */
+    OneTimeAutoscalingSchedule: {
+      /**
+       * Id
+       * @description Stable unique identifier of the schedule
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Raw autoscaling overrides applied during the schedule window */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettings"];
+      /**
+       * @description One-time schedule cadence (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "ONE_TIME";
+      /**
+       * Start At
+       * Format: date-time
+       * @description Inclusive start of the schedule window
+       */
+      start_at: string;
+      /**
+       * End At
+       * Format: date-time
+       * @description Exclusive end of the schedule window
+       */
+      end_at: string;
     };
     /**
      * PromotionCleanupStrategyV1
@@ -3358,6 +4366,194 @@ export type components = {
        *     }
        */
       promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
+      /** @description Request backpressure settings for the environment. */
+      request_backpressure_settings?:
+        | components["schemas"]["UpdateRequestBackpressureSettings"]
+        | null;
+    };
+    /**
+     * EnvironmentTombstoneV1
+     * @description An environment tombstone.
+     */
+    EnvironmentTombstone: {
+      /**
+       * Name
+       * @description Name of the environment
+       */
+      name: string;
+      /**
+       * Model Id
+       * @description Unique identifier of the model
+       */
+      model_id: string;
+      /**
+       * Deleted
+       * @description Whether the environment was deleted
+       */
+      deleted: boolean;
+    };
+    /**
+     * AutoscalingScheduleSettingsRequestV1
+     * @description A complete set of raw autoscaling overrides for a schedule.
+     */
+    AutoscalingScheduleSettingsRequest: {
+      /**
+       * Min Replica
+       * @description Minimum number of replicas
+       */
+      min_replica: number;
+      /**
+       * Max Replica
+       * @description Maximum number of replicas
+       */
+      max_replica: number;
+      /**
+       * Autoscaling Window
+       * @description Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.
+       */
+      autoscaling_window: number | null;
+      /**
+       * Scale Down Delay
+       * @description Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.
+       */
+      scale_down_delay: number | null;
+      /**
+       * Concurrency Target
+       * @description Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.
+       */
+      concurrency_target: number | null;
+      /**
+       * Target Utilization Percentage
+       * @description Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.
+       */
+      target_utilization_percentage: number | null;
+      /**
+       * Target In Flight Tokens
+       * @description Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.
+       */
+      target_in_flight_tokens: number | null;
+      /**
+       * Max Scale Down Rate
+       * @description Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.
+       */
+      max_scale_down_rate: number | null;
+    };
+    /**
+     * AutoscalingScheduleUpsertV1
+     * @description A complete recurring schedule submitted for create or replacement.
+     */
+    AutoscalingScheduleUpsert: {
+      /**
+       * Id
+       * @description Stable schedule identifier. Omit this field to create a schedule.
+       */
+      id?: string | null;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
+      /**
+       * @description Recurring schedule cadence (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "DAILY" | "HOURLY";
+      /**
+       * Weekdays
+       * @description Weekdays on which the schedule runs
+       */
+      weekdays: components["schemas"]["AutoscalingScheduleWeekday"][];
+      /**
+       * Start Hour
+       * @description Start hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
+       */
+      start_hour?: number | null;
+      /**
+       * Start Minute
+       * @description Start minute of the schedule window
+       */
+      start_minute: number;
+      /**
+       * End Hour
+       * @description End hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
+       */
+      end_hour?: number | null;
+      /**
+       * End Minute
+       * @description End minute of the schedule window
+       */
+      end_minute: number;
+    };
+    /**
+     * OneTimeAutoscalingScheduleUpsertV1
+     * @description A complete one-time schedule submitted for create or replacement.
+     */
+    OneTimeAutoscalingScheduleUpsert: {
+      /**
+       * Id
+       * @description Stable schedule identifier. Omit this field to create a schedule.
+       */
+      id?: string | null;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
+      /**
+       * @description One-time schedule cadence (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "ONE_TIME";
+      /**
+       * Start At
+       * Format: date-time
+       * @description Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.
+       */
+      start_at: string;
+      /**
+       * End At
+       * Format: date-time
+       * @description Exclusive end of the schedule window in ISO 8601 format
+       */
+      end_at: string;
+    };
+    /**
+     * UpdateAutoscalingScheduleSettingsV1
+     * @description Partial mutation of an environment's autoscaling schedule collection.
+     */
+    UpdateAutoscalingScheduleSettings: {
+      /**
+       * Timezone
+       * @description IANA timezone shared by the resulting collection. Omission preserves the current timezone; null is allowed only when deleting every schedule.
+       */
+      timezone?: string | null;
+      /**
+       * Schedules
+       * @description Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.
+       */
+      schedules?: (
+        | components["schemas"]["AutoscalingScheduleUpsert"]
+        | components["schemas"]["OneTimeAutoscalingScheduleUpsert"]
+      )[];
+      /**
+       * Delete Schedules
+       * @description Stable identifiers of schedules to delete. To clear all schedules, include every existing schedule identifier.
+       */
+      delete_schedules?: string[];
     };
     /**
      * UpdateEnvironmentRequestV1
@@ -3390,6 +4586,76 @@ export type components = {
        *     }
        */
       promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
+      /**
+       * @description Partial autoscaling schedule collection update. Omitted collection fields and existing schedules are unchanged; each submitted schedule is a complete create or replacement.
+       * @example {
+       *       "schedules": [
+       *         {
+       *           "autoscaling_settings": {
+       *             "autoscaling_window": null,
+       *             "concurrency_target": null,
+       *             "max_replica": 8,
+       *             "max_scale_down_rate": null,
+       *             "min_replica": 2,
+       *             "scale_down_delay": null,
+       *             "target_in_flight_tokens": null,
+       *             "target_utilization_percentage": null
+       *           },
+       *           "cadence": "DAILY",
+       *           "enabled": true,
+       *           "end_hour": 10,
+       *           "end_minute": 0,
+       *           "name": "weekday-peak",
+       *           "start_hour": 8,
+       *           "start_minute": 0,
+       *           "weekdays": [
+       *             "MONDAY",
+       *             "TUESDAY",
+       *             "WEDNESDAY",
+       *             "THURSDAY",
+       *             "FRIDAY"
+       *           ]
+       *         }
+       *       ],
+       *       "timezone": "America/Los_Angeles"
+       *     }
+       * @example {
+       *       "delete_schedules": [
+       *         "schedule-id"
+       *       ]
+       *     }
+       */
+      autoscaling_schedule_settings?:
+        | components["schemas"]["UpdateAutoscalingScheduleSettings"]
+        | null;
+      /**
+       * @description Request backpressure settings for the environment.
+       * @example {
+       *       "policy": "REJECT_ON_FULL"
+       *     }
+       */
+      request_backpressure_settings?:
+        | components["schemas"]["UpdateRequestBackpressureSettings"]
+        | null;
+    };
+    /**
+     * UpdateEnvironmentResponseV1
+     * @description The response to a request to update an environment's settings.
+     */
+    UpdateEnvironmentResponse: {
+      /** @description The environment after the update, matching the shape returned by GET. */
+      environment: components["schemas"]["Environment"];
+      /**
+       * @deprecated
+       * @description Deprecated. Kept for legacy autoscaling-only update operation behavior.
+       */
+      status: components["schemas"]["UpdateAutoscalingSettingsStatus"];
+      /**
+       * Message
+       * @deprecated
+       * @description Deprecated. Kept for legacy autoscaling-only update operation behavior.
+       */
+      message: string;
     };
     /**
      * PromoteToEnvironmentRequestV1
@@ -3978,6 +5244,13 @@ export type components = {
       /** @description Instance type of the training job. */
       instance_type: components["schemas"]["InstanceType"];
       /**
+       * Node Count
+       * @description Number of nodes the job runs on. The instance type describes a single node, so the job's total GPU count is gpu_count multiplied by node_count.
+       * @default 1
+       * @example 2
+       */
+      node_count: number;
+      /**
        * Updated At
        * Format: date-time
        * @description Time the job was updated in ISO 8601 format.
@@ -4113,6 +5386,22 @@ export type components = {
       training_jobs: components["schemas"]["TrainingJob"][];
     };
     /**
+     * AwsAssumeRoleDockerAuthV1
+     * @description AWS assume-role details for the registry.
+     */
+    AwsAssumeRoleDockerAuth: {
+      /**
+       * Role Arn
+       * @description AWS IAM role ARN that Baseten assumes to pull from the registry. The role's trust policy must allow Baseten's AWS principal with your Baseten-provided external ID.
+       */
+      role_arn: string;
+      /**
+       * Region
+       * @description AWS region of the registry
+       */
+      region: string;
+    };
+    /**
      * AwsIamDockerAuthV1
      * @description AWS details for the registry.
      */
@@ -4154,6 +5443,7 @@ export type components = {
        * @example s3://my-bucket/models/llama
        * @example gs://my-bucket/models/llama
        * @example r2://account_id.bucket/models/llama
+       * @example r2://account_id.eu.bucket/models/llama
        * @example cw://my-bucket/models/llama
        */
       source: string;
@@ -4190,16 +5480,28 @@ export type components = {
        */
       auth_secret_name?: string | null;
       /**
-       * Auth
        * @description Authentication configuration for the weight source.
        * @example {
        *       "auth_method": "CUSTOM_SECRET",
        *       "auth_secret_name": "hf_token"
        *     }
+       * @example {
+       *       "auth_method": "AWS_OIDC",
+       *       "aws_oidc_region": "us-east-1",
+       *       "aws_oidc_role_arn": "arn:aws:iam::123456789012:role/weights-access"
+       *     }
+       * @example {
+       *       "auth_method": "GCP_OIDC",
+       *       "gcp_oidc_service_account": "weights-reader@example.iam.gserviceaccount.com",
+       *       "gcp_oidc_workload_id_provider": "projects/123456789/locations/global/workloadIdentityPools/baseten/providers/baseten"
+       *     }
+       * @example {
+       *       "auth_method": "AWS_ASSUME_ROLE",
+       *       "aws_assume_role_arn": "arn:aws:iam::123456789012:role/baseten-customer-access",
+       *       "aws_assume_role_region": "us-east-1"
+       *     }
        */
-      auth?: {
-        [key: string]: unknown;
-      } | null;
+      auth?: components["schemas"]["TrainingWeightAuth"] | null;
     };
     /** CreateTrainingJobAcceleratorV1 */
     CreateTrainingJobAccelerator: {
@@ -4429,6 +5731,7 @@ export type components = {
        * @example AWS_OIDC
        * @example GCP_OIDC
        * @example REGISTRY_SECRET
+       * @example AWS_ASSUME_ROLE
        */
       auth_method: components["schemas"]["DockerAuthType"];
       /** @description GCP service account details for the registry */
@@ -4443,6 +5746,8 @@ export type components = {
       gcp_oidc_docker_auth?: components["schemas"]["GcpOidcDockerAuth"] | null;
       /** @description Required when auth_method is REGISTRY_SECRET. Supports any Docker registry (Docker Hub, GHCR, NGC, etc.) via username:password credentials stored as a Baseten secret. */
       registry_secret_docker_auth?: components["schemas"]["RegistrySecretDockerAuth"] | null;
+      /** @description Required when auth_method is AWS_ASSUME_ROLE. Baseten assumes the given IAM role with its own AWS principal and your organization's external ID, with no OIDC provider registration in your account. */
+      aws_assume_role_docker_auth?: components["schemas"]["AwsAssumeRoleDockerAuth"] | null;
     };
     /**
      * GcpOidcDockerAuthV1
@@ -4508,6 +5813,49 @@ export type components = {
       name: string;
     };
     /**
+     * TrainingWeightAuthV1
+     * @description Authentication configuration for a training weight source.
+     */
+    TrainingWeightAuth: {
+      /** @description Method used to authenticate the weight source. */
+      auth_method: components["schemas"]["AuthMethod"];
+      /**
+       * Auth Secret Name
+       * @description Name of the workspace secret used for custom-secret authentication.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * Aws Oidc Role Arn
+       * @description AWS IAM role ARN used for OIDC authentication.
+       */
+      aws_oidc_role_arn?: string | null;
+      /**
+       * Aws Oidc Region
+       * @description AWS region used for OIDC authentication.
+       */
+      aws_oidc_region?: string | null;
+      /**
+       * Gcp Oidc Service Account
+       * @description GCP service account used for OIDC authentication.
+       */
+      gcp_oidc_service_account?: string | null;
+      /**
+       * Gcp Oidc Workload Id Provider
+       * @description GCP workload identity provider used for OIDC authentication.
+       */
+      gcp_oidc_workload_id_provider?: string | null;
+      /**
+       * Aws Assume Role Arn
+       * @description AWS IAM role ARN that Baseten assumes to access the weight source.
+       */
+      aws_assume_role_arn?: string | null;
+      /**
+       * Aws Assume Role Region
+       * @description AWS region used for assume-role authentication.
+       */
+      aws_assume_role_region?: string | null;
+    };
+    /**
      * CreateTrainingJobRequestV1
      * @description A request to create a training job.
      */
@@ -4557,6 +5905,9 @@ export type components = {
     /**
      * UpdateTrainingJobRequestV1
      * @description A request to update mutable fields on a training job.
+     *
+     *     Every field is optional so a caller can patch one without the other, but at least
+     *     one must be provided: an empty body has nothing to apply.
      */
     UpdateTrainingJobRequest: {
       /**
@@ -4566,7 +5917,12 @@ export type components = {
        * @example 10
        * @example 100
        */
-      priority: number;
+      priority?: number | null;
+      /**
+       * @description New capacity guarantee for a PENDING training job. 'dedicated' runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress. Only jobs in the PENDING state can have their availability model changed.
+       * @example spot
+       */
+      availability_model?: components["schemas"]["V1AvailabilityModel"] | null;
     };
     /**
      * UpdateTrainingJobResponseV1
@@ -5144,6 +6500,11 @@ export type components = {
        * @description The maximum context length (in tokens) supported by this model.
        */
       max_context_length: number;
+      /**
+       * Supports Vision Language
+       * @description Whether the model accepts image inputs alongside text.
+       */
+      supports_vision_language: boolean;
     };
     /**
      * GetLoopsCapabilitiesResponseV1
@@ -5173,6 +6534,20 @@ export type components = {
       /** @description The Loops session. */
       session: components["schemas"]["LoopsSession"];
     };
+    /**
+     * LoopsRunStatusNameV1
+     * @description A Loops run's lifecycle state: ACTIVE or INACTIVE.
+     * @enum {string}
+     */
+    LoopsRunStatusName: "ACTIVE" | "INACTIVE";
+    /**
+     * LoopsRunStatusV1
+     * @description The current status of a Loops run.
+     */
+    LoopsRunStatus: {
+      /** @description ACTIVE while the run is live; INACTIVE once replaced by a newer run or shut down. */
+      name: components["schemas"]["LoopsRunStatusName"];
+    };
     /** LoopsRunV1 */
     LoopsRun: {
       /**
@@ -5187,9 +6562,10 @@ export type components = {
       session_id: string;
       /**
        * Deployment Id
-       * @description The ID of the Loops deployment the run executes on.
+       * @description The ID of the Loops deployment the run executes on, if it has one.
+       * @default null
        */
-      deployment_id: string;
+      deployment_id: string | null;
       /**
        * Name
        * @description The run's display name.
@@ -5211,8 +6587,15 @@ export type components = {
        * @description Time the run was created in ISO 8601 format
        */
       created_at: string;
-      /** @description The sampler bound to this run. */
-      sampler: components["schemas"]["LoopsSampler"];
+      /** @description The run's current status. */
+      status: components["schemas"]["LoopsRunStatus"];
+      /** @description The user who owns the run. */
+      user: components["schemas"]["User"];
+      /**
+       * @description The sampler bound to this run, or null for a trainer-only run that has not yet created a sampler.
+       * @default null
+       */
+      sampler: components["schemas"]["LoopsSampler"] | null;
     };
     /**
      * LoopsSamplerStatusV1
@@ -5251,6 +6634,19 @@ export type components = {
       deployment_id: string;
       /** @description The sampler's current status. */
       status: components["schemas"]["LoopsSamplerStatus"];
+      /** @description The user who owns the sampler. */
+      user: components["schemas"]["User"];
+      /**
+       * @description Instance type serving the sampler.
+       * @default null
+       */
+      instance_type: components["schemas"]["InstanceType"] | null;
+      /**
+       * Node Count
+       * @description Number of nodes serving the sampler.
+       * @default 1
+       */
+      node_count: number;
     };
     /**
      * ListLoopsRunsResponseV1
@@ -5297,9 +6693,14 @@ export type components = {
       seed?: number | null;
       /**
        * Scale Down Delay Seconds
-       * @description Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 3600.
+       * @description Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 900 (15 minutes).
        */
       scale_down_delay_seconds?: number;
+      /**
+       * @description Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.
+       * @example spot
+       */
+      availability_model?: components["schemas"]["V1AvailabilityModel"];
       /**
        * Replicas
        * @description Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.
@@ -5312,14 +6713,37 @@ export type components = {
        */
       path?: string | null;
       /**
+       * Reuse From Run Id
+       * @description Optional ID of a prior Loops run whose trainer and/or sampler should be reused for this run instead of provisioning fresh. The prior run must use the same base model and belong to the same team.
+       */
+      reuse_from_run_id?: string | null;
+      /**
        * Reuse From Session Id
-       * @description Optional Loops session ID whose trainer deployment should be reused for this run, sharing the infrastructure across sessions instead of provisioning fresh. The named session must belong to the same team. Reuse is best-effort: if the prior deployment is stopped, failed, its sampler is unhealthy, or this run requests replicas != 1, a new deployment is provisioned instead.
+       * @description Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.
        */
       reuse_from_session_id?: string | null;
     };
     /** CreateLoopsRunResponseV1 */
     CreateLoopsRunResponse: {
       run: components["schemas"]["LoopsRun"];
+    };
+    /**
+     * DeactivateLoopsRunResponseV1
+     * @description Response for ``POST /v1/loops/runs/<run_id>/deactivate``.
+     */
+    DeactivateLoopsRunResponse: {
+      /**
+       * Id
+       * @description The deactivated Loops run ID.
+       */
+      id: string;
+      /**
+       * Base Model
+       * @description The base model whose Loops run was deactivated.
+       */
+      base_model: string;
+      /** @description The user who owns the Loops run. */
+      user: components["schemas"]["User"];
     };
     /**
      * GetLoopsRunResponseV1
@@ -5352,23 +6776,28 @@ export type components = {
       session_id: string;
       /**
        * Base Model
-       * @description Base model ID for standalone samplers (e.g., for baselines).
+       * @description Base model ID for a standalone sampler (for example, a baseline).
        */
-      base_model: string;
+      base_model?: string | null;
+      /**
+       * Run Id
+       * @description ID of an existing run to attach this sampler to. When set, the sampler is paired to the run and weight-syncs from its trainer, and base_model is inherited from the run. Omit to create a standalone sampler.
+       */
+      run_id?: string | null;
       /**
        * Max Seq Length
-       * @description Maximum prompt length (in tokens) the sampler must handle. Set this to the longest prompt you plan to send. Omit to use the default for the base model.
+       * @description Maximum prompt length (in tokens) the sampler must handle. Set this to the longest prompt you plan to send.
        */
       max_seq_length?: number | null;
       /**
        * Model Path
-       * @description Optional bt:// URI of an existing sampler-target checkpoint to load weights from on startup. Form: bt://loops:<run_id>/sampler_weights/<checkpoint_name>.
+       * @description bt:// URI of an existing sampler checkpoint to serve. Form: bt://loops:<run_id>/sampler_weights/<checkpoint_name>.
        * @example bt://loops:k4q95w5/sampler_weights/step-100
        */
       model_path?: string | null;
       /**
        * Reuse From Session Id
-       * @description Optional Loops session ID whose deployment should be reused for this sampler. Same best-effort semantics as the run endpoint.
+       * @description Optional ID of a prior Loops session to reuse a trainer and/or sampler from. Deprecated.
        */
       reuse_from_session_id?: string | null;
     };
@@ -5521,6 +6950,12 @@ export type components = {
        */
       active_run_id: string | null;
       /**
+       * Latest Run Id
+       * @description The ID of the most recent run on this deployment, active or not, so idle deployments still expose a usable run handle. Null only if the deployment has no runs.
+       * @default null
+       */
+      latest_run_id: string | null;
+      /**
        * Base Model
        * @description The HuggingFace base model the deployment is fine-tuning.
        */
@@ -5534,6 +6969,25 @@ export type components = {
       status: components["schemas"]["LoopsDeploymentStatus"];
       /** @description The user who owns the Loops deployment. */
       user: components["schemas"]["User"];
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time the deployment was created in ISO 8601 format.
+       */
+      created_at: string;
+      /**
+       * @description Capacity the trainer was scheduled on.
+       * @default dedicated
+       */
+      availability_model: components["schemas"]["V1AvailabilityModel"];
+      /** @description Instance type backing the trainer. */
+      instance_type: components["schemas"]["InstanceType"];
+      /**
+       * Node Count
+       * @description Number of nodes backing the trainer.
+       * @default 1
+       */
+      node_count: number;
       /**
        * @description The sampler bound to this deployment.
        * @default null
@@ -5580,6 +7034,19 @@ export type components = {
     GetLoopsDeploymentResponse: {
       /** @description The Loops deployment. */
       deployment: components["schemas"]["LoopsDeployment"];
+    };
+    /**
+     * LoopsDebugArchiveFilesResponseV1
+     * @description Response with presigned URLs for a Loops deployment's debug archive.
+     */
+    LoopsDebugArchiveFilesResponse: {
+      /** Presigned Urls */
+      presigned_urls: components["schemas"]["CheckpointFile"][];
+      /**
+       * Next Page Token
+       * @default null
+       */
+      next_page_token: string | null;
     };
     /**
      * GetLoopsDeploymentMetricsRequestV1
@@ -5734,11 +7201,7 @@ export type components = {
     };
     /**
      * ResponseTimeDatapointV1
-     * @description Latency quantile datapoint.
-     *
-     *     Values are reported in **milliseconds** to match the oracle/inference
-     *     ``response_time_stats`` convention. Source histogram is the queue-proxy's
-     *     ``revision_request_latencies_bucket`` whose bucket boundaries are in ms.
+     * @description Latency quantile datapoint. Values are reported in milliseconds.
      */
     ResponseTimeDatapoint: {
       /**
@@ -6185,6 +7648,8 @@ export type components = {
       /**
        * @description Type of the API key.
        * @example PERSONAL
+       * @example ROUTES
+       * @example WORKSPACE_MANAGE_API_KEYS
        * @example WORKSPACE_EXPORT_METRICS
        * @example WORKSPACE_INVOKE
        * @example WORKSPACE_MANAGE_ALL
@@ -6198,6 +7663,11 @@ export type components = {
        *     ]
        */
       model_ids?: string[] | null;
+      /**
+       * Team Id
+       * @description Team ID for a team-scoped key. When omitted, uses the team in the URL if present, otherwise your organization's default team. Must match the URL team when both are provided. Not supported for PERSONAL or WORKSPACE_MANAGE_API_KEYS keys.
+       */
+      team_id?: string | null;
     };
     /**
      * APIKeyV1
@@ -6230,6 +7700,7 @@ export type components = {
       /**
        * @description Type of the API key.
        * @example PERSONAL
+       * @example WORKSPACE_MANAGE_API_KEYS
        * @example WORKSPACE_EXPORT_METRICS
        * @example WORKSPACE_INVOKE
        * @example WORKSPACE_MANAGE_ALL
@@ -6302,48 +7773,10 @@ export type components = {
       prefix: string;
     };
     /**
-     * ModelWeightSnapshotV1
-     * @description A model weight snapshot.
-     */
-    ModelWeightSnapshot: {
-      /**
-       * Model
-       * @description Unique identifier of the model
-       */
-      model: string;
-      /**
-       * Snapshot Uri
-       * @description Path to the model weight snapshot
-       */
-      snapshot_uri: string;
-      /**
-       * Received At
-       * Format: date-time
-       * @description Time of the snapshot
-       */
-      received_at: string;
-    };
-    /**
-     * CreateModelWeightSnapshotRequestV1
-     * @description A request to create a model weight snapshot.
-     */
-    CreateModelWeightSnapshotRequest: {
-      /**
-       * Model
-       * @description Unique identifier of the model
-       */
-      model: string;
-      /**
-       * Snapshot Uri
-       * @description Path to the model weight snapshot
-       */
-      snapshot_uri: string;
-    };
-    /**
      * LimitTypeV1
      * @enum {string}
      */
-    LimitType: "REQUEST" | "TOKEN";
+    LimitType: "REQUEST" | "TOKEN" | "CONCURRENT_REQUEST" | "UNCACHED_INPUT_TOKEN" | "OUTPUT_TOKEN";
     /**
      * ModelAPIOrgDetailsV1
      * @description Workspace-specific state for a Model API.
@@ -6413,16 +7846,16 @@ export type components = {
       context_length: number;
       /**
        * Cost Per Million Input Tokens
-       * @description Cost per million input tokens, in dollars.
+       * @description Effective cost per million input tokens, in dollars. Null when pricing is unavailable.
        * @example 0.13
        */
-      cost_per_million_input_tokens: number | string;
+      cost_per_million_input_tokens: number | string | null;
       /**
        * Cost Per Million Output Tokens
-       * @description Cost per million output tokens, in dollars.
+       * @description Effective cost per million output tokens, in dollars. Null when pricing is unavailable.
        * @example 0.50
        */
-      cost_per_million_output_tokens: number | string;
+      cost_per_million_output_tokens: number | string | null;
       /**
        * Rate Limits
        * @description Rate limits in effect for the workspace. Workspace-specific overrides are returned when the workspace has added this Model API and configured them; otherwise the catalog default rate limits are returned.
@@ -6475,6 +7908,96 @@ export type components = {
       pagination: components["schemas"]["PaginationResponse"];
     };
     /**
+     * ModelApisUsageBucketV1
+     * @description One time bucket and the usage recorded in it.
+     */
+    ModelApisUsageBucket: {
+      /**
+       * Start Time
+       * Format: date-time
+       * @description Start of the bucket (inclusive), UTC
+       */
+      start_time: string;
+      /**
+       * End Time
+       * Format: date-time
+       * @description End of the bucket (exclusive), UTC
+       */
+      end_time: string;
+      /**
+       * Results
+       * @description Usage totals for this bucket, ordered by total tokens descending
+       */
+      results?: components["schemas"]["ModelApisUsageResult"][];
+    };
+    /**
+     * ModelApisUsageResultV1
+     * @description Usage totals for one combination of the requested dimensions, within one bucket.
+     */
+    ModelApisUsageResult: {
+      /**
+       * Api Key Prefix
+       * @description Prefix of the API key the usage is attributed to. Null when not grouping by api_key or when the request was not authenticated with an API key.
+       * @default null
+       */
+      api_key_prefix: string | null;
+      /**
+       * User Id
+       * @description User the usage is attributed to. Null when not grouping by user or when the credential is not user-scoped.
+       * @default null
+       */
+      user_id: string | null;
+      /**
+       * Model
+       * @description Model that served the usage. Null when not grouping by model.
+       * @default null
+       */
+      model: string | null;
+      /**
+       * Input Tokens
+       * @description Total input tokens, cached and uncached combined.
+       */
+      input_tokens: number;
+      /**
+       * Cached Input Tokens
+       * @description Input tokens served from the prompt cache.
+       */
+      cached_input_tokens: number;
+      /**
+       * Uncached Input Tokens
+       * @description Input tokens not served from the prompt cache.
+       */
+      uncached_input_tokens: number;
+      /**
+       * Output Tokens
+       * @description Total output tokens.
+       */
+      output_tokens: number;
+      /**
+       * Request Count
+       * @description Total number of requests.
+       */
+      request_count: number;
+    };
+    /**
+     * ModelApisUsageResponseV1
+     * @description A page of Model APIs token usage: contiguous time buckets, ordered oldest first.
+     */
+    ModelApisUsageResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["ModelApisUsageBucket"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * UsageDimensionV1
+     * @enum {string}
+     */
+    UsageDimension: "api_key" | "user" | "model";
+    /**
      * CreateLLMModelRequestV1
      * @description A request to create a BIS-LLM model
      */
@@ -6486,6 +8009,11 @@ export type components = {
       resources: {
         [key: string]: unknown;
       };
+      /**
+       * Region
+       * @description Region in which to deploy the model
+       */
+      region?: string | null;
       /**
        * Llm Version
        * @description Version of the helm chart to use.
@@ -6613,6 +8141,11 @@ export type components = {
         [key: string]: unknown;
       };
       /**
+       * Region
+       * @description Region in which to deploy the model
+       */
+      region?: string | null;
+      /**
        * Llm Version
        * @description Version of the helm chart to use.
        */
@@ -6694,6 +8227,31 @@ export type components = {
           }[]
         | null;
     };
+    /** LibraryListingMetadataV1 */
+    LibraryListingMetadata: {
+      /** Parameter Count */
+      parameter_count?: number | null;
+      /** Context Length */
+      context_length?: number | null;
+      /** Input Modalities */
+      input_modalities?: components["schemas"]["LibraryListingModality"][];
+      /** Output Modalities */
+      output_modalities?: components["schemas"]["LibraryListingModality"][];
+      /** License */
+      license: string;
+      /** Variant */
+      variant?: string | null;
+      /** Publisher */
+      publisher?: string | null;
+      /** Model Api Slug */
+      model_api_slug?: string | null;
+      /** Release Date */
+      release_date?: string | null;
+      /** Description */
+      description?: string | null;
+      /** Trending */
+      trending?: boolean;
+    };
     /**
      * LibraryListingV1
      * @description A library listing.
@@ -6715,6 +8273,11 @@ export type components = {
        */
       is_public: boolean;
       /**
+       * Trending
+       * @description Whether the listing is trending
+       */
+      trending: boolean | null;
+      /**
        * Closed Source
        * @description Whether the listing is closed source (deployers cannot view or download the Truss, and forks copy mirrored weights instead of re-mirroring from upstream)
        */
@@ -6731,6 +8294,11 @@ export type components = {
        * @description Time the listing was last modified
        */
       modified_at: string;
+      /**
+       * @description Model-level metadata for this listing, if it has been uploaded.
+       * @default null
+       */
+      metadata: components["schemas"]["LibraryListingMetadata"] | null;
     };
     /**
      * LibraryListingsV1
@@ -6797,6 +8365,54 @@ export type components = {
        * @description Whether the listing is publicly accessible
        */
       is_public?: boolean | null;
+      /**
+       * Trending
+       * @description Whether the listing is trending
+       */
+      trending?: boolean | null;
+      /** @description Model-level metadata for the listing. When provided, replaces the stored metadata. Unknown fields are rejected. */
+      metadata?: components["schemas"]["LibraryListingMetadata"] | null;
+    };
+    /** BenchmarkSnapshotV1 */
+    BenchmarkSnapshot: {
+      /** Run Id */
+      run_id: string;
+      /**
+       * Measured At
+       * Format: date
+       */
+      measured_at: string;
+      llm?: components["schemas"]["LLMBenchmarkMetrics"] | null;
+      tts?: components["schemas"]["TTSBenchmarkMetrics"] | null;
+      embedding?: components["schemas"]["EmbeddingBenchmarkMetrics"] | null;
+      /** Replicas */
+      replicas?: number | null;
+      /** Profile */
+      profile?: string | null;
+    };
+    /** EmbeddingBenchmarkMetricsV1 */
+    EmbeddingBenchmarkMetrics: {
+      /** E2E Latency Ms P50 */
+      e2e_latency_ms_p50?: number | null;
+      /** E2E Latency Ms P99 */
+      e2e_latency_ms_p99?: number | null;
+      /** Input Tokens Per Sec */
+      input_tokens_per_sec?: number | null;
+      /** Requests Per Sec */
+      requests_per_sec?: number | null;
+    };
+    /** LLMBenchmarkMetricsV1 */
+    LLMBenchmarkMetrics: {
+      /** Ttft Ms P50 */
+      ttft_ms_p50?: number | null;
+      /** Output Tokens Per Sec Per User P50 */
+      output_tokens_per_sec_per_user_p50?: number | null;
+      /** Max Concurrent Users At 50Ms Tpot */
+      max_concurrent_users_at_50ms_tpot?: number | null;
+      /** Requests Per Sec P50 */
+      requests_per_sec_p50?: number | null;
+      /** Cost Per 1M Tokens Usd */
+      cost_per_1m_tokens_usd?: number | null;
     };
     /**
      * LibraryListingVersionV1
@@ -6835,6 +8451,22 @@ export type components = {
        * @description Time the version was last modified
        */
       modified_at: string;
+      /**
+       * @description Benchmark snapshot for this version, if one has been uploaded.
+       * @default null
+       */
+      benchmark: components["schemas"]["BenchmarkSnapshot"] | null;
+    };
+    /** TTSBenchmarkMetricsV1 */
+    TTSBenchmarkMetrics: {
+      /** Ttft Ms P50 */
+      ttft_ms_p50?: number | null;
+      /** Max Concurrent Streams At Rtf1 */
+      max_concurrent_streams_at_rtf1?: number | null;
+      /** Ttft Ms P50 At Max Concurrency */
+      ttft_ms_p50_at_max_concurrency?: number | null;
+      /** Cost Per Audio Minute Usd */
+      cost_per_audio_minute_usd?: number | null;
     };
     /**
      * LibraryListingVersionsV1
@@ -6911,7 +8543,79 @@ export type components = {
        * @description Whether users deploying this model can download the Truss
        */
       allow_truss_download?: boolean | null;
+      /** @description Benchmark snapshot for this version. When provided, replaces the stored benchmark. */
+      benchmark?: components["schemas"]["BenchmarkSnapshot"] | null;
     };
+    /**
+     * ModelApisCostBucketV1
+     * @description One daily bucket and the costs attributed to it.
+     */
+    ModelApisCostBucket: {
+      /**
+       * Date
+       * Format: date
+       * @description UTC calendar date for this bucket, from midnight inclusive to the next midnight exclusive.
+       */
+      date: string;
+      /**
+       * Results
+       * @description Cost totals for the observed combinations of requested dimensions in this bucket, ordered by those dimensions. Empty when the day has no matching usage.
+       */
+      results?: components["schemas"]["ModelApisCostResult"][];
+    };
+    /** ModelApisCostResultV1 */
+    ModelApisCostResult: {
+      /**
+       * Api Key Prefixes
+       * @description The single attributed API key prefix for this result. Null when not grouping by api_key_prefix or when attribution is unavailable.
+       * @default null
+       */
+      api_key_prefixes: string[] | null;
+      /**
+       * User Id
+       * @description Attributed user ID. Null when not grouping by user or when attribution is unavailable.
+       * @default null
+       */
+      user_id: string | null;
+      /**
+       * Model
+       * @description Model identifier. Null when not grouping by model.
+       * @default null
+       */
+      model: string | null;
+      /**
+       * Service Tier
+       * @description Service tier. Null when not grouping by service_tier or when attribution is unavailable.
+       * @default null
+       */
+      service_tier: string | null;
+      /**
+       * Subtotal
+       * @description Model API cost in USD for this day and grouping combination, returned as an exact decimal string preserving fractional-cent amounts. This amount may differ from finalized invoice amounts.
+       * @example 0.00000123
+       */
+      subtotal: string;
+    };
+    /**
+     * ModelApisCostsResponseV1
+     * @description One non-overlapping bucket per UTC day, ordered oldest first with no gaps.
+     *
+     *     Days without matching usage are included with an empty results list.
+     */
+    ModelApisCostsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["ModelApisCostBucket"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * ModelApiCostDimensionV1
+     * @enum {string}
+     */
+    ModelApiCostDimension: "api_key_prefix" | "user" | "model" | "service_tier";
     /** BillableResourceV1 */
     BillableResource: {
       /**
@@ -6919,7 +8623,7 @@ export type components = {
        * @description Unique identifier of the resource
        */
       id: string;
-      /** @description Resource kind (MODEL_DEPLOYMENT, TRAINING_JOB, or CHAINLET) */
+      /** @description Resource kind (MODEL_DEPLOYMENT, CHAINLET, TRAINING_JOB, LOOPS_TRAINER, or LOOPS_SAMPLER) */
       kind: components["schemas"]["ResourceKind"];
       /**
        * Name
@@ -6927,6 +8631,12 @@ export type components = {
        * @default null
        */
       name: string | null;
+      /**
+       * Model Id
+       * @description Unique identifier of the parent model for model deployments and chainlets
+       * @default null
+       */
+      model_id: string | null;
       /**
        * Model Name
        * @description Name of the parent resource (e.g., model name for model deployments, training project name for training jobs)
@@ -6945,6 +8655,12 @@ export type components = {
        */
       instance_type: string | null;
       /**
+       * Base Model
+       * @description Base model used by this Loops trainer or sampler
+       * @default null
+       */
+      base_model: string | null;
+      /**
        * Environment Name
        * @description Environment name (e.g., 'production', 'staging')
        * @default null
@@ -6955,6 +8671,18 @@ export type components = {
        * @default null
        */
       chain_metadata: components["schemas"]["ChainMetadata"] | null;
+      /**
+       * Team Id
+       * @description Unique identifier of the team that owns the resource. Only present for organizations with multiple teams enabled.
+       * @default null
+       */
+      team_id: string | null;
+      /**
+       * Team Name
+       * @description Name of the team that owns the resource. Only present for organizations with multiple teams enabled.
+       * @default null
+       */
+      team_name: string | null;
     };
     /** ChainMetadataV1 */
     ChainMetadata: {
@@ -7294,6 +9022,118 @@ export type components = {
       pagination: components["schemas"]["PaginationResponse"];
     };
     /**
+     * AwsAssumeRoleV1
+     * @description AWS AssumeRole trust-policy inputs for the organization.
+     */
+    AwsAssumeRole: {
+      /**
+       * Baseten Role Arn
+       * @description Baseten role ARN to allow in an IAM role's trust policy
+       */
+      baseten_role_arn: string;
+      /**
+       * External Id
+       * @description sts:ExternalId Baseten presents when assuming the role
+       */
+      external_id: string;
+    };
+    /**
+     * OrganizationInfoV1
+     * @description The caller's organization.
+     */
+    OrganizationInfo: {
+      /**
+       * Org Id
+       * @description Unique identifier for the organization
+       */
+      org_id: string;
+      /**
+       * Name
+       * @description Display name of the organization
+       * @default null
+       */
+      name: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time the organization was created in ISO 8601 format
+       */
+      created_at: string;
+      /**
+       * @description AWS AssumeRole trust-policy inputs; null while the method is not enabled for the organization
+       * @default null
+       */
+      aws_assume_role: components["schemas"]["AwsAssumeRole"] | null;
+    };
+    /** GatewayEventTokensV1 */
+    GatewayEventTokens: {
+      /**
+       * Inputtokens
+       * @description Cached and uncached input tokens.
+       */
+      inputTokens: number;
+      /**
+       * Outputtokens
+       * @description Output tokens.
+       */
+      outputTokens: number;
+      /**
+       * Cachedinputtokens
+       * @description Cached input tokens.
+       */
+      cachedInputTokens: number;
+    };
+    /** GatewayEventV1 */
+    GatewayEvent: {
+      /**
+       * Type
+       * @description Event type.
+       * @default API_BILLING_USAGE
+       */
+      type: string;
+      /**
+       * Idempotencykey
+       * @description Deduplication key.
+       */
+      idempotencyKey: string;
+      /**
+       * Timestamp
+       * @description Billing event time (ISO 8601, UTC).
+       */
+      timestamp: string;
+      /**
+       * Requestid
+       * @description Inference request ID.
+       */
+      requestId: string;
+      /**
+       * Modelslug
+       * @description Served model.
+       */
+      modelSlug: string;
+      /**
+       * Externalentityid
+       * @description Calling group's external ID.
+       */
+      externalEntityId: string;
+      /**
+       * Apikeyprefix
+       * @description API key prefix.
+       */
+      apiKeyPrefix: string;
+      tokens: components["schemas"]["GatewayEventTokens"];
+    };
+    /** GatewayEventsResponseV1 */
+    GatewayEventsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["GatewayEvent"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
      * EndpointTargetV1
      * @description One configured upstream target of an endpoint.
      */
@@ -7352,6 +9192,8 @@ export type components = {
        * @example baseten/mymodel-4
        */
       slug: string;
+      /** @description Region this endpoint's routing serves. */
+      region: components["schemas"]["SharedEndpointRegion"];
       /**
        * Created At
        * Format: date-time
@@ -7370,6 +9212,11 @@ export type components = {
        */
       targets: components["schemas"]["EndpointTarget"][];
     };
+    /**
+     * SharedEndpointRegionV1
+     * @enum {string}
+     */
+    SharedEndpointRegion: "UNRESTRICTED" | "EU";
     /** VertexTargetConfigV1 */
     VertexTargetConfig: {
       /**
@@ -7451,6 +9298,8 @@ export type components = {
        * @example baseten/mymodel-4
        */
       slug: string;
+      /** @description Region the new routing serves. */
+      region?: components["schemas"]["SharedEndpointRegion"];
       /**
        * Targets
        * @description The endpoint's upstream targets. Exactly one target is supported at this time.
@@ -7600,12 +9449,13 @@ export type components = {
        * @example CASCADING
        * @example INDEPENDENT
        */
-      limit_enforcement?: components["schemas"]["LimitEnforcement"];
+      limit_enforcement: components["schemas"]["LimitEnforcement"];
       /**
        * Parent Group Id
+       * @default null
        * @example abc123
        */
-      parent_group_id?: string | null;
+      parent_group_id: string | null;
     };
     /** GroupMetadataV1 */
     GroupMetadata: {
@@ -7696,6 +9546,19 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** CreateGroupHierarchyV1 */
+    CreateGroupHierarchy: {
+      /**
+       * @description Limit behavior. Child groups inherit their parent's behavior when omitted; root groups default to Independent for backwards compatibility.
+       * @example INDEPENDENT
+       */
+      limit_enforcement?: components["schemas"]["LimitEnforcement"] | null;
+      /**
+       * Parent Group Id
+       * @example abc123
+       */
+      parent_group_id?: string | null;
+    };
     /** CreateGroupRequestV1 */
     CreateGroupRequest: {
       /** @description Group identity + display metadata. */
@@ -7703,10 +9566,15 @@ export type components = {
       /**
        * Models
        * @description Per-model rate and usage limit configuration. Defines the group's complete model set. Must be non-empty.
+       * @example [
+       *       {
+       *         "slug": "my-org/claude"
+       *       }
+       *     ]
        */
       models: components["schemas"]["ModelConfig"][];
       /** @description Parent linkage and limit enforcement mode. Immutable after creation. */
-      hierarchy: components["schemas"]["GroupHierarchy"];
+      hierarchy: components["schemas"]["CreateGroupHierarchy"];
     };
     /** UpdateGroupMetadataV1 */
     UpdateGroupMetadata: {
@@ -7809,6 +9677,42 @@ export type components = {
        * @description Whether the registration was successful
        */
       ok: boolean;
+    };
+    GetVolumesRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of volumes to return.
+       */
+      limit?: number;
+      /**
+       * Namespace
+       * @description Namespace to list volumes in. Required, because the volume service has no cross-namespace inventory.
+       */
+      namespace: string;
+    };
+    GetVolumesNamespacesRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of namespaces to return.
+       */
+      limit?: number;
+    };
+    GetVolumesVersionsRequest: {
+      /**
+       * Include Tombstoned
+       * @description Whether to include deleted versions. A deleted version carries a TOMBSTONED lifecycle and stays restorable until its recovery deadline passes.
+       */
+      include_tombstoned?: boolean;
     };
     GetTeamsRequest: {
       /**
@@ -8273,6 +10177,20 @@ export type components = {
        * @example Qwen/Qwen3-8B
        */
       base_model?: string | null;
+      /**
+       * Scope
+       * @description Defaults to the caller's own runs; pass 'org' to list every run in the caller's organization.
+       * @example org
+       */
+      scope?: string | null;
+    };
+    GetLoopsSamplersRequest: {
+      /**
+       * Scope
+       * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
+       * @example org
+       */
+      scope?: string | null;
     };
     GetLoopsCheckpointsRequest: {
       /**
@@ -8293,6 +10211,38 @@ export type components = {
        * @example bt://loops:k4q95w5/sampler_weights/step-100
        */
       checkpoint_path?: string | null;
+    };
+    GetLoopsCheckpointsFilesRequest: {
+      /**
+       * Page Size
+       * @description Max files per page (default 1000).
+       */
+      page_size?: number;
+      /**
+       * Page Token
+       * @description Offset into the file list (default 0).
+       */
+      page_token?: number;
+    };
+    GetLoopsDeploymentsRequest: {
+      /**
+       * Scope
+       * @description Defaults to the caller's own deployments; pass 'org' to list every deployment in the caller's organization.
+       * @example org
+       */
+      scope?: string | null;
+    };
+    GetLoopsDeploymentsDebugArchiveFilesRequest: {
+      /**
+       * Page Size
+       * @description Max files per page (default and maximum 1000).
+       */
+      page_size?: number;
+      /**
+       * Page Token
+       * @description Opaque token for the next page.
+       */
+      page_token?: string | null;
     };
     GetLoopsDeploymentsLogsRequest: {
       /**
@@ -8315,6 +10265,34 @@ export type components = {
       /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
       min_level?: components["schemas"]["LogLevel"] | null;
     };
+    GetTeamsLoopsRunsRequest: {
+      /**
+       * Run Id
+       * @description Filter by run ID.
+       * @example k4q95w5
+       */
+      run_id?: string | null;
+      /**
+       * Base Model
+       * @description Filter runs by base model name.
+       * @example Qwen/Qwen3-8B
+       */
+      base_model?: string | null;
+      /**
+       * Scope
+       * @description Defaults to the caller's own runs; pass 'org' to list every run in the caller's organization.
+       * @example org
+       */
+      scope?: string | null;
+    };
+    GetTeamsLoopsSamplersRequest: {
+      /**
+       * Scope
+       * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
+       * @example org
+       */
+      scope?: string | null;
+    };
     GetModelApisRequest: {
       /**
        * Cursor
@@ -8331,6 +10309,97 @@ export type components = {
        * @description When true, restrict the result to Model APIs the workspace has added. Defaults to the full visible catalog.
        */
       added_only?: boolean;
+    };
+    GetModelApisUsageRequest: {
+      /**
+       * Start Time
+       * @description Start of the query range (ISO 8601, UTC), inclusive. Snapped down to the start of its bucket. Required on the first page, and ignored when you pass a cursor.
+       */
+      start_time?: string | null;
+      /**
+       * End Time
+       * @description End of the query range (ISO 8601, UTC), exclusive. Defaults to the current time.
+       */
+      end_time?: string | null;
+      /** @description Width of each time bucket: 1m, 1h, or 1d. Defaults to 1d. */
+      bucket_width?: components["schemas"]["BucketWidth"];
+      /**
+       * Group By
+       * @description Dimensions to break usage down by, repeated once per dimension: api_key, user, model. Defaults to model.
+       */
+      group_by?: components["schemas"]["UsageDimension"][];
+      /**
+       * Api Keys
+       * @description Return only usage for these API key prefixes, repeated once per prefix.
+       */
+      api_keys?: string[];
+      /**
+       * User Ids
+       * @description Return only usage attributed to these user IDs, repeated once per ID.
+       */
+      user_ids?: string[];
+      /**
+       * Models
+       * @description Return only usage for these models, repeated once per model.
+       */
+      models?: string[];
+      /**
+       * Limit
+       * @description Number of time buckets to return. Defaults and maximums depend on bucket_width: 1d defaults to 7 and allows 31, 1h defaults to 24 and allows 168, 1m defaults to 60 and allows 1440.
+       */
+      limit?: number | null;
+      /**
+       * Cursor
+       * @description Opaque cursor from the pagination.cursor field of a previous response
+       */
+      cursor?: string | null;
+    };
+    GetBillingModelApisRequest: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Number of daily cost buckets to return. Defaults to 7; maximum 31.
+       */
+      limit?: number;
+      /**
+       * Start Date
+       * @description Inclusive UTC calendar day at the start of the query range. Defaults to the previous UTC date, cannot be before 2026-08-05, and is ignored when you pass a cursor.
+       */
+      start_date?: string | null;
+      /**
+       * End Date
+       * @description Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included. The date range cannot exceed 90 days.
+       */
+      end_date?: string | null;
+      /**
+       * Group By
+       * @description Dimensions to break costs down by, repeated once per dimension: api_key_prefix, user, model, or service_tier. Each result represents one observed combination of the requested dimensions within that day. For example, grouping by api_key_prefix and user returns each API-key and user pair that had usage. Combinations without usage are omitted, so result counts can differ between days. Omit for daily organization totals.
+       */
+      group_by?: components["schemas"]["ModelApiCostDimension"][];
+      /**
+       * Api Key Prefixes
+       * @description Return only costs for these exact API key prefixes, repeated once per prefix.
+       */
+      api_key_prefixes?: string[];
+      /**
+       * User Ids
+       * @description Return only costs attributed to these exact user IDs, repeated once per ID.
+       */
+      user_ids?: string[];
+      /**
+       * Models
+       * @description Return only costs for these exact model identifiers, repeated once per model.
+       */
+      models?: string[];
+      /**
+       * Service Tiers
+       * @description Return only costs for these exact service tiers, repeated once per tier.
+       */
+      service_tiers?: string[];
     };
     GetBillingUsageSummaryRequest: {
       /**
@@ -8363,9 +10432,44 @@ export type components = {
        */
       email?: string | null;
     };
+    GetGatewayEventsRequest: {
+      /**
+       * Start Time
+       * @description Inclusive start (ISO 8601, UTC). Required without a cursor.
+       */
+      start_time?: string | null;
+      /**
+       * End Time
+       * @description Exclusive end (ISO 8601, UTC). Defaults to now.
+       */
+      end_time?: string | null;
+      /**
+       * Limit
+       * @description Max events. Default 100, max 1000.
+       */
+      limit?: number | null;
+      /**
+       * Api Keys
+       * @description Return only events for these API key prefixes, repeated once per prefix.
+       */
+      api_keys?: string[];
+      /**
+       * External Entity Ids
+       * @description Return only events for these external entity IDs, repeated once per ID.
+       */
+      external_entity_ids?: string[];
+      /**
+       * Cursor
+       * @description Next-page cursor. Other parameters are ignored.
+       */
+      cursor?: string | null;
+    };
   };
   responses: never;
   parameters: {
+    volume_namespace: string;
+    volume_name: string;
+    volume_version: string;
     secret_name: string;
     team_id: string;
     env_name: string;
@@ -8396,6 +10500,7 @@ export type components = {
 export type DeploymentConfigOutputFormat = components["schemas"]["DeploymentConfigOutputFormat"];
 export type CheckpointSyncStatus = components["schemas"]["CheckpointSyncStatus"];
 export type V1AvailabilityModel = components["schemas"]["V1AvailabilityModel"];
+export type AuthMethod = components["schemas"]["AuthMethod"];
 export type BasetenLatestCheckpointConfig = components["schemas"]["BasetenLatestCheckpointConfig"];
 export type BasetenNamedCheckpointConfig = components["schemas"]["BasetenNamedCheckpointConfig"];
 export type CreateTrainingJobCacheConfig = components["schemas"]["CreateTrainingJobCacheConfig"];
@@ -8416,8 +10521,28 @@ export type FileSummary = components["schemas"]["FileSummary"];
 export type TrainerCheckpointTarget = components["schemas"]["TrainerCheckpointTarget"];
 export type Name = components["schemas"]["Name"];
 export type ApiKeyCategory = components["schemas"]["APIKeyCategory"];
+export type BucketWidth = components["schemas"]["BucketWidth"];
+export type LibraryListingModality = components["schemas"]["LibraryListingModality"];
 export type ResourceKind = components["schemas"]["ResourceKind"];
 export type GatewayProvider = components["schemas"]["GatewayProvider"];
+export type PaginationResponse = components["schemas"]["PaginationResponse"];
+export type VolumeTag = components["schemas"]["VolumeTag"];
+export type Volume = components["schemas"]["Volume"];
+export type VolumeVersionSummary = components["schemas"]["VolumeVersionSummary"];
+export type ListVolumesResponse = components["schemas"]["ListVolumesResponse"];
+export type VolumeTokenScope = components["schemas"]["VolumeTokenScope"];
+export type CreateVolumeTokenRequest = components["schemas"]["CreateVolumeTokenRequest"];
+export type CreateVolumeTokenResponse = components["schemas"]["CreateVolumeTokenResponse"];
+export type ListVolumeNamespacesResponse = components["schemas"]["ListVolumeNamespacesResponse"];
+export type DeleteVolumeRequest = components["schemas"]["DeleteVolumeRequest"];
+export type DeleteVolumeResponse = components["schemas"]["DeleteVolumeResponse"];
+export type VolumeVersion = components["schemas"]["VolumeVersion"];
+export type ListVolumeVersionsResponse = components["schemas"]["ListVolumeVersionsResponse"];
+export type DeleteVolumeVersionRequest = components["schemas"]["DeleteVolumeVersionRequest"];
+export type DeleteVolumeVersionResponse = components["schemas"]["DeleteVolumeVersionResponse"];
+export type VolumeVersionDetail = components["schemas"]["VolumeVersionDetail"];
+export type RestoreVolumeVersionRequest = components["schemas"]["RestoreVolumeVersionRequest"];
+export type RestoreVolumeVersionResponse = components["schemas"]["RestoreVolumeVersionResponse"];
 export type Secret = components["schemas"]["Secret"];
 export type Secrets = components["schemas"]["Secrets"];
 export type UpsertSecretRequest = components["schemas"]["UpsertSecretRequest"];
@@ -8425,13 +10550,14 @@ export type SecretTombstone = components["schemas"]["SecretTombstone"];
 export type EnvironmentGroupManageAccess = components["schemas"]["EnvironmentGroupManageAccess"];
 export type EnvironmentGroupUser = components["schemas"]["EnvironmentGroupUser"];
 export type EnvironmentGroup = components["schemas"]["EnvironmentGroup"];
-export type PaginationResponse = components["schemas"]["PaginationResponse"];
 export type EnvironmentGroups = components["schemas"]["EnvironmentGroups"];
 export type UpdateEnvironmentGroupManageAccess =
   components["schemas"]["UpdateEnvironmentGroupManageAccess"];
 export type UpdateEnvironmentGroupRequest = components["schemas"]["UpdateEnvironmentGroupRequest"];
 export type Team = components["schemas"]["Team"];
 export type Teams = components["schemas"]["Teams"];
+export type Region = components["schemas"]["Region"];
+export type Regions = components["schemas"]["Regions"];
 export type InstanceType = components["schemas"]["InstanceType"];
 export type InstanceTypes = components["schemas"]["InstanceTypes"];
 export type LoopsUserConfig = components["schemas"]["LoopsUserConfig"];
@@ -8450,6 +10576,12 @@ export type AuditLogApiKeyType = components["schemas"]["AuditLogApiKeyType"];
 export type AuditLogEntry = components["schemas"]["AuditLogEntry"];
 export type AuditLogEventApiKeyCreated = components["schemas"]["AuditLogEventApiKeyCreated"];
 export type AuditLogEventApiKeyDeleted = components["schemas"]["AuditLogEventApiKeyDeleted"];
+export type AuditLogEventAutoscalingScheduleAction =
+  components["schemas"]["AuditLogEventAutoscalingScheduleAction"];
+export type AuditLogEventAutoscalingScheduleChange =
+  components["schemas"]["AuditLogEventAutoscalingScheduleChange"];
+export type AuditLogEventAutoscalingScheduleSettings =
+  components["schemas"]["AuditLogEventAutoscalingScheduleSettings"];
 export type AuditLogEventAutoscalingSettings =
   components["schemas"]["AuditLogEventAutoscalingSettings"];
 export type AuditLogEventChainDeleted = components["schemas"]["AuditLogEventChainDeleted"];
@@ -8476,6 +10608,8 @@ export type AuditLogEventEnvironmentCreated =
   components["schemas"]["AuditLogEventEnvironmentCreated"];
 export type AuditLogEventEnvironmentDeleted =
   components["schemas"]["AuditLogEventEnvironmentDeleted"];
+export type AuditLogEventEnvironmentSettings =
+  components["schemas"]["AuditLogEventEnvironmentSettings"];
 export type AuditLogEventEnvironmentUpdated =
   components["schemas"]["AuditLogEventEnvironmentUpdated"];
 export type AuditLogEventGatewayEndpointCreated =
@@ -8498,6 +10632,8 @@ export type AuditLogEventModelDeploymentInstanceTypeChanged =
   components["schemas"]["AuditLogEventModelDeploymentInstanceTypeChanged"];
 export type AuditLogEventModelDeploymentPromoted =
   components["schemas"]["AuditLogEventModelDeploymentPromoted"];
+export type AuditLogEventModelDeploymentRequestBackpressureSettingsChanged =
+  components["schemas"]["AuditLogEventModelDeploymentRequestBackpressureSettingsChanged"];
 export type AuditLogEventModelDeploymentRetried =
   components["schemas"]["AuditLogEventModelDeploymentRetried"];
 export type AuditLogEventModelPromotionControlAction =
@@ -8518,6 +10654,11 @@ export type AuditLogEventUserRemoved = components["schemas"]["AuditLogEventUserR
 export type AuditLogEventUserRoleUpdated = components["schemas"]["AuditLogEventUserRoleUpdated"];
 export type AuditLogEventUserTeamRoleUpdated =
   components["schemas"]["AuditLogEventUserTeamRoleUpdated"];
+export type AuditLogEventVolumeDeleted = components["schemas"]["AuditLogEventVolumeDeleted"];
+export type AuditLogEventVolumeVersionDeleted =
+  components["schemas"]["AuditLogEventVolumeVersionDeleted"];
+export type AuditLogEventVolumeVersionRestored =
+  components["schemas"]["AuditLogEventVolumeVersionRestored"];
 export type AuditLogEventWebhookSigningSecretCreated =
   components["schemas"]["AuditLogEventWebhookSigningSecretCreated"];
 export type AuditLogEventWebhookSigningSecretDeleted =
@@ -8538,17 +10679,22 @@ export type CreateModelRequest = components["schemas"]["CreateModelRequest"];
 export type AutoscalingSettings = components["schemas"]["AutoscalingSettings"];
 export type DeploymentStatus = components["schemas"]["DeploymentStatus"];
 export type Deployment = components["schemas"]["Deployment"];
+export type RequestBackpressurePolicy = components["schemas"]["RequestBackpressurePolicy"];
+export type RequestBackpressureSettings = components["schemas"]["RequestBackpressureSettings"];
 export type CreatedModelDeployment = components["schemas"]["CreatedModelDeployment"];
 export type ModelTombstone = components["schemas"]["ModelTombstone"];
 export type Deployments = components["schemas"]["Deployments"];
 export type DeploymentArchiveSource = components["schemas"]["DeploymentArchiveSource"];
 export type CreateModelDeploymentRequest = components["schemas"]["CreateModelDeploymentRequest"];
 export type DeploymentTombstone = components["schemas"]["DeploymentTombstone"];
+export type UpdateDeploymentRequest = components["schemas"]["UpdateDeploymentRequest"];
 export type UpdateAutoscalingSettings = components["schemas"]["UpdateAutoscalingSettings"];
 export type UpdateAutoscalingSettingsStatus =
   components["schemas"]["UpdateAutoscalingSettingsStatus"];
 export type UpdateAutoscalingSettingsResponse =
   components["schemas"]["UpdateAutoscalingSettingsResponse"];
+export type UpdateRequestBackpressureSettings =
+  components["schemas"]["UpdateRequestBackpressureSettings"];
 export type PromoteRequest = components["schemas"]["PromoteRequest"];
 export type ActivateResponse = components["schemas"]["ActivateResponse"];
 export type DeactivateResponse = components["schemas"]["DeactivateResponse"];
@@ -8585,9 +10731,16 @@ export type GetModelMetricsResponse = components["schemas"]["GetModelMetricsResp
 export type TerminateReplicaResponse = components["schemas"]["TerminateReplicaResponse"];
 export type SignSshCertificateRequest = components["schemas"]["SignSSHCertificateRequest"];
 export type SignSshCertificateResponse = components["schemas"]["SignSSHCertificateResponse"];
+export type AutoscalingScheduleSettings = components["schemas"]["AutoscalingScheduleSettings"];
+export type AutoscalingScheduleState = components["schemas"]["AutoscalingScheduleState"];
+export type AutoscalingSchedule = components["schemas"]["AutoscalingSchedule"];
+export type AutoscalingScheduleWeekday = components["schemas"]["AutoscalingScheduleWeekday"];
+export type EnvironmentAutoscalingSchedules =
+  components["schemas"]["EnvironmentAutoscalingSchedules"];
 export type Environment = components["schemas"]["Environment"];
 export type InProgressPromotionStatus = components["schemas"]["InProgressPromotionStatus"];
 export type InProgressPromotion = components["schemas"]["InProgressPromotion"];
+export type OneTimeAutoscalingSchedule = components["schemas"]["OneTimeAutoscalingSchedule"];
 export type PromotionCleanupStrategy = components["schemas"]["PromotionCleanupStrategy"];
 export type PromotionSettings = components["schemas"]["PromotionSettings"];
 export type RollingDeployConfig = components["schemas"]["RollingDeployConfig"];
@@ -8596,7 +10749,16 @@ export type Environments = components["schemas"]["Environments"];
 export type UpdatePromotionSettings = components["schemas"]["UpdatePromotionSettings"];
 export type UpdateRollingDeployConfig = components["schemas"]["UpdateRollingDeployConfig"];
 export type CreateEnvironmentRequest = components["schemas"]["CreateEnvironmentRequest"];
+export type EnvironmentTombstone = components["schemas"]["EnvironmentTombstone"];
+export type AutoscalingScheduleSettingsRequest =
+  components["schemas"]["AutoscalingScheduleSettingsRequest"];
+export type AutoscalingScheduleUpsert = components["schemas"]["AutoscalingScheduleUpsert"];
+export type OneTimeAutoscalingScheduleUpsert =
+  components["schemas"]["OneTimeAutoscalingScheduleUpsert"];
+export type UpdateAutoscalingScheduleSettings =
+  components["schemas"]["UpdateAutoscalingScheduleSettings"];
 export type UpdateEnvironmentRequest = components["schemas"]["UpdateEnvironmentRequest"];
+export type UpdateEnvironmentResponse = components["schemas"]["UpdateEnvironmentResponse"];
 export type PromoteToEnvironmentRequest = components["schemas"]["PromoteToEnvironmentRequest"];
 export type CancelPromotionStatus = components["schemas"]["CancelPromotionStatus"];
 export type CancelPromotionResponse = components["schemas"]["CancelPromotionResponse"];
@@ -8637,6 +10799,7 @@ export type User = components["schemas"]["User"];
 export type UpsertTrainingProjectResponse = components["schemas"]["UpsertTrainingProjectResponse"];
 export type ListTrainingProjectsResponse = components["schemas"]["ListTrainingProjectsResponse"];
 export type ListTrainingJobsResponse = components["schemas"]["ListTrainingJobsResponse"];
+export type AwsAssumeRoleDockerAuth = components["schemas"]["AwsAssumeRoleDockerAuth"];
 export type AwsIamDockerAuth = components["schemas"]["AwsIamDockerAuth"];
 export type AwsOidcDockerAuth = components["schemas"]["AwsOidcDockerAuth"];
 export type CreateJobWeightConfig = components["schemas"]["CreateJobWeightConfig"];
@@ -8652,6 +10815,7 @@ export type GcpServiceAccountJsonDockerAuth =
 export type InteractiveSessionConfig = components["schemas"]["InteractiveSessionConfig"];
 export type RegistrySecretDockerAuth = components["schemas"]["RegistrySecretDockerAuth"];
 export type SecretReference = components["schemas"]["SecretReference"];
+export type TrainingWeightAuth = components["schemas"]["TrainingWeightAuth"];
 export type CreateTrainingJobRequest = components["schemas"]["CreateTrainingJobRequest"];
 export type CreateTrainingJobResponse = components["schemas"]["CreateTrainingJobResponse"];
 export type TrainingJobTombstone = components["schemas"]["TrainingJobTombstone"];
@@ -8692,12 +10856,15 @@ export type GetLoopsCapabilitiesResponse = components["schemas"]["GetLoopsCapabi
 export type LoopsSession = components["schemas"]["LoopsSession"];
 export type CreateLoopsSessionResponse = components["schemas"]["CreateLoopsSessionResponse"];
 export type GetLoopsSessionResponse = components["schemas"]["GetLoopsSessionResponse"];
+export type LoopsRunStatusName = components["schemas"]["LoopsRunStatusName"];
+export type LoopsRunStatus = components["schemas"]["LoopsRunStatus"];
 export type LoopsRun = components["schemas"]["LoopsRun"];
 export type LoopsSamplerStatus = components["schemas"]["LoopsSamplerStatus"];
 export type LoopsSampler = components["schemas"]["LoopsSampler"];
 export type ListLoopsRunsResponse = components["schemas"]["ListLoopsRunsResponse"];
 export type CreateLoopsRunRequest = components["schemas"]["CreateLoopsRunRequest"];
 export type CreateLoopsRunResponse = components["schemas"]["CreateLoopsRunResponse"];
+export type DeactivateLoopsRunResponse = components["schemas"]["DeactivateLoopsRunResponse"];
 export type GetLoopsRunResponse = components["schemas"]["GetLoopsRunResponse"];
 export type ListLoopsSamplersResponse = components["schemas"]["ListLoopsSamplersResponse"];
 export type CreateLoopsSamplerRequest = components["schemas"]["CreateLoopsSamplerRequest"];
@@ -8716,6 +10883,8 @@ export type ListLoopsDeploymentsResponse = components["schemas"]["ListLoopsDeplo
 export type DeactivateLoopsDeploymentResponse =
   components["schemas"]["DeactivateLoopsDeploymentResponse"];
 export type GetLoopsDeploymentResponse = components["schemas"]["GetLoopsDeploymentResponse"];
+export type LoopsDebugArchiveFilesResponse =
+  components["schemas"]["LoopsDebugArchiveFilesResponse"];
 export type GetLoopsDeploymentMetricsRequest =
   components["schemas"]["GetLoopsDeploymentMetricsRequest"];
 export type InferenceVolumeByStatusDatapoint =
@@ -8745,24 +10914,30 @@ export type ApiKeyInfo = components["schemas"]["APIKeyInfo"];
 export type ApiKeyOwner = components["schemas"]["APIKeyOwner"];
 export type ApiKeys = components["schemas"]["APIKeys"];
 export type ApiKeyTombstone = components["schemas"]["APIKeyTombstone"];
-export type ModelWeightSnapshot = components["schemas"]["ModelWeightSnapshot"];
-export type CreateModelWeightSnapshotRequest =
-  components["schemas"]["CreateModelWeightSnapshotRequest"];
 export type LimitType = components["schemas"]["LimitType"];
 export type ModelApiOrgDetails = components["schemas"]["ModelAPIOrgDetails"];
 export type ModelApi = components["schemas"]["ModelAPI"];
 export type RateLimitUnit = components["schemas"]["RateLimitUnit"];
 export type RateLimit = components["schemas"]["RateLimit"];
 export type ModelApIsResponse = components["schemas"]["ModelAPIsResponse"];
+export type ModelApisUsageBucket = components["schemas"]["ModelApisUsageBucket"];
+export type ModelApisUsageResult = components["schemas"]["ModelApisUsageResult"];
+export type ModelApisUsageResponse = components["schemas"]["ModelApisUsageResponse"];
+export type UsageDimension = components["schemas"]["UsageDimension"];
 export type CreateLlmModelRequest = components["schemas"]["CreateLLMModelRequest"];
 export type LlmModelHandle = components["schemas"]["LLMModelHandle"];
 export type CreateLlmModelVersionRequest = components["schemas"]["CreateLLMModelVersionRequest"];
+export type LibraryListingMetadata = components["schemas"]["LibraryListingMetadata"];
 export type LibraryListing = components["schemas"]["LibraryListing"];
 export type LibraryListings = components["schemas"]["LibraryListings"];
 export type CreateLibraryListingRequest = components["schemas"]["CreateLibraryListingRequest"];
 export type LibraryListingTombstone = components["schemas"]["LibraryListingTombstone"];
 export type UpdateLibraryListingRequest = components["schemas"]["UpdateLibraryListingRequest"];
+export type BenchmarkSnapshot = components["schemas"]["BenchmarkSnapshot"];
+export type EmbeddingBenchmarkMetrics = components["schemas"]["EmbeddingBenchmarkMetrics"];
+export type LlmBenchmarkMetrics = components["schemas"]["LLMBenchmarkMetrics"];
 export type LibraryListingVersion = components["schemas"]["LibraryListingVersion"];
+export type TtsBenchmarkMetrics = components["schemas"]["TTSBenchmarkMetrics"];
 export type LibraryListingVersions = components["schemas"]["LibraryListingVersions"];
 export type CreateLibraryListingVersionRequest =
   components["schemas"]["CreateLibraryListingVersionRequest"];
@@ -8770,6 +10945,10 @@ export type LibraryListingVersionTombstone =
   components["schemas"]["LibraryListingVersionTombstone"];
 export type UpdateLibraryListingVersionRequest =
   components["schemas"]["UpdateLibraryListingVersionRequest"];
+export type ModelApisCostBucket = components["schemas"]["ModelApisCostBucket"];
+export type ModelApisCostResult = components["schemas"]["ModelApisCostResult"];
+export type ModelApisCostsResponse = components["schemas"]["ModelApisCostsResponse"];
+export type ModelApiCostDimension = components["schemas"]["ModelApiCostDimension"];
 export type BillableResource = components["schemas"]["BillableResource"];
 export type ChainMetadata = components["schemas"]["ChainMetadata"];
 export type DailyDedicatedUsage = components["schemas"]["DailyDedicatedUsage"];
@@ -8784,8 +10963,14 @@ export type TrainingUsage = components["schemas"]["TrainingUsage"];
 export type UsageSummary = components["schemas"]["UsageSummary"];
 export type UserInfo = components["schemas"]["UserInfo"];
 export type UsersResponse = components["schemas"]["UsersResponse"];
+export type AwsAssumeRole = components["schemas"]["AwsAssumeRole"];
+export type OrganizationInfo = components["schemas"]["OrganizationInfo"];
+export type GatewayEventTokens = components["schemas"]["GatewayEventTokens"];
+export type GatewayEvent = components["schemas"]["GatewayEvent"];
+export type GatewayEventsResponse = components["schemas"]["GatewayEventsResponse"];
 export type EndpointTarget = components["schemas"]["EndpointTarget"];
 export type Endpoint = components["schemas"]["Endpoint"];
+export type SharedEndpointRegion = components["schemas"]["SharedEndpointRegion"];
 export type VertexTargetConfig = components["schemas"]["VertexTargetConfig"];
 export type EndpointsResponse = components["schemas"]["EndpointsResponse"];
 export type EndpointTargetRequest = components["schemas"]["EndpointTargetRequest"];
@@ -8803,6 +10988,7 @@ export type ModelConfig = components["schemas"]["ModelConfig"];
 export type UsageLimitUnit = components["schemas"]["UsageLimitUnit"];
 export type UsageLimit = components["schemas"]["UsageLimit"];
 export type GroupsResponse = components["schemas"]["GroupsResponse"];
+export type CreateGroupHierarchy = components["schemas"]["CreateGroupHierarchy"];
 export type CreateGroupRequest = components["schemas"]["CreateGroupRequest"];
 export type UpdateGroupMetadata = components["schemas"]["UpdateGroupMetadata"];
 export type UpdateGroupRequest = components["schemas"]["UpdateGroupRequest"];
@@ -8812,6 +10998,9 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
+export type GetVolumesRequest = components["schemas"]["GetVolumesRequest"];
+export type GetVolumesNamespacesRequest = components["schemas"]["GetVolumesNamespacesRequest"];
+export type GetVolumesVersionsRequest = components["schemas"]["GetVolumesVersionsRequest"];
 export type GetTeamsRequest = components["schemas"]["GetTeamsRequest"];
 export type GetAuditLogsRequest = components["schemas"]["GetAuditLogsRequest"];
 export type GetModelsRequest = components["schemas"]["GetModelsRequest"];
@@ -8838,9 +11027,20 @@ export type GetTrainingProjectsJobsMetricsRequest =
 export type GetTrainingProjectsJobsCheckpointFilesRequest =
   components["schemas"]["GetTrainingProjectsJobsCheckpointFilesRequest"];
 export type GetLoopsRunsRequest = components["schemas"]["GetLoopsRunsRequest"];
+export type GetLoopsSamplersRequest = components["schemas"]["GetLoopsSamplersRequest"];
 export type GetLoopsCheckpointsRequest = components["schemas"]["GetLoopsCheckpointsRequest"];
+export type GetLoopsCheckpointsFilesRequest =
+  components["schemas"]["GetLoopsCheckpointsFilesRequest"];
+export type GetLoopsDeploymentsRequest = components["schemas"]["GetLoopsDeploymentsRequest"];
+export type GetLoopsDeploymentsDebugArchiveFilesRequest =
+  components["schemas"]["GetLoopsDeploymentsDebugArchiveFilesRequest"];
 export type GetLoopsDeploymentsLogsRequest =
   components["schemas"]["GetLoopsDeploymentsLogsRequest"];
+export type GetTeamsLoopsRunsRequest = components["schemas"]["GetTeamsLoopsRunsRequest"];
+export type GetTeamsLoopsSamplersRequest = components["schemas"]["GetTeamsLoopsSamplersRequest"];
 export type GetModelApisRequest = components["schemas"]["GetModelApisRequest"];
+export type GetModelApisUsageRequest = components["schemas"]["GetModelApisUsageRequest"];
+export type GetBillingModelApisRequest = components["schemas"]["GetBillingModelApisRequest"];
 export type GetBillingUsageSummaryRequest = components["schemas"]["GetBillingUsageSummaryRequest"];
 export type GetUsersRequest = components["schemas"]["GetUsersRequest"];
+export type GetGatewayEventsRequest = components["schemas"]["GetGatewayEventsRequest"];

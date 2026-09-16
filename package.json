@@ -14,13 +14,13 @@
     "test": "pnpm -r run test"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
-    "oxfmt": "^0.43.0",
-    "oxlint": "^1.58.0",
-    "tsdown": "^0",
-    "tsx": "^4",
-    "typescript": "^5",
-    "vitest": "^3"
+    "@types/node": "^25.9.7",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
+    "tsdown": "^0.23.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
   },
   "engines": {
     "node": ">=22"

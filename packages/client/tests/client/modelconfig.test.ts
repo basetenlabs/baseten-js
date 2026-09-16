@@ -1,9 +1,9 @@
-import yaml from "js-yaml";
+import { load as loadYaml } from "js-yaml";
 import { describe, expect, it } from "vitest";
 import type { ModelConfig } from "../../src/modelconfig";
 
 function load(src: string): ModelConfig {
-  return yaml.load(src) as ModelConfig;
+  return loadYaml(src) as ModelConfig;
 }
 
 describe("ModelConfig", () => {
