@@ -15,7 +15,12 @@
  *   types for $defs entries (not for every described property).
  */
 
-import { queryRequestTypeName, resolveMethodNames } from "./clientgen.ts";
+import {
+  type ClientOptions,
+  queryTypeName,
+  resolveMethodNames,
+  responseTypeName,
+} from "./clientgen.ts";
 
 const TRUSS_PREFIX = "Truss";
 const MODEL_PREFIX = "Model";
@@ -127,8 +132,9 @@ function renameConfigRefsAndTitles(node: unknown, renames: Map<string, string>):
   for (const child of Object.values(obj)) renameConfigRefsAndTitles(child, renames);
 }
 
-export function preprocessSpec(data: Uint8Array): Uint8Array {
+export function preprocessSpec(data: Uint8Array, options: ClientOptions = {}): Uint8Array {
   const doc = JSON.parse(new TextDecoder().decode(data));
+  const queryField = options.queryField ?? "request";
 
   hoistComponentSchemas(doc);
 
@@ -153,12 +159,67 @@ export function preprocessSpec(data: Uint8Array): Uint8Array {
 
   // Run after the V1 rename so the copied parameter schemas already reference
   // the renamed enum/sub-model names.
-  injectQuerySchemas(doc);
+  injectQuerySchemas(doc, queryField);
+
+  // Runs after pruning for the same reason as injectQuerySchemas: the inline
+  // schemas being hoisted are still reachable through the operations, so the
+  // sub-models they reference survive the prune.
+  injectResponseSchemas(doc);
 
   return new TextEncoder().encode(JSON.stringify(doc, null, 2));
 }
 
-const SCHEMA_REF_PATTERN = /^#\/components\/schemas\/(\w+)$/;
+/**
+ * Hoists inline 2xx `application/json` response schemas into components/schemas
+ * so openapi-typescript emits a named type the client can return. Responses that
+ * are already a `$ref` are left alone. The schema name matches the client method
+ * name (e.g. getProcess -> GetProcessResponse).
+ *
+ * Without this, an operation whose success response is an inline `oneOf`, array,
+ * or free-form object has no resolvable type name and the client would fall back
+ * to discarding the body.
+ */
+function injectResponseSchemas(doc: Record<string, unknown>): void {
+  const paths = (doc.paths ?? {}) as Record<string, Record<string, unknown>>;
+  const schemas = (doc.components as Record<string, unknown>).schemas as Record<string, unknown>;
+  const names = resolveMethodNames(doc);
+
+  for (const [path, pathItem] of Object.entries(paths)) {
+    for (const [httpMethod, opRaw] of Object.entries(pathItem)) {
+      if (httpMethod === "parameters" || typeof opRaw !== "object" || opRaw === null) continue;
+      const op = opRaw as Record<string, unknown>;
+      const responses = (op.responses ?? {}) as Record<string, Record<string, unknown>>;
+      const successCodes = Object.keys(responses)
+        .filter((c) => /^\d+$/.test(c) && Number(c) >= 200 && Number(c) < 300)
+        .sort();
+      for (const code of successCodes) {
+        const response = responses[code]!;
+        const jsonContent = (response.content as Record<string, Record<string, unknown>>)?.[
+          "application/json"
+        ];
+        if (!jsonContent) continue;
+        const schema = jsonContent.schema as Record<string, unknown> | undefined;
+        if (!schema || typeof schema.$ref === "string") continue;
+
+        const base = responseTypeName(names.get(`${httpMethod}\0${path}`)!);
+        // Only the first success code gets the bare name, so an operation with
+        // several 2xx bodies yields one schema per code rather than colliding.
+        const schemaName = code === successCodes[0] ? base : `${base}${code}`;
+        if (schemaName in schemas) {
+          throw new Error(
+            `injected response schema ${schemaName} collides with an existing schema name`,
+          );
+        }
+        schemas[schemaName] = schema;
+        jsonContent.schema = { $ref: `#/components/schemas/${schemaName}` };
+      }
+    }
+  }
+}
+
+// Component names may contain dots and dashes. Go-derived specs use
+// package-qualified schema names such as archive.Change.
+const SCHEMA_REF_PATTERN = /^#\/components\/schemas\/([\w.-]+)$/;
 
 /**
  * Removes component schemas not reachable from any operation. Reachability roots
@@ -227,7 +288,7 @@ function collectSchemaRefs(node: unknown, out: Set<string>): void {
  * schema name matches the client method name (e.g. getAuditLogs ->
  * GetAuditLogsRequest).
  */
-function injectQuerySchemas(doc: Record<string, unknown>): void {
+function injectQuerySchemas(doc: Record<string, unknown>, queryField: string): void {
   const paths = (doc.paths ?? {}) as Record<string, Record<string, unknown>>;
   const schemas = (doc.components as Record<string, unknown>).schemas as Record<string, unknown>;
   const names = resolveMethodNames(doc);
@@ -256,7 +317,7 @@ function injectQuerySchemas(doc: Record<string, unknown>): void {
         if (param.required === true) required.push(name);
       }
 
-      const schemaName = queryRequestTypeName(names.get(`${httpMethod}\0${path}`)!);
+      const schemaName = queryTypeName(names.get(`${httpMethod}\0${path}`)!, queryField);
       if (schemaName in schemas) {
         throw new Error(
           `injected query schema ${schemaName} collides with an existing schema name`,
@@ -370,8 +431,13 @@ function hoistComponentSchemas(doc: Record<string, unknown>): void {
   }
 }
 
-const REF_PATTERN = /^#\/components\/schemas\/(\w+)$/;
+const REF_PATTERN = /^#\/components\/schemas\/([\w.-]+)$/;
 
+/**
+ * Schema renames applied before codegen: a trailing V1 is dropped, and a name
+ * that is not a valid TypeScript identifier is folded into PascalCase
+ * (archive.Change -> ArchiveChange) so it can be emitted and imported by name.
+ */
 function buildV1Renames(doc: Record<string, unknown>): Map<string, string> {
   const schemas = (doc.components as Record<string, unknown>)?.schemas as
     | Record<string, unknown>
@@ -379,9 +445,22 @@ function buildV1Renames(doc: Record<string, unknown>): Map<string, string> {
   if (!schemas) return new Map();
   const renames = new Map<string, string>();
   for (const name of Object.keys(schemas)) {
-    if (name.endsWith("V1")) {
-      renames.set(name, name.slice(0, -2));
+    let renamed = name.endsWith("V1") ? name.slice(0, -2) : name;
+    if (!/^[A-Za-z_]\w*$/.test(renamed)) {
+      renamed = renamed
+        .split(/[.-]/)
+        .filter((part) => part.length > 0)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join("");
     }
+    if (renamed !== name) renames.set(name, renamed);
+  }
+  const taken = new Set(Object.keys(schemas).filter((n) => !renames.has(n)));
+  for (const [from, to] of renames) {
+    if (taken.has(to)) {
+      throw new Error(`schema rename ${from} -> ${to} collides with an existing schema name`);
+    }
+    taken.add(to);
   }
   return renames;
 }
