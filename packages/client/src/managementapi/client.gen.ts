@@ -33,12 +33,18 @@ import type {
   CreateLoopsSessionResponse,
   CreateModelDeploymentRequest,
   CreateModelRequest,
-  CreateModelWeightSnapshotRequest,
   CreateTrainingJobRequest,
   CreateTrainingJobResponse,
+  CreateVolumeTokenRequest,
+  CreateVolumeTokenResponse,
   CreatedModelDeployment,
   DeactivateLoopsDeploymentResponse,
+  DeactivateLoopsRunResponse,
   DeactivateResponse,
+  DeleteVolumeRequest,
+  DeleteVolumeResponse,
+  DeleteVolumeVersionRequest,
+  DeleteVolumeVersionResponse,
   Deployment,
   DeploymentConfigResponse,
   DeploymentTombstone,
@@ -51,10 +57,13 @@ import type {
   Environment,
   EnvironmentGroup,
   EnvironmentGroups,
+  EnvironmentTombstone,
   Environments,
+  GatewayEventsResponse,
   GatewayKeyInfo,
   GetAuditLogsRequest,
   GetAuthCodesResponse,
+  GetBillingModelApisRequest,
   GetBillingUsageSummaryRequest,
   GetBlobCredentialsResponse,
   GetCacheSummaryResponse,
@@ -62,19 +71,25 @@ import type {
   GetChainsDeploymentsChainletsLogsRequest,
   GetDeploymentLogsRequest,
   GetDeploymentPatchesStateResponse,
+  GetGatewayEventsRequest,
   GetLogsResponse,
   GetLoopsCapabilitiesResponse,
+  GetLoopsCheckpointsFilesRequest,
   GetLoopsCheckpointsRequest,
   GetLoopsDeploymentMetricsRequest,
   GetLoopsDeploymentMetricsResponse,
   GetLoopsDeploymentResponse,
+  GetLoopsDeploymentsDebugArchiveFilesRequest,
   GetLoopsDeploymentsLogsRequest,
+  GetLoopsDeploymentsRequest,
   GetLoopsRunResponse,
   GetLoopsRunsRequest,
   GetLoopsSamplerResponse,
+  GetLoopsSamplersRequest,
   GetLoopsSessionResponse,
   GetLoopsUserConfigResponse,
   GetModelApisRequest,
+  GetModelApisUsageRequest,
   GetModelMetricsResponse,
   GetModelsAuditLogsRequest,
   GetModelsDeploymentsConfigRequest,
@@ -84,6 +99,8 @@ import type {
   GetModelsEnvironmentsLogsRequest,
   GetModelsEnvironmentsMetricsRequest,
   GetModelsRequest,
+  GetTeamsLoopsRunsRequest,
+  GetTeamsLoopsSamplersRequest,
   GetTeamsModelsRequest,
   GetTeamsRequest,
   GetTrainingGpuCapacityResponse,
@@ -99,6 +116,9 @@ import type {
   GetTrainingProjectsJobsLogsRequest,
   GetTrainingProjectsJobsMetricsRequest,
   GetUsersRequest,
+  GetVolumesNamespacesRequest,
+  GetVolumesRequest,
+  GetVolumesVersionsRequest,
   Group,
   GroupsResponse,
   InstanceTypePrices,
@@ -117,14 +137,20 @@ import type {
   ListLoopsSamplersResponse,
   ListTrainingJobsResponse,
   ListTrainingProjectsResponse,
+  ListVolumeNamespacesResponse,
+  ListVolumeVersionsResponse,
+  ListVolumesResponse,
   LlmModelHandle,
   LoopsCheckpointFilesResponse,
+  LoopsDebugArchiveFilesResponse,
   Model,
   ModelApIsResponse,
   ModelApi,
+  ModelApisCostsResponse,
+  ModelApisUsageResponse,
   ModelTombstone,
-  ModelWeightSnapshot,
   Models,
+  OrganizationInfo,
   PatchInteractiveSessionRequest,
   PatchInteractiveSessionResponse,
   PatchLoopsUserConfigRequest,
@@ -137,8 +163,12 @@ import type {
   PromoteToChainEnvironmentRequest,
   PromoteToEnvironmentRequest,
   RecreateTrainingJobResponse,
+  Regions,
   RegisterApiKeyRequest,
   RegisterApiKeyResponse,
+  RequestBackpressureSettings,
+  RestoreVolumeVersionRequest,
+  RestoreVolumeVersionResponse,
   RetryDeploymentResponse,
   SearchTrainingJobsRequest,
   SearchTrainingJobsResponse,
@@ -164,12 +194,15 @@ import type {
   UpdateChainletEnvironmentAutoscalingSettingsRequest,
   UpdateChainletEnvironmentInstanceTypeRequest,
   UpdateChainletEnvironmentInstanceTypeResponse,
+  UpdateDeploymentRequest,
   UpdateEndpointRequest,
   UpdateEnvironmentGroupRequest,
   UpdateEnvironmentRequest,
+  UpdateEnvironmentResponse,
   UpdateGroupRequest,
   UpdateLibraryListingRequest,
   UpdateLibraryListingVersionRequest,
+  UpdateRequestBackpressureSettings,
   UpdateTrainingJobRequest,
   UpdateTrainingJobResponse,
   UpsertSecretRequest,
@@ -180,6 +213,8 @@ import type {
   UsersResponse,
   ValidateLoopsCheckpointRequest,
   ValidateLoopsCheckpointResponse,
+  Volume,
+  VolumeVersionDetail,
 } from "./models.gen";
 
 export class ResponseError extends Error {
@@ -351,6 +386,22 @@ export class ApiClient {
     });
   }
 
+  /** Deletes an environment */
+  async deleteModelsEnvironments(params: {
+    model_id: string;
+    env_name: string;
+  }): Promise<EnvironmentTombstone> {
+    return this._doJson<EnvironmentTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/models/{}/environments/{}",
+      pathArgs: [params.model_id, params.env_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Deletes a secret by name */
   async deleteSecrets(params: { secret_name: string }): Promise<SecretTombstone> {
     return this._doJson<SecretTombstone>({
@@ -411,6 +462,41 @@ export class ApiClient {
     });
   }
 
+  /** Deletes a volume */
+  async deleteVolumes(params: {
+    volume_namespace: string;
+    volume_name: string;
+    request: DeleteVolumeRequest;
+  }): Promise<DeleteVolumeResponse> {
+    return this._doJson<DeleteVolumeResponse>({
+      method: "DELETE",
+      pathFmt: "/v1/volumes/{}/{}",
+      pathArgs: [params.volume_namespace, params.volume_name],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes one version of a volume */
+  async deleteVolumesVersions(params: {
+    volume_namespace: string;
+    volume_name: string;
+    volume_version: string;
+    request: DeleteVolumeVersionRequest;
+  }): Promise<DeleteVolumeVersionResponse> {
+    return this._doJson<DeleteVolumeVersionResponse>({
+      method: "DELETE",
+      pathFmt: "/v1/volumes/{}/{}/versions/{}",
+      pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Lists API keys (metadata only, no plain text keys) */
   async getApiKeys(): Promise<ApiKeys> {
     return this._doJson<ApiKeys>({
@@ -429,6 +515,21 @@ export class ApiClient {
     return this._doJson<ListAuditLogsResponse>({
       method: "GET",
       pathFmt: "/v1/audit_logs",
+      pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets daily Model APIs costs */
+  async getBillingModelApis(params?: {
+    request?: GetBillingModelApisRequest;
+  }): Promise<ModelApisCostsResponse> {
+    return this._doJson<ModelApisCostsResponse>({
+      method: "GET",
+      pathFmt: "/v1/billing/model_apis",
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
@@ -648,6 +749,21 @@ export class ApiClient {
     });
   }
 
+  /** Lists gateway events */
+  async getGatewayEvents(params?: {
+    request?: GetGatewayEventsRequest;
+  }): Promise<GatewayEventsResponse> {
+    return this._doJson<GatewayEventsResponse>({
+      method: "GET",
+      pathFmt: "/v1/gateway/events",
+      pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Lists groups */
   async getGatewayGroups(): Promise<GroupsResponse> {
     return this._doJson<GroupsResponse>({
@@ -819,12 +935,13 @@ export class ApiClient {
   /** Gets Loops checkpoint files */
   async getLoopsCheckpointsFiles(params: {
     checkpoint_id: string;
+    request?: GetLoopsCheckpointsFilesRequest;
   }): Promise<LoopsCheckpointFilesResponse> {
     return this._doJson<LoopsCheckpointFilesResponse>({
       method: "GET",
       pathFmt: "/v1/loops/checkpoints/{}/files",
       pathArgs: [params.checkpoint_id],
-      query: null,
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -832,12 +949,30 @@ export class ApiClient {
   }
 
   /** Lists Loops deployments */
-  async getLoopsDeployments(): Promise<ListLoopsDeploymentsResponse> {
+  async getLoopsDeployments(params?: {
+    request?: GetLoopsDeploymentsRequest;
+  }): Promise<ListLoopsDeploymentsResponse> {
     return this._doJson<ListLoopsDeploymentsResponse>({
       method: "GET",
       pathFmt: "/v1/loops/deployments",
       pathArgs: [],
-      query: null,
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets Loops debug archive files */
+  async getLoopsDeploymentsDebugArchiveFiles(params: {
+    deployment_id: string;
+    request?: GetLoopsDeploymentsDebugArchiveFilesRequest;
+  }): Promise<LoopsDebugArchiveFilesResponse> {
+    return this._doJson<LoopsDebugArchiveFilesResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/deployments/{}/debug_archive/files",
+      pathArgs: [params.deployment_id],
+      query: params.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -902,12 +1037,14 @@ export class ApiClient {
   }
 
   /** Lists Loops samplers */
-  async getLoopsSamplers(): Promise<ListLoopsSamplersResponse> {
+  async getLoopsSamplers(params?: {
+    request?: GetLoopsSamplersRequest;
+  }): Promise<ListLoopsSamplersResponse> {
     return this._doJson<ListLoopsSamplersResponse>({
       method: "GET",
       pathFmt: "/v1/loops/samplers",
       pathArgs: [],
-      query: null,
+      query: params?.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -981,26 +1118,15 @@ export class ApiClient {
     });
   }
 
-  /** Gets the latest model weight snapshot */
-  async getModelApisSnapshots(): Promise<ModelWeightSnapshot> {
-    return this._doJson<ModelWeightSnapshot>({
+  /** Gets Model APIs token usage in time buckets */
+  async getModelApisUsage(params?: {
+    request?: GetModelApisUsageRequest;
+  }): Promise<ModelApisUsageResponse> {
+    return this._doJson<ModelApisUsageResponse>({
       method: "GET",
-      pathFmt: "/v1/model_apis/snapshots",
+      pathFmt: "/v1/model_apis/usage",
       pathArgs: [],
-      query: null,
-      body: null,
-      successCode: 200,
-      errorCodes: null,
-    });
-  }
-
-  /** Gets the latest model weight snapshot */
-  async getModelApisSnapshotsModelId(params: { model_id: string }): Promise<ModelWeightSnapshot> {
-    return this._doJson<ModelWeightSnapshot>({
-      method: "GET",
-      pathFmt: "/v1/model_apis/snapshots/{}",
-      pathArgs: [params.model_id],
-      query: null,
+      query: params?.request ?? null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1253,6 +1379,32 @@ export class ApiClient {
     });
   }
 
+  /** Gets the authenticated organization */
+  async getOrganizationsMe(): Promise<OrganizationInfo> {
+    return this._doJson<OrganizationInfo>({
+      method: "GET",
+      pathFmt: "/v1/organizations/me",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists regions available to the organization */
+  async getRegions(): Promise<Regions> {
+    return this._doJson<Regions>({
+      method: "GET",
+      pathFmt: "/v1/regions",
+      pathArgs: [],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Gets all secrets (metadata only, no plain text keys) */
   async getSecrets(): Promise<Secrets> {
     return this._doJson<Secrets>({
@@ -1308,6 +1460,38 @@ export class ApiClient {
     });
   }
 
+  /** Lists a team's Loops runs */
+  async getTeamsLoopsRuns(params: {
+    team_id: string;
+    request?: GetTeamsLoopsRunsRequest;
+  }): Promise<ListLoopsRunsResponse> {
+    return this._doJson<ListLoopsRunsResponse>({
+      method: "GET",
+      pathFmt: "/v1/teams/{}/loops/runs",
+      pathArgs: [params.team_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists a team's Loops samplers */
+  async getTeamsLoopsSamplers(params: {
+    team_id: string;
+    request?: GetTeamsLoopsSamplersRequest;
+  }): Promise<ListLoopsSamplersResponse> {
+    return this._doJson<ListLoopsSamplersResponse>({
+      method: "GET",
+      pathFmt: "/v1/teams/{}/loops/samplers",
+      pathArgs: [params.team_id],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Gets all models */
   async getTeamsModels(params: {
     team_id: string;
@@ -1318,6 +1502,19 @@ export class ApiClient {
       pathFmt: "/v1/teams/{}/models",
       pathArgs: [params.team_id],
       query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists regions available to a team */
+  async getTeamsRegions(params: { team_id: string }): Promise<Regions> {
+    return this._doJson<Regions>({
+      method: "GET",
+      pathFmt: "/v1/teams/{}/regions",
+      pathArgs: [params.team_id],
+      query: null,
       body: null,
       successCode: 200,
       errorCodes: null,
@@ -1590,6 +1787,84 @@ export class ApiClient {
     });
   }
 
+  /** Gets the volumes in a namespace */
+  async getVolumes(params: { request: GetVolumesRequest }): Promise<ListVolumesResponse> {
+    return this._doJson<ListVolumesResponse>({
+      method: "GET",
+      pathFmt: "/v1/volumes",
+      pathArgs: [],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the volume namespaces in your workspace */
+  async getVolumesNamespaces(params?: {
+    request?: GetVolumesNamespacesRequest;
+  }): Promise<ListVolumeNamespacesResponse> {
+    return this._doJson<ListVolumeNamespacesResponse>({
+      method: "GET",
+      pathFmt: "/v1/volumes/namespaces",
+      pathArgs: [],
+      query: params?.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the versions of a volume */
+  async getVolumesVersions(params: {
+    volume_namespace: string;
+    volume_name: string;
+    request?: GetVolumesVersionsRequest;
+  }): Promise<ListVolumeVersionsResponse> {
+    return this._doJson<ListVolumeVersionsResponse>({
+      method: "GET",
+      pathFmt: "/v1/volumes/{}/{}/versions",
+      pathArgs: [params.volume_namespace, params.volume_name],
+      query: params.request ?? null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets one version of a volume */
+  async getVolumesVersionsVolumeVersion(params: {
+    volume_namespace: string;
+    volume_name: string;
+    volume_version: string;
+  }): Promise<VolumeVersionDetail> {
+    return this._doJson<VolumeVersionDetail>({
+      method: "GET",
+      pathFmt: "/v1/volumes/{}/{}/versions/{}",
+      pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a volume */
+  async getVolumesVolumeName(params: {
+    volume_namespace: string;
+    volume_name: string;
+  }): Promise<Volume> {
+    return this._doJson<Volume>({
+      method: "GET",
+      pathFmt: "/v1/volumes/{}/{}",
+      pathArgs: [params.volume_namespace, params.volume_name],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Updates a chain environment's settings */
   async patchChainsEnvironments(params: {
     chain_id: string;
@@ -1720,6 +1995,23 @@ export class ApiClient {
     });
   }
 
+  /** Updates a model's deployment by ID */
+  async patchModelsDeployments(params: {
+    model_id: string;
+    deployment_id: string;
+    request: UpdateDeploymentRequest;
+  }): Promise<Deployment> {
+    return this._doJson<Deployment>({
+      method: "PATCH",
+      pathFmt: "/v1/models/{}/deployments/{}",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Updates a deployment's autoscaling settings */
   async patchModelsDeploymentsAutoscalingSettings(params: {
     model_id: string;
@@ -1769,13 +2061,30 @@ export class ApiClient {
     });
   }
 
+  /** Updates a deployment's request backpressure settings */
+  async patchModelsDeploymentsRequestBackpressureSettings(params: {
+    model_id: string;
+    deployment_id: string;
+    request: UpdateRequestBackpressureSettings;
+  }): Promise<RequestBackpressureSettings> {
+    return this._doJson<RequestBackpressureSettings>({
+      method: "PATCH",
+      pathFmt: "/v1/models/{}/deployments/{}/request_backpressure_settings",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Updates an environment's settings */
   async patchModelsEnvironments(params: {
     model_id: string;
     env_name: string;
     request: UpdateEnvironmentRequest;
-  }): Promise<UpdateAutoscalingSettingsResponse> {
-    return this._doJson<UpdateAutoscalingSettingsResponse>({
+  }): Promise<UpdateEnvironmentResponse> {
+    return this._doJson<UpdateEnvironmentResponse>({
       method: "PATCH",
       pathFmt: "/v1/models/{}/environments/{}",
       pathArgs: [params.model_id, params.env_name],
@@ -2109,6 +2418,19 @@ export class ApiClient {
     });
   }
 
+  /** Deactivates a Loops run */
+  async postLoopsRunsDeactivate(params: { run_id: string }): Promise<DeactivateLoopsRunResponse> {
+    return this._doJson<DeactivateLoopsRunResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/runs/{}/deactivate",
+      pathArgs: [params.run_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Creates a Loops sampler */
   async postLoopsSamplers(params: {
     request: CreateLoopsSamplerRequest;
@@ -2137,30 +2459,14 @@ export class ApiClient {
     });
   }
 
-  /** Creates a model weight snapshot */
-  async postModelApisSnapshots(params: {
-    request: CreateModelWeightSnapshotRequest;
-  }): Promise<ModelWeightSnapshot> {
-    return this._doJson<ModelWeightSnapshot>({
+  /** Creates a Loops trainer */
+  async postLoopsTrainers(params: {
+    request: CreateLoopsRunRequest;
+  }): Promise<CreateLoopsRunResponse> {
+    return this._doJson<CreateLoopsRunResponse>({
       method: "POST",
-      pathFmt: "/v1/model_apis/snapshots",
+      pathFmt: "/v1/loops/trainers",
       pathArgs: [],
-      query: null,
-      body: params.request,
-      successCode: 200,
-      errorCodes: null,
-    });
-  }
-
-  /** Creates a model weight snapshot */
-  async postModelApisSnapshotsModelId(params: {
-    model_id: string;
-    request: CreateModelWeightSnapshotRequest;
-  }): Promise<ModelWeightSnapshot> {
-    return this._doJson<ModelWeightSnapshot>({
-      method: "POST",
-      pathFmt: "/v1/model_apis/snapshots/{}",
-      pathArgs: [params.model_id],
       query: null,
       body: params.request,
       successCode: 200,
@@ -2641,6 +2947,67 @@ export class ApiClient {
     });
   }
 
+  /** Creates a Loops run in a team */
+  async postTeamsLoopsRuns(params: {
+    team_id: string;
+    request: CreateLoopsRunRequest;
+  }): Promise<CreateLoopsRunResponse> {
+    return this._doJson<CreateLoopsRunResponse>({
+      method: "POST",
+      pathFmt: "/v1/teams/{}/loops/runs",
+      pathArgs: [params.team_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Loops sampler in a team */
+  async postTeamsLoopsSamplers(params: {
+    team_id: string;
+    request: CreateLoopsSamplerRequest;
+  }): Promise<CreateLoopsSamplerResponse> {
+    return this._doJson<CreateLoopsSamplerResponse>({
+      method: "POST",
+      pathFmt: "/v1/teams/{}/loops/samplers",
+      pathArgs: [params.team_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Loops session */
+  async postTeamsLoopsSessions(params: { team_id: string }): Promise<CreateLoopsSessionResponse> {
+    return this._doJson<CreateLoopsSessionResponse>({
+      method: "POST",
+      pathFmt: "/v1/teams/{}/loops/sessions",
+      pathArgs: [params.team_id],
+      query: null,
+      body: null,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Loops trainer */
+  async postTeamsLoopsTrainers(params: {
+    team_id: string;
+    request: CreateLoopsRunRequest;
+  }): Promise<CreateLoopsRunResponse> {
+    return this._doJson<CreateLoopsRunResponse>({
+      method: "POST",
+      pathFmt: "/v1/teams/{}/loops/trainers",
+      pathArgs: [params.team_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
   /** Creates a new model from a source */
   async postTeamsModels(params: {
     team_id: string;
@@ -2812,6 +3179,39 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/training_projects/{}/jobs/{}/stop",
       pathArgs: [params.training_project_id, params.training_job_id],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a volume access token */
+  async postVolumesToken(params: {
+    request: CreateVolumeTokenRequest;
+  }): Promise<CreateVolumeTokenResponse> {
+    return this._doJson<CreateVolumeTokenResponse>({
+      method: "POST",
+      pathFmt: "/v1/volumes/token",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Restores a deleted version of a volume */
+  async postVolumesVersionsRestore(params: {
+    volume_namespace: string;
+    volume_name: string;
+    volume_version: string;
+    request: RestoreVolumeVersionRequest;
+  }): Promise<RestoreVolumeVersionResponse> {
+    return this._doJson<RestoreVolumeVersionResponse>({
+      method: "POST",
+      pathFmt: "/v1/volumes/{}/{}/versions/{}/restore",
+      pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
       query: null,
       body: params.request,
       successCode: 200,
