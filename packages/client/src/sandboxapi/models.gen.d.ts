@@ -704,7 +704,7 @@ export type components = {
     };
     /** @enum {string} */
     ProcessUpgradeState: "idle" | "running" | "completed" | "failed";
-    GetCodegenRerankingQuery: {
+    GetCodegenRerankingParams: {
       /** @description Natural language query to search for */
       query: string;
       /** @description Minimum relevance score (default: 0.5) */
@@ -714,7 +714,7 @@ export type components = {
       /** @description Regex pattern to filter files (e.g., .*\\.ts$ for TypeScript files) */
       filePattern?: string;
     };
-    GetFilesystemContentSearchQuery: {
+    GetFilesystemContentSearchParams: {
       /** @description Text to search for */
       query: string;
       /** @description Case sensitive search (default: false) */
@@ -726,7 +726,7 @@ export type components = {
       /** @description Comma-separated directory names to skip (default: node_modules,vendor,.git,dist,build,target,__pycache__,.venv,.next,coverage) */
       excludeDirs?: string;
     };
-    GetFilesystemFindQuery: {
+    GetFilesystemFindParams: {
       /** @description Type of search (file or directory) */
       type?: string;
       /** @description Comma-separated file patterns to include (e.g., *.go,*.js) */
@@ -738,11 +738,11 @@ export type components = {
       /** @description Exclude hidden files and directories (default: true) */
       excludeHidden?: boolean;
     };
-    PutFilesystemMultipartPartQuery: {
+    PutFilesystemMultipartPartParams: {
       /** @description Part number (1-10000) */
       partNumber: number;
     };
-    GetFilesystemSearchQuery: {
+    GetFilesystemSearchParams: {
       /** @description Maximum number of results to return (default: 20) */
       maxResults?: number;
       /** @description Comma-separated file patterns to include (e.g., *.go,*.js) */
@@ -752,19 +752,19 @@ export type components = {
       /** @description Exclude hidden files and directories (default: true) */
       excludeHidden?: boolean;
     };
-    DeleteFilesystemQuery: {
+    DeleteFilesystemParams: {
       /** @description Delete directory recursively */
       recursive?: boolean;
     };
-    GetFilesystemQuery: {
+    GetFilesystemParams: {
       /** @description Force download mode for files */
       download?: boolean;
     };
-    DeleteFilesystemTreeQuery: {
+    DeleteFilesystemTreeParams: {
       /** @description Delete directory recursively */
       recursive?: boolean;
     };
-    GetWatchFilesystemQuery: {
+    GetWatchFilesystemParams: {
       /** @description Ignore patterns (comma-separated) */
       ignore?: string;
     };
@@ -851,17 +851,17 @@ export type FilesystemMultipartUpload = components["schemas"]["FilesystemMultipa
 export type FilesystemUploadedPart = components["schemas"]["FilesystemUploadedPart"];
 export type HandlerReloadResponse = components["schemas"]["HandlerReloadResponse"];
 export type ProcessUpgradeState = components["schemas"]["ProcessUpgradeState"];
-export type GetCodegenRerankingQuery = components["schemas"]["GetCodegenRerankingQuery"];
-export type GetFilesystemContentSearchQuery =
-  components["schemas"]["GetFilesystemContentSearchQuery"];
-export type GetFilesystemFindQuery = components["schemas"]["GetFilesystemFindQuery"];
-export type PutFilesystemMultipartPartQuery =
-  components["schemas"]["PutFilesystemMultipartPartQuery"];
-export type GetFilesystemSearchQuery = components["schemas"]["GetFilesystemSearchQuery"];
-export type DeleteFilesystemQuery = components["schemas"]["DeleteFilesystemQuery"];
-export type GetFilesystemQuery = components["schemas"]["GetFilesystemQuery"];
-export type DeleteFilesystemTreeQuery = components["schemas"]["DeleteFilesystemTreeQuery"];
-export type GetWatchFilesystemQuery = components["schemas"]["GetWatchFilesystemQuery"];
+export type GetCodegenRerankingParams = components["schemas"]["GetCodegenRerankingParams"];
+export type GetFilesystemContentSearchParams =
+  components["schemas"]["GetFilesystemContentSearchParams"];
+export type GetFilesystemFindParams = components["schemas"]["GetFilesystemFindParams"];
+export type PutFilesystemMultipartPartParams =
+  components["schemas"]["PutFilesystemMultipartPartParams"];
+export type GetFilesystemSearchParams = components["schemas"]["GetFilesystemSearchParams"];
+export type DeleteFilesystemParams = components["schemas"]["DeleteFilesystemParams"];
+export type GetFilesystemParams = components["schemas"]["GetFilesystemParams"];
+export type DeleteFilesystemTreeParams = components["schemas"]["DeleteFilesystemTreeParams"];
+export type GetWatchFilesystemParams = components["schemas"]["GetWatchFilesystemParams"];
 export type GetFilesystemResponse = components["schemas"]["GetFilesystemResponse"];
 export type GetFilesystemTreeResponse = components["schemas"]["GetFilesystemTreeResponse"];
 export type PutFilesystemTreeResponse = components["schemas"]["PutFilesystemTreeResponse"];

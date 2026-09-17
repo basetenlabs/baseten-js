@@ -4,8 +4,8 @@ import type {
   ApplyEditRequest,
   ApplyEditResponse,
   ContentSearchResponse,
-  DeleteFilesystemQuery,
-  DeleteFilesystemTreeQuery,
+  DeleteFilesystemParams,
+  DeleteFilesystemTreeParams,
   DeleteNetworkProcessMonitorResponse,
   DriveListResponse,
   DriveMountRequest,
@@ -18,16 +18,16 @@ import type {
   FileRequest,
   FindResponse,
   FuzzySearchResponse,
-  GetCodegenRerankingQuery,
-  GetFilesystemContentSearchQuery,
-  GetFilesystemFindQuery,
-  GetFilesystemQuery,
+  GetCodegenRerankingParams,
+  GetFilesystemContentSearchParams,
+  GetFilesystemFindParams,
+  GetFilesystemParams,
   GetFilesystemResponse,
-  GetFilesystemSearchQuery,
+  GetFilesystemSearchParams,
   GetFilesystemTreeResponse,
   GetNetworkProcessPortsResponse,
   GetProcessResponse,
-  GetWatchFilesystemQuery,
+  GetWatchFilesystemParams,
   HandlerReloadResponse,
   HealthResponse,
   MultipartCompleteRequest,
@@ -41,7 +41,7 @@ import type {
   ProcessLogs,
   ProcessRequest,
   ProcessResponse,
-  PutFilesystemMultipartPartQuery,
+  PutFilesystemMultipartPartParams,
   PutFilesystemTreeResponse,
   QuiesceStatus,
   RerankingResponse,
@@ -120,13 +120,13 @@ export class ApiClient {
   /** Delete file or directory */
   async deleteFilesystem(params: {
     path: string;
-    query?: DeleteFilesystemQuery;
+    params?: DeleteFilesystemParams;
   }): Promise<SuccessResponse> {
     return this._doJson<SuccessResponse>({
       method: "DELETE",
       pathFmt: "/filesystem/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 404: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -147,13 +147,13 @@ export class ApiClient {
   /** Delete directory tree */
   async deleteFilesystemTree(params: {
     path: string;
-    query?: DeleteFilesystemTreeQuery;
+    params?: DeleteFilesystemTreeParams;
   }): Promise<SuccessResponse> {
     return this._doJson<SuccessResponse>({
       method: "DELETE",
       pathFmt: "/filesystem/tree/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 400: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -236,13 +236,13 @@ export class ApiClient {
   /** Code reranking/semantic search */
   async getCodegenReranking(params: {
     path: string;
-    query: GetCodegenRerankingQuery;
+    params: GetCodegenRerankingParams;
   }): Promise<RerankingResponse> {
     return this._doJson<RerankingResponse>({
       method: "GET",
       pathFmt: "/codegen/reranking/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 400: "ErrorResponse", 422: "ErrorResponse", 503: "ErrorResponse" },
     });
@@ -263,13 +263,13 @@ export class ApiClient {
   /** Get file or directory information */
   async getFilesystem(params: {
     path: string;
-    query?: GetFilesystemQuery;
+    params?: GetFilesystemParams;
   }): Promise<GetFilesystemResponse> {
     return this._doJson<GetFilesystemResponse>({
       method: "GET",
       pathFmt: "/filesystem/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 404: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -279,13 +279,13 @@ export class ApiClient {
   async getFilesystemRaw(params: {
     path: string;
     accept: "application/json" | "application/octet-stream";
-    query?: GetFilesystemQuery;
+    params?: GetFilesystemParams;
   }): Promise<Response> {
     return this._do({
       method: "GET",
       pathFmt: "/filesystem/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       accept: params.accept,
       errorCodes: { 404: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
@@ -295,13 +295,13 @@ export class ApiClient {
   /** Search for text content in files */
   async getFilesystemContentSearch(params: {
     path: string;
-    query: GetFilesystemContentSearchQuery;
+    params: GetFilesystemContentSearchParams;
   }): Promise<ContentSearchResponse> {
     return this._doJson<ContentSearchResponse>({
       method: "GET",
       pathFmt: "/filesystem-content-search/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 400: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -310,13 +310,13 @@ export class ApiClient {
   /** Find files and directories */
   async getFilesystemFind(params: {
     path: string;
-    query?: GetFilesystemFindQuery;
+    params?: GetFilesystemFindParams;
   }): Promise<FindResponse> {
     return this._doJson<FindResponse>({
       method: "GET",
       pathFmt: "/filesystem-find/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 400: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -351,13 +351,13 @@ export class ApiClient {
   /** Fuzzy search for files and directories */
   async getFilesystemSearch(params: {
     path: string;
-    query?: GetFilesystemSearchQuery;
+    params?: GetFilesystemSearchParams;
   }): Promise<FuzzySearchResponse> {
     return this._doJson<FuzzySearchResponse>({
       method: "GET",
       pathFmt: "/filesystem-search/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 400: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -451,13 +451,13 @@ export class ApiClient {
   /** Stream file modification events in a directory */
   async getWatchFilesystem(params: {
     path: string;
-    query?: GetWatchFilesystemQuery;
+    params?: GetWatchFilesystemParams;
   }): Promise<Response> {
     return this._do({
       method: "GET",
       pathFmt: "/watch/filesystem/{}",
       pathArgs: [params.path],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: null,
       accept: "text/plain",
       errorCodes: null,
@@ -657,14 +657,14 @@ export class ApiClient {
   /** Upload part */
   async putFilesystemMultipartPart(params: {
     uploadId: string;
-    query: PutFilesystemMultipartPartQuery;
+    params: PutFilesystemMultipartPartParams;
     request: FormData;
   }): Promise<MultipartUploadPartResponse> {
     return this._doJson<MultipartUploadPartResponse>({
       method: "PUT",
       pathFmt: "/filesystem-multipart/{}/part",
       pathArgs: [params.uploadId],
-      query: params.query ?? null,
+      query: params.params ?? null,
       body: params.request,
       bodyContentType: "multipart/form-data",
       errorCodes: { 400: "ErrorResponse", 404: "ErrorResponse", 500: "ErrorResponse" },
@@ -736,8 +736,12 @@ export class ApiClient {
         headers["Content-Type"] = contentType;
         init.body = JSON.stringify(request.body);
       } else if (contentType === "multipart/form-data") {
-        // Deliberately unset: fetch derives it from the FormData, including the
-        // boundary, which cannot be computed here.
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
         init.body = request.body as BodyInit;
       } else {
         headers["Content-Type"] = contentType;

@@ -16,7 +16,7 @@
  */
 
 import {
-  type ClientOptions,
+  operationQueryParams,
   queryTypeName,
   resolveMethodNames,
   responseTypeName,
@@ -132,9 +132,8 @@ function renameConfigRefsAndTitles(node: unknown, renames: Map<string, string>):
   for (const child of Object.values(obj)) renameConfigRefsAndTitles(child, renames);
 }
 
-export function preprocessSpec(data: Uint8Array, options: ClientOptions = {}): Uint8Array {
+export function preprocessSpec(data: Uint8Array): Uint8Array {
   const doc = JSON.parse(new TextDecoder().decode(data));
-  const queryField = options.queryField ?? "request";
 
   hoistComponentSchemas(doc);
 
@@ -159,7 +158,7 @@ export function preprocessSpec(data: Uint8Array, options: ClientOptions = {}): U
 
   // Run after the V1 rename so the copied parameter schemas already reference
   // the renamed enum/sub-model names.
-  injectQuerySchemas(doc, queryField);
+  injectQuerySchemas(doc);
 
   // Runs after pruning for the same reason as injectQuerySchemas: the inline
   // schemas being hoisted are still reachable through the operations, so the
@@ -286,9 +285,9 @@ function collectSchemaRefs(node: unknown, out: Set<string>): void {
  * openapi-typescript emit a typed model that the client references by name,
  * instead of the client having to map JSON schema to TypeScript itself. The
  * schema name matches the client method name (e.g. getAuditLogs ->
- * GetAuditLogsRequest).
+ * GetAuditLogsParams).
  */
-function injectQuerySchemas(doc: Record<string, unknown>, queryField: string): void {
+function injectQuerySchemas(doc: Record<string, unknown>): void {
   const paths = (doc.paths ?? {}) as Record<string, Record<string, unknown>>;
   const schemas = (doc.components as Record<string, unknown>).schemas as Record<string, unknown>;
   const names = resolveMethodNames(doc);
@@ -297,10 +296,7 @@ function injectQuerySchemas(doc: Record<string, unknown>, queryField: string): v
     for (const [httpMethod, opRaw] of Object.entries(pathItem)) {
       if (httpMethod === "parameters" || typeof opRaw !== "object" || opRaw === null) continue;
       const op = opRaw as Record<string, unknown>;
-      const queryParams = ((op.parameters as unknown[]) ?? []).filter(
-        (p): p is Record<string, unknown> =>
-          typeof p === "object" && p !== null && (p as Record<string, unknown>).in === "query",
-      );
+      const queryParams = operationQueryParams(doc, pathItem, op);
       if (queryParams.length === 0) continue;
 
       const properties: Record<string, unknown> = {};
@@ -317,7 +313,7 @@ function injectQuerySchemas(doc: Record<string, unknown>, queryField: string): v
         if (param.required === true) required.push(name);
       }
 
-      const schemaName = queryTypeName(names.get(`${httpMethod}\0${path}`)!, queryField);
+      const schemaName = queryTypeName(names.get(`${httpMethod}\0${path}`)!);
       if (schemaName in schemas) {
         throw new Error(
           `injected query schema ${schemaName} collides with an existing schema name`,

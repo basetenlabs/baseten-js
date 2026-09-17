@@ -3,7 +3,7 @@ export type { InferenceClientOptions } from "./inference";
 export { ManagementClient } from "./management";
 export type { ManagementClientOptions } from "./management";
 export { SandboxClient } from "./sandbox";
-export type { ProcessLogLine, SandboxClientOptions } from "./sandbox";
+export type { SandboxClientOptions } from "./sandbox";
 export * as inferenceapi from "./inferenceapi";
 export * as managementapi from "./managementapi";
 export * as modelconfig from "./modelconfig";

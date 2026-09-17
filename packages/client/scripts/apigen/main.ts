@@ -12,7 +12,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { load as loadYaml } from "js-yaml";
-import { type ClientOptions, generateClient } from "./clientgen.ts";
+import { generateClient } from "./clientgen.ts";
 import { postprocessDts } from "./postprocess.ts";
 import { preprocessConfigSchema, preprocessSpec } from "./preprocess.ts";
 
@@ -47,11 +47,7 @@ async function main(): Promise<void> {
     resolve(CLIENT_SRC_DIR, "managementapi"),
   );
   await generateApi(resolve(SPECS_DIR, "inference.json"), resolve(CLIENT_SRC_DIR, "inferenceapi"));
-  // The sandbox API is the one spec with operations that take both a body and
-  // query parameters, so it puts query parameters on their own field.
-  await generateApi(resolve(SPECS_DIR, "sandbox.yml"), resolve(CLIENT_SRC_DIR, "sandboxapi"), {
-    queryField: "query",
-  });
+  await generateApi(resolve(SPECS_DIR, "sandbox.yml"), resolve(CLIENT_SRC_DIR, "sandboxapi"));
   await generateModelConfig(
     resolve(SPECS_DIR, "config.schema.json"),
     resolve(CLIENT_SRC_DIR, "modelconfig"),
@@ -94,11 +90,7 @@ async function downloadSpec(url: string, dest: string): Promise<void> {
   await writeFile(dest, data);
 }
 
-async function generateApi(
-  specFile: string,
-  outDir: string,
-  options: ClientOptions = {},
-): Promise<void> {
+async function generateApi(specFile: string, outDir: string): Promise<void> {
   console.log(`Generating ${outDir} from ${specFile}`);
   await mkdir(outDir, { recursive: true });
 
@@ -108,7 +100,7 @@ async function generateApi(
     specFile.endsWith(".yml") || specFile.endsWith(".yaml")
       ? await readYamlAsJson(specFile)
       : await readFile(specFile);
-  const preprocessed = preprocessSpec(raw, options);
+  const preprocessed = preprocessSpec(raw);
 
   // Write preprocessed spec to a temp file for openapi-typescript CLI
   const tmpSpec = resolve(outDir, "_spec.tmp.json");
@@ -135,7 +127,7 @@ async function generateApi(
 
   // Generate client
   const clientFile = resolve(outDir, "client.gen.ts");
-  await writeFile(clientFile, generateClient(preprocessed, options));
+  await writeFile(clientFile, generateClient(preprocessed));
   console.log(`  -> ${clientFile}`);
 
   // Format generated files

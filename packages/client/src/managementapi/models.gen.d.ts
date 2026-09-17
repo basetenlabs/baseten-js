@@ -386,6 +386,11 @@ export type components = {
        * @description Digest of the version the tag points at, as `b3:<hex>`.
        */
       digest: string;
+      /**
+       * Expires At
+       * @description When the tag stops resolving and leaves the volume, in ISO 8601 format. Null for a tag that never expires. The version it points at is not affected.
+       */
+      expires_at: string | null;
     };
     /** VolumeV1 */
     Volume: {
@@ -406,42 +411,57 @@ export type components = {
       version_ref: string;
       /**
        * Sequence
-       * @description Revision counter for the volume, incremented on every commit and tag change. Use it to detect that a volume changed.
+       * @description Revision counter for the volume, incremented on every commit, tag change, delete, and restore. A tag or version that expires leaves without changing it; the next write then increments it once. Use it to detect that a volume was written to.
        */
       sequence: number;
       /**
        * Updated At
        * Format: date-time
-       * @description When the volume last changed, in ISO 8601 format.
+       * @description When the volume was last written to, in ISO 8601 format. An expiry does not update it.
        */
       updated_at: string;
-      /** @description Version that the reserved `head` tag points at, which a reference with no tag or digest resolves to. Null when the volume has no head, or when your API key cannot read it. */
+      /**
+       * Expires At
+       * @description When the whole volume expires, in ISO 8601 format. At that instant every live version is deleted, every tag drops, and the volume leaves the volume listing; each version then stays restorable until its recovery deadline passes. Null for a volume that never expires.
+       */
+      expires_at: string | null;
+      /** @description Version that the reserved `head` tag points at, which a reference with no tag or digest resolves to. Never an expiring version. Null when the volume has no head, or when your API key cannot read it. */
       head: components["schemas"]["VolumeVersionSummary"] | null;
       /**
        * Tags
-       * @description Tags on the volume that your API key can read.
+       * @description Tags on the volume that your API key can read. A tag with `expires_at` leaves this list at that instant.
        */
       tags: components["schemas"]["VolumeTag"][];
       /**
        * Tag Count
-       * @description Total number of tags on the volume, which can exceed the length of `tags` when your API key cannot read all of them.
+       * @description Total number of tags on the volume, which can exceed the length of `tags` when your API key cannot read all of them. Counts only tags that have not expired.
        */
       tag_count: number;
       /**
        * Versions Alive
-       * @description Number of versions that have not been deleted.
+       * @description Number of versions that have not been deleted or expired.
        */
       versions_alive: number;
       /**
        * Versions Tombstoned
-       * @description Number of versions that have been deleted.
+       * @description Number of versions that have been deleted or expired and are still within their recovery window.
        */
       versions_tombstoned: number;
       /**
        * Versions Untagged
-       * @description Number of versions that no tag points at.
+       * @description Number of live versions that no tag points at.
        */
       versions_untagged: number;
+      /**
+       * Versions Expiring
+       * @description Number of live versions with an expiry still ahead of them. A version that has already expired counts in `versions_tombstoned` instead.
+       */
+      versions_expiring: number;
+      /**
+       * Versions Earliest Expires At
+       * @description Earliest expiry among the live versions, in ISO 8601 format. Null when no live version is scheduled to expire.
+       */
+      versions_earliest_expires_at: string | null;
     };
     /** VolumeVersionSummaryV1 */
     VolumeVersionSummary: {
@@ -556,6 +576,405 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /**
+     * VolumeSyncAuthenticationAWSAssumeRoleV1
+     * @description Authentication using an AWS IAM role assumed by Baseten.
+     */
+    VolumeSyncAuthenticationAWSAssumeRole: {
+      /**
+       * Role Arn
+       * @description AWS IAM role ARN to assume.
+       */
+      role_arn: string;
+      /**
+       * Region
+       * @description AWS region for the assumed role session.
+       */
+      region: string;
+    };
+    /**
+     * VolumeSyncAuthenticationAWSOIDCV1
+     * @description Authentication using an AWS IAM role and Baseten workload identity.
+     */
+    VolumeSyncAuthenticationAWSOIDC: {
+      /**
+       * Role Arn
+       * @description AWS IAM role ARN to assume through OIDC.
+       */
+      role_arn: string;
+      /**
+       * Region
+       * @description AWS region for the OIDC role session.
+       */
+      region: string;
+    };
+    /**
+     * VolumeSyncAuthenticationGCPOIDCV1
+     * @description Authentication using GCP Workload Identity Federation.
+     */
+    VolumeSyncAuthenticationGCPOIDC: {
+      /**
+       * Service Account
+       * @description GCP service account to impersonate through OIDC.
+       */
+      service_account: string;
+      /**
+       * Workload Identity Provider
+       * @description Full resource name of the GCP workload identity provider.
+       */
+      workload_identity_provider: string;
+    };
+    /**
+     * VolumeSyncDestinationV1
+     * @description BDN destination for a volume sync.
+     */
+    VolumeSyncDestination: {
+      /**
+       * Ref
+       * @description Destination as bdn:<namespace>/<volume> with an optional tag.
+       */
+      ref: string;
+    };
+    /**
+     * VolumeSyncErrorV1
+     * @description Public failure details for a volume sync.
+     */
+    VolumeSyncError: {
+      /**
+       * Code
+       * @description Stable machine-readable failure classification.
+       */
+      code: string;
+      /**
+       * Message
+       * @description Redacted user-facing failure message.
+       */
+      message: string;
+    };
+    /**
+     * VolumeSyncSourceAzureV1
+     * @description Azure Blob Storage source.
+     */
+    VolumeSyncSourceAzure: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Azure Blob Storage source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "AZURE";
+    };
+    /**
+     * VolumeSyncSourceBasetenTrainingV1
+     * @description Baseten training artifact source.
+     */
+    VolumeSyncSourceBasetenTraining: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * @description Baseten training artifact source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "BASETEN_TRAINING";
+    };
+    /**
+     * VolumeSyncSourceCoreWeaveV1
+     * @description CoreWeave object storage source.
+     */
+    VolumeSyncSourceCoreWeave: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description CoreWeave object storage source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "COREWEAVE";
+    };
+    /**
+     * VolumeSyncSourceGCSV1
+     * @description Google Cloud Storage source.
+     */
+    VolumeSyncSourceGCS: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Google Cloud Storage source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "GCS";
+      /** @description GCP OIDC authentication for this source. Cannot be combined with auth_secret_name. */
+      gcp_oidc?: components["schemas"]["VolumeSyncAuthenticationGCPOIDC"] | null;
+    };
+    /**
+     * VolumeSyncSourceHuggingFaceV1
+     * @description Hugging Face source.
+     */
+    VolumeSyncSourceHuggingFace: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Hugging Face source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "HUGGING_FACE";
+    };
+    /**
+     * VolumeSyncSourceR2V1
+     * @description Cloudflare R2 source.
+     */
+    VolumeSyncSourceR2: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Cloudflare R2 source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "R2";
+    };
+    /**
+     * VolumeSyncSourceS3V1
+     * @description Amazon S3 source.
+     */
+    VolumeSyncSourceS3: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Amazon S3 source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "S3";
+      /** @description AWS AssumeRole authentication for this source. Cannot be combined with auth_secret_name. */
+      aws_assume_role?: components["schemas"]["VolumeSyncAuthenticationAWSAssumeRole"] | null;
+      /** @description AWS OIDC authentication for this source. Cannot be combined with other authentication fields. */
+      aws_oidc?: components["schemas"]["VolumeSyncAuthenticationAWSOIDC"] | null;
+    };
+    /**
+     * VolumeSyncStatusV1
+     * @enum {string}
+     */
+    VolumeSyncStatus: "PENDING" | "SYNCING" | "READY" | "FAILED" | "CANCELED";
+    /**
+     * VolumeSyncV1
+     * @description Current state and result of a volume sync.
+     */
+    VolumeSync: {
+      /**
+       * Sync Id
+       * @description Identifier of this sync operation.
+       */
+      sync_id: string;
+      /** @description Current lifecycle state of the sync. */
+      status: components["schemas"]["VolumeSyncStatus"];
+      /**
+       * Source
+       * @description Remote source being synced.
+       */
+      source:
+        | components["schemas"]["VolumeSyncSourceHuggingFace"]
+        | components["schemas"]["VolumeSyncSourceS3"]
+        | components["schemas"]["VolumeSyncSourceGCS"]
+        | components["schemas"]["VolumeSyncSourceAzure"]
+        | components["schemas"]["VolumeSyncSourceR2"]
+        | components["schemas"]["VolumeSyncSourceCoreWeave"]
+        | components["schemas"]["VolumeSyncSourceBasetenTraining"];
+      /** @description BDN volume being populated. */
+      destination: components["schemas"]["VolumeSyncDestination"];
+      /**
+       * Volume Version Id
+       * @description Produced artifact identifier; null until the sync is ready.
+       * @default null
+       */
+      volume_version_id: string | null;
+      /**
+       * Version Ref
+       * @description Immutable BDN reference; null until the sync is ready.
+       * @default null
+       */
+      version_ref: string | null;
+      /**
+       * Content Digest
+       * @description BLAKE3 digest of the synced content; null until available.
+       * @default null
+       */
+      content_digest: string | null;
+      /**
+       * Total Size Bytes
+       * @description Total size of the synced content in bytes; null until available.
+       * @default null
+       */
+      total_size_bytes: number | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time at which the sync was created.
+       */
+      created_at: string;
+      /**
+       * Completed At
+       * @description Time at which the sync reached a terminal state.
+       * @default null
+       */
+      completed_at: string | null;
+      /**
+       * @description Redacted failure details; null unless the sync failed.
+       * @default null
+       */
+      error: components["schemas"]["VolumeSyncError"] | null;
+    };
+    /**
+     * VolumeSyncsV1
+     * @description A page of volume syncs in the active workspace.
+     */
+    VolumeSyncs: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["VolumeSync"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * CreateVolumeSyncRequestV1
+     * @description Request to start an asynchronous volume sync.
+     */
+    CreateVolumeSyncRequest: {
+      /**
+       * Source
+       * @description Remote source to sync from.
+       */
+      source:
+        | components["schemas"]["VolumeSyncSourceHuggingFace"]
+        | components["schemas"]["VolumeSyncSourceS3"]
+        | components["schemas"]["VolumeSyncSourceGCS"]
+        | components["schemas"]["VolumeSyncSourceAzure"]
+        | components["schemas"]["VolumeSyncSourceR2"]
+        | components["schemas"]["VolumeSyncSourceCoreWeave"]
+        | components["schemas"]["VolumeSyncSourceBasetenTraining"];
+      /** @description BDN volume to sync into. */
+      destination: components["schemas"]["VolumeSyncDestination"];
+    };
     /** DeleteVolumeRequestV1 */
     DeleteVolumeRequest: {
       /**
@@ -616,7 +1035,7 @@ export type components = {
       sequence: number | null;
       /**
        * Lifecycle
-       * @description Lifecycle state of the version, for example ALIVE or TOMBSTONED.
+       * @description Lifecycle state of the version: ALIVE, or TOMBSTONED once it has been deleted or has expired.
        */
       lifecycle: string;
       /**
@@ -641,8 +1060,13 @@ export type components = {
        */
       created_at: string;
       /**
+       * Expires At
+       * @description When the version expires, in ISO 8601 format. At that instant it becomes TOMBSTONED with `tombstoned_at` set to this value, and every tag pointing at it drops. Null for a version that never expires, and null once the lifecycle is TOMBSTONED.
+       */
+      expires_at: string | null;
+      /**
        * Tombstoned At
-       * @description When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       * @description When the version was deleted or expired, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
        */
       tombstoned_at: string | null;
       /**
@@ -750,7 +1174,7 @@ export type components = {
       sequence: number | null;
       /**
        * Lifecycle
-       * @description Lifecycle state of the version, for example ALIVE or TOMBSTONED.
+       * @description Lifecycle state of the version: ALIVE, or TOMBSTONED once it has been deleted or has expired.
        */
       lifecycle: string;
       /**
@@ -775,8 +1199,13 @@ export type components = {
        */
       created_at: string;
       /**
+       * Expires At
+       * @description When the version expires, in ISO 8601 format. At that instant it becomes TOMBSTONED with `tombstoned_at` set to this value, and every tag pointing at it drops. Null for a version that never expires, and null once the lifecycle is TOMBSTONED.
+       */
+      expires_at: string | null;
+      /**
        * Tombstoned At
-       * @description When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       * @description When the version was deleted or expired, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
        */
       tombstoned_at: string | null;
       /**
@@ -835,6 +1264,37 @@ export type components = {
        * @description Revision of the volume after the restore.
        */
       volume_sequence: number;
+    };
+    /**
+     * TokenScopeV1
+     * @description What a token minted by POST /v1/token grants access to.
+     * @enum {string}
+     */
+    TokenScope: "sandboxes";
+    /** CreateTokenRequestV1 */
+    CreateTokenRequest: {
+      /**
+       * Scopes
+       * @description What the token should grant access to. Only `sandboxes` is supported today; the token then authenticates against the sandbox API.
+       * @example [
+       *       "sandboxes"
+       *     ]
+       */
+      scopes: components["schemas"]["TokenScope"][];
+    };
+    /** TokenV1 */
+    Token: {
+      /**
+       * Token
+       * @description Short-lived bearer token for the sandbox API. Send it as Authorization: Bearer <token>.
+       */
+      token: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description Token expiry in ISO 8601 format. Tokens cannot be renewed; request a new one.
+       */
+      expires_at: string;
     };
     /**
      * SecretV1
@@ -1448,6 +1908,7 @@ export type components = {
         | components["schemas"]["AuditLogEventModelDeploymentInstanceTypeChanged"]
         | components["schemas"]["AuditLogEventModelDeploymentDeleted"]
         | components["schemas"]["AuditLogEventModelDeleted"]
+        | components["schemas"]["AuditLogEventModelRenamed"]
         | components["schemas"]["AuditLogEventChainDeployed"]
         | components["schemas"]["AuditLogEventChainDeploymentActivated"]
         | components["schemas"]["AuditLogEventChainDeploymentDeactivated"]
@@ -2385,6 +2846,23 @@ export type components = {
       action: components["schemas"]["AuditLogPromotionControlAction"];
     };
     /**
+     * AuditLogEventModelRenamedV1
+     * @description A model was renamed. `model_name` is the new name.
+     */
+    AuditLogEventModelRenamed: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_RENAMED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Previous Name */
+      previous_name: string | null;
+    };
+    /**
      * AuditLogEventReplicaTerminatedV1
      * @description A replica of a model deployment was terminated.
      */
@@ -2487,6 +2965,7 @@ export type components = {
       | "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"
       | "MODEL_DEPLOYMENT_DELETED"
       | "MODEL_DELETED"
+      | "MODEL_RENAMED"
       | "CHAIN_DEPLOYED"
       | "CHAIN_DEPLOYMENT_ACTIVATED"
       | "CHAIN_DEPLOYMENT_DEACTIVATED"
@@ -2749,6 +3228,7 @@ export type components = {
       | "ENVIRONMENT_SETTINGS"
       | "REPLICA_TERMINATED"
       | "DELETED"
+      | "METADATA"
       | "SECRETS"
       | "API_KEYS"
       | "GATEWAY"
@@ -3065,6 +3545,18 @@ export type components = {
        * @description Whether the model was deleted
        */
       deleted: boolean;
+    };
+    /**
+     * UpdateModelRequestV1
+     * @description A request to update a model.
+     */
+    UpdateModelRequest: {
+      /**
+       * Name
+       * @description New name for the model, unique within its team. Renaming does not change the model ID, endpoints, or deployments. Pushes that still use the old model_name create another model or target a model that now uses that name, so update config.yaml after renaming.
+       * @example my-model
+       */
+      name?: string | null;
     };
     /**
      * DeploymentsV1
@@ -4355,13 +4847,13 @@ export type components = {
        */
       autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
       /**
-       * @description Promotion settings for the environment
+       * @description Promotion settings for the environment. New Model environments use rolling promotions by default. Set `rolling_deploy` to `false` to opt out.
        * @example {
        *       "promotion_cleanup_strategy": null,
        *       "ramp_up_duration_seconds": 600,
        *       "ramp_up_while_promoting": true,
        *       "redeploy_on_promotion": true,
-       *       "rolling_deploy": true,
+       *       "rolling_deploy": false,
        *       "rolling_deploy_config": null
        *     }
        */
@@ -5006,6 +5498,11 @@ export type components = {
        * @default null
        */
       candidate_deployment: components["schemas"]["ChainDeployment"] | null;
+      /**
+       * @description Details of the in-progress promotion, if any
+       * @default null
+       */
+      in_progress_promotion: components["schemas"]["InProgressPromotion"] | null;
     };
     /**
      * UpdateChainEnvironmentRequestV1
@@ -6486,6 +6983,28 @@ export type components = {
       training_jobs: components["schemas"]["TrainingJob"][];
     };
     /**
+     * EnablementDetailsV1
+     * @description Why a supported model is not enabled for this workspace.
+     */
+    EnablementDetails: {
+      /**
+       * Reason
+       * @description Machine-readable reason the model is not enabled. Currently one of 'needs_approval', 'sequence_length_unsupported' or 'loops_not_enabled'. Deliberately not a closed enum: values are added as the check learns to distinguish cases that call for a different action, so treat an unrecognized value as 'not enabled, reason unknown' rather than an error.
+       * @example needs_approval
+       */
+      reason: string;
+      /**
+       * Reason Detail
+       * @description Human-readable explanation of the reason.
+       */
+      reason_detail: string;
+      /**
+       * Remediation
+       * @description Human-readable next step to enable the model.
+       */
+      remediation: string;
+    };
+    /**
      * SupportedModelV1
      * @description A model supported by the Loops server.
      */
@@ -6496,8 +7015,20 @@ export type components = {
        */
       model_name: string;
       /**
+       * Max Seq Len
+       * @description The longest sequence length Baseten supports for this model. Independent of the caller: see 'max_enabled_seq_len' for what this workspace can actually train at. Named to match the 'max_seq_len' query parameter and the field of the same name on run creation, so one name follows the value through the API.
+       */
+      max_seq_len: number;
+      /**
+       * Max Enabled Seq Len
+       * @description The longest sequence length this workspace can train at. Lower than 'max_seq_len' when the longer configurations need hardware the workspace is not approved for — a model's longer sequence lengths often need a bigger SKU of the same GPU. Zero when the workspace cannot run the model at all, so a client can compare against a required length without a null case.
+       * @default 0
+       */
+      max_enabled_seq_len: number;
+      /**
        * Max Context Length
-       * @description The maximum context length (in tokens) supported by this model.
+       * @deprecated
+       * @description Deprecated. Use 'max_seq_len', which carries the same value. Kept so existing clients keep working.
        */
       max_context_length: number;
       /**
@@ -6505,18 +7036,43 @@ export type components = {
        * @description Whether the model accepts image inputs alongside text.
        */
       supports_vision_language: boolean;
+      /**
+       * Enabled
+       * @description Whether this workspace can start a run with this model now. False means Baseten supports it but the workspace cannot use it yet; 'not_enabled' says why. Capacity is resolved when the run is created, so true is not a guarantee that GPUs are free.
+       * @default true
+       */
+      enabled: boolean;
+      /**
+       * @description Why the model is not enabled, and what would change it. Present only when 'enabled' is false — an enabled model has nothing to explain. Read 'enabled' for the state; this is the detail behind it.
+       * @default null
+       */
+      enablement_details: components["schemas"]["EnablementDetails"] | null;
     };
     /**
      * GetLoopsCapabilitiesResponseV1
      * @description Response for ``GET /v1/loops/capabilities``.
+     *
+     *     A model Baseten does not support has no entry at all, so an empty list for
+     *     a single-model request means exactly that.
      */
     GetLoopsCapabilitiesResponse: {
       /**
        * Supported Models
-       * @description List of models available on the server.
+       * @description Models Baseten supports for this use case, each carrying an 'enabled' flag saying whether this workspace can run it now, and 'enablement_details' when it cannot. Filter on 'enabled' to get the models you can use.
        */
       supported_models: components["schemas"]["SupportedModel"][];
     };
+    /**
+     * LoopsUseCaseV1
+     * @description What the caller intends to run.
+     *
+     *     Reinforcement learning runs a trainer and a sampler; supervised
+     *     fine-tuning runs a trainer alone. A model can therefore be enabled for one
+     *     and not the other, and the same model can support a longer sequence length
+     *     for SFT than for RL.
+     * @enum {string}
+     */
+    LoopsUseCase: "rl" | "sft";
     /** LoopsSessionV1 */
     LoopsSession: {
       /** Id */
@@ -6920,6 +7476,51 @@ export type components = {
        * @description Total number of checkpoint files available.
        */
       total_count: number;
+    };
+    /**
+     * LoopsCheckpointS3SourceV1
+     * @description The checkpoint's files are fetched as presigned URLs, page by page.
+     */
+    LoopsCheckpointS3Source: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "s3";
+    };
+    /**
+     * LoopsCheckpointVolumeSourceV1
+     * @description The checkpoint's files are pulled from a Baseten volume.
+     */
+    LoopsCheckpointVolumeSource: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "volume";
+      /**
+       * Volume Ref
+       * @description Ref of the volume version holding the checkpoint, as `bdn:<namespace>/<volume>:<tag>`.
+       */
+      volume_ref: string;
+      /**
+       * Path
+       * @description Directory inside that version holding the checkpoint's files.
+       */
+      path: string;
+    };
+    /**
+     * LoopsCheckpointSourceResponseV1
+     * @description Where a checkpoint's files are fetched from, and how.
+     */
+    LoopsCheckpointSourceResponse: {
+      /**
+       * Source
+       * @description `s3` means the files endpoint serves presigned URLs for this checkpoint; `volume` carries the ref to pull instead.
+       */
+      source:
+        | components["schemas"]["LoopsCheckpointS3Source"]
+        | components["schemas"]["LoopsCheckpointVolumeSource"];
     };
     /**
      * LoopsDeploymentStatusV1
@@ -7700,6 +8301,7 @@ export type components = {
       /**
        * @description Type of the API key.
        * @example PERSONAL
+       * @example ROUTES
        * @example WORKSPACE_MANAGE_API_KEYS
        * @example WORKSPACE_EXPORT_METRICS
        * @example WORKSPACE_INVOKE
@@ -7721,6 +8323,18 @@ export type components = {
        * @default null
        */
       team_name: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time in ISO 8601 format
+       */
+      created_at: string;
+      /**
+       * Last Used At
+       * @description Last recorded use in ISO 8601 format, or null if unavailable. Updates may be delayed.
+       * @default null
+       */
+      last_used_at: string | null;
       /**
        * @description The user who owns the API key. Only present for personal API keys.
        * @default null
@@ -8980,6 +9594,51 @@ export type components = {
       model_apis_usage: components["schemas"]["ModelApisUsage"] | null;
     };
     /**
+     * ToolCallUsageBucketV1
+     * @description Server-side tool call usage for one day, provider, charge unit, and model.
+     */
+    ToolCallUsageBucket: {
+      /**
+       * Date
+       * Format: date
+       * @description UTC day the usage was recorded on.
+       */
+      date: string;
+      /**
+       * Provider
+       * @description Tool provider, such as exa or parallel.
+       */
+      provider: string;
+      /**
+       * Sku
+       * @description Charge unit, as `<provider>/<unit>`. The unit is what the provider reported, or the tool name when it reported none. Its meaning varies by provider.
+       */
+      sku: string;
+      /**
+       * Model
+       * @description Model that made the tool calls.
+       */
+      model: string;
+      /**
+       * Calls
+       * @description Number of tool calls.
+       */
+      calls: number;
+      /**
+       * Quantity
+       * @description Billable quantity in the provider's sku unit, summed over the calls.
+       */
+      quantity: number;
+    };
+    /**
+     * ToolCallUsageResponseV1
+     * @description Daily server-side tool call usage, ordered by day, provider, sku, and model.
+     */
+    ToolCallUsageResponse: {
+      /** Items */
+      items?: components["schemas"]["ToolCallUsageBucket"][];
+    };
+    /**
      * UserInfoV1
      * @description A Baseten user.
      */
@@ -9133,6 +9792,493 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** ExploreMetadataAPIFormatsV1 */
+    ExploreMetadataAPIFormats: {
+      /**
+       * Messages
+       * @description Anthropic Messages API support.
+       * @default false
+       */
+      messages: boolean;
+      /**
+       * Responses
+       * @description OpenAI Responses API support.
+       * @default false
+       */
+      responses: boolean;
+      /**
+       * Chat Completions
+       * @description OpenAI Chat Completions API support.
+       * @default false
+       */
+      chat_completions: boolean;
+    };
+    /** ExploreMetadataV1 */
+    ExploreMetadata: {
+      /**
+       * Slug
+       * @description Metadata slug, e.g. 'anthropic/claude-opus-4'; null for rows without one.
+       */
+      slug: string | null;
+      /**
+       * Display Name
+       * @description Model display name, when available.
+       */
+      display_name: string | null;
+      /**
+       * Release Date
+       * @description Model release date. Month-only source dates use the first day of that month.
+       */
+      release_date: string | null;
+      /**
+       * Provider
+       * @description Provider key derived from the slug prefix, e.g. 'anthropic'; null for unprefixed slugs.
+       */
+      provider: string | null;
+      /**
+       * Context Window
+       * @description Total context window in tokens.
+       */
+      context_window: number | null;
+      /**
+       * Max Output Tokens
+       * @description Maximum output tokens per response.
+       */
+      max_output_tokens: number | null;
+      /**
+       * Input Modalities
+       * @description Accepted input modalities.
+       */
+      input_modalities: string[];
+      /**
+       * Tools
+       * @description Whether the model supports tool calling.
+       */
+      tools: boolean | null;
+      /**
+       * Reasoning Effort Levels
+       * @description Reasoning effort levels the model supports.
+       */
+      reasoning_effort_levels: string[] | null;
+      /**
+       * Parallel Tool Calls
+       * @description Whether the model supports parallel tool calls.
+       */
+      parallel_tool_calls: boolean | null;
+      /** @description API formats the model supports. */
+      supported_api_formats: components["schemas"]["ExploreMetadataAPIFormats"] | null;
+    };
+    /** ExploreMetadataResponseV1 */
+    ExploreMetadataResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["ExploreMetadata"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** RouteTargetAnthropicV1 */
+    RouteTargetAnthropic: {
+      /**
+       * @description Target kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "ANTHROPIC";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetBasetenModelAPIV1 */
+    RouteTargetBasetenModelAPI: {
+      /**
+       * @description Target kind for a Baseten Model API. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "BASETEN_MODEL_API";
+      /**
+       * Model
+       * @description Name of the target Model API.
+       */
+      model: string;
+    };
+    /** RouteTargetOpenAICompatibleV1 */
+    RouteTargetOpenAICompatible: {
+      /**
+       * @description Target kind for an OpenAI-compatible provider. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "OPENAI_COMPATIBLE";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+      /**
+       * Base Url
+       * @description HTTPS base URL of the OpenAI-compatible provider.
+       */
+      base_url: string;
+    };
+    /** RouteTargetOpenAIV1 */
+    RouteTargetOpenAI: {
+      /**
+       * @description Target kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "OPENAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetVertexV1 */
+    RouteTargetVertex: {
+      /**
+       * @description Target kind for Google Vertex AI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "VERTEX";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+      /** @description Google Vertex configuration. */
+      vertex_config: components["schemas"]["VertexTargetConfig"];
+    };
+    /** RouteTargetXAIV1 */
+    RouteTargetXAI: {
+      /**
+       * @description Target kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "XAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteV1 */
+    Route: {
+      /**
+       * Id
+       * @description Stable route identifier.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Immutable name to send in the inference request's model field.
+       */
+      name: string;
+      /**
+       * Team Id
+       * @description Identifier of the owning team.
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the owning team.
+       */
+      team_name: string;
+      /**
+       * Display Name
+       * @description Display label, defaulting to the route name.
+       */
+      display_name: string;
+      /**
+       * Description
+       * @description Short description of the route, empty when unset.
+       */
+      description: string;
+      /**
+       * Target
+       * @description Configured upstream target.
+       */
+      target:
+        | components["schemas"]["RouteTargetBasetenModelAPI"]
+        | components["schemas"]["RouteTargetAnthropic"]
+        | components["schemas"]["RouteTargetOpenAI"]
+        | components["schemas"]["RouteTargetXAI"]
+        | components["schemas"]["RouteTargetVertex"]
+        | components["schemas"]["RouteTargetOpenAICompatible"];
+      /** @description Resolved model metadata; null when the route has no linked metadata row. */
+      metadata: components["schemas"]["ExploreMetadata"] | null;
+      /**
+       * Invoke Url
+       * @description Base URL for inference requests using this route.
+       */
+      invoke_url: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time, ISO 8601.
+       */
+      created_at: string;
+    };
+    /** VertexTargetConfigV1 */
+    VertexTargetConfig: {
+      /**
+       * Project Id
+       * @description Google Cloud project ID or project number.
+       * @example my-gcp-project
+       * @example 464036093014
+       */
+      project_id: string;
+      /**
+       * Location
+       * @description Google Cloud location.
+       * @example global
+       */
+      location: string;
+    };
+    /** RoutesResponseV1 */
+    RoutesResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["Route"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** CreateRouteRequestV1 */
+    CreateRouteRequest: {
+      /**
+       * Name
+       * @description Immutable, globally unique route name using an organization-owned prefix.
+       * @example my-org/assistant
+       */
+      name: string;
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the route. When omitted, uses your organization's default team.
+       * @example abc1234
+       */
+      team_id?: string | null;
+      /**
+       * Display Name
+       * @description Display label. Omit to use the route name; null is not accepted.
+       * @example Assistant
+       */
+      display_name?: string | null;
+      /**
+       * Target
+       * @description Upstream target for the route.
+       * @example {
+       *       "model": "zai-org/GLM-5.3",
+       *       "type": "BASETEN_MODEL_API"
+       *     }
+       */
+      target:
+        | components["schemas"]["RouteTargetBasetenModelAPI"]
+        | components["schemas"]["RouteTargetAnthropic"]
+        | components["schemas"]["RouteTargetOpenAI"]
+        | components["schemas"]["RouteTargetXAI"]
+        | components["schemas"]["RouteTargetVertex"]
+        | components["schemas"]["RouteTargetOpenAICompatible"];
+      /**
+       * Description
+       * @description Short description of the route. Omit for no description; null is not accepted.
+       * @example Assistant for code review and debugging.
+       */
+      description?: string | null;
+      /**
+       * Metadata Slug
+       * @description Slug of a metadata row to link. Omit to auto-resolve from the target; required for OPENAI_COMPATIBLE and VERTEX targets.
+       */
+      metadata_slug?: string | null;
+    };
+    /**
+     * RouteProviderV1
+     * @description Upstream provider of a route target, named like the route target types.
+     * @enum {string}
+     */
+    RouteProvider:
+      | "BASETEN_MODEL_API"
+      | "OPENAI"
+      | "ANTHROPIC"
+      | "XAI"
+      | "VERTEX"
+      | "OPENAI_COMPATIBLE";
+    /** RoutesUsageBucketV1 */
+    RoutesUsageBucket: {
+      /**
+       * Date
+       * Format: date
+       * @description UTC calendar date for this bucket, from midnight inclusive to the next midnight exclusive.
+       */
+      date: string;
+      /**
+       * Results
+       * @description Usage broken down by the requested dimensions. Empty when there is no usage.
+       */
+      results: components["schemas"]["RoutesUsageResult"][];
+    };
+    /** RoutesUsageResultV1 */
+    RoutesUsageResult: {
+      /**
+       * Api Key Prefix
+       * @description Prefix of the Routes key. Null when not grouping by API_KEY_PREFIX.
+       * @default null
+       */
+      api_key_prefix: string | null;
+      /**
+       * User Id
+       * @description ID of the user who created the Routes key. Null when not grouping by USER or when the creator is unknown.
+       * @default null
+       */
+      user_id: string | null;
+      /**
+       * Route Id
+       * @description Route ID. Null when not grouping by ROUTE.
+       * @default null
+       */
+      route_id: string | null;
+      /**
+       * Route Name
+       * @description Route name. Null when not grouping by ROUTE.
+       * @default null
+       */
+      route_name: string | null;
+      /**
+       * Model
+       * @description Model name. For external providers, the model name sent to the provider. Null when not grouping by MODEL.
+       * @default null
+       */
+      model: string | null;
+      /**
+       * @description Provider that served the requests. Null when not grouping by PROVIDER or when the provider cannot be determined.
+       * @default null
+       */
+      provider: components["schemas"]["RouteProvider"] | null;
+      /**
+       * Cost Usd
+       * @description Estimated cost in USD, returned as an exact decimal string. Null when some usage in this result could not be priced, including all Vertex and OpenAI-compatible usage. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.
+       * @example 0.00035625
+       */
+      cost_usd: string | null;
+      /**
+       * Input Tokens
+       * @description Input tokens, including cached input tokens.
+       */
+      input_tokens: number;
+      /**
+       * Cached Input Tokens
+       * @description Input tokens read from the prompt cache.
+       */
+      cached_input_tokens: number;
+      /**
+       * Uncached Input Tokens
+       * @description Input tokens not read from the prompt cache, including tokens written to the cache.
+       */
+      uncached_input_tokens: number;
+      /**
+       * Output Tokens
+       * @description Output tokens.
+       */
+      output_tokens: number;
+      /**
+       * Request Count
+       * @description Number of requests.
+       */
+      request_count: number;
+    };
+    /** RoutesUsageResponseV1 */
+    RoutesUsageResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["RoutesUsageBucket"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * RouteUsageDimensionV1
+     * @enum {string}
+     */
+    RouteUsageDimension: "API_KEY_PREFIX" | "USER" | "ROUTE" | "MODEL" | "PROVIDER";
+    /** RouteTombstoneV1 */
+    RouteTombstone: {
+      /**
+       * Id
+       * @description Stable identifier of the deleted route.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name of the deleted route.
+       */
+      name: string;
+    };
+    /** UpdateRouteRequestV1 */
+    UpdateRouteRequest: {
+      /**
+       * Description
+       * @description New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.
+       * @example Assistant for code review and debugging.
+       */
+      description?: string | null;
+      /**
+       * Display Name
+       * @description New display label. Omit to keep the current label; null is not accepted.
+       * @example Assistant
+       */
+      display_name?: string | null;
+      /**
+       * Target
+       * @description Replaces the entire target. Omit to keep the current target; null is not accepted.
+       * @example {
+       *       "model": "zai-org/GLM-5.3",
+       *       "type": "BASETEN_MODEL_API"
+       *     }
+       */
+      target?:
+        | (
+            | components["schemas"]["RouteTargetBasetenModelAPI"]
+            | components["schemas"]["RouteTargetAnthropic"]
+            | components["schemas"]["RouteTargetOpenAI"]
+            | components["schemas"]["RouteTargetXAI"]
+            | components["schemas"]["RouteTargetVertex"]
+            | components["schemas"]["RouteTargetOpenAICompatible"]
+          )
+        | null;
+      /**
+       * Metadata Slug
+       * @description Slug of a metadata row to link. Omit to keep the current link, or to re-resolve from the new target when target is provided (OPENAI_COMPATIBLE and VERTEX targets always require an explicit slug). Null is not accepted.
+       */
+      metadata_slug?: string | null;
+    };
     /**
      * EndpointTargetV1
      * @description One configured upstream target of an endpoint.
@@ -9217,22 +10363,6 @@ export type components = {
      * @enum {string}
      */
     SharedEndpointRegion: "UNRESTRICTED" | "EU";
-    /** VertexTargetConfigV1 */
-    VertexTargetConfig: {
-      /**
-       * Project Id
-       * @description Google Cloud project ID or project number.
-       * @example my-gcp-project
-       * @example 464036093014
-       */
-      project_id: string;
-      /**
-       * Location
-       * @description Google Cloud location.
-       * @example global
-       */
-      location: string;
-    };
     /** EndpointsResponseV1 */
     EndpointsResponse: {
       /**
@@ -9678,7 +10808,1593 @@ export type components = {
        */
       ok: boolean;
     };
-    GetVolumesRequest: {
+    /**
+     * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+     * @example {
+     *       "expiration_policies": [
+     *         {
+     *           "action": "DELETE",
+     *           "type": "TTL_IDLE",
+     *           "value": "24h"
+     *         },
+     *         {
+     *           "action": "DELETE",
+     *           "type": "TTL_MAX_AGE",
+     *           "value": "7d"
+     *         },
+     *         {
+     *           "action": "DELETE",
+     *           "type": "DATE",
+     *           "value": "2026-09-23T21:26:58Z"
+     *         }
+     *       ],
+     *       "terminated_retention": "24h"
+     *     }
+     */
+    SandboxLifecycle: {
+      /**
+       * @description List of expiration policies. Multiple policies can be combined; whichever condition is met first triggers the action.
+       * @example [
+       *       {
+       *         "action": "DELETE",
+       *         "type": "TTL_IDLE",
+       *         "value": "24h"
+       *       },
+       *       {
+       *         "action": "DELETE",
+       *         "type": "TTL_MAX_AGE",
+       *         "value": "7d"
+       *       },
+       *       {
+       *         "action": "DELETE",
+       *         "type": "DATE",
+       *         "value": "2026-09-23T21:26:58Z"
+       *       }
+       *     ]
+       */
+      expiration_policies?: components["schemas"]["SandboxExpirationPolicy"][];
+      /**
+       * @description Duration to keep the sandbox record after termination for log access (e.g., '1h', '24h', '7d'). Defaults to 5m. Subject to maximum quota limits.
+       * @example 24h
+       */
+      terminated_retention?: string;
+    };
+    /** @description Expiration policy. The type determines whether value is a duration or an absolute timestamp. */
+    SandboxExpirationPolicy:
+      | components["schemas"]["SandboxTTLIdleExpirationPolicy"]
+      | components["schemas"]["SandboxTTLMaxAgeExpirationPolicy"]
+      | components["schemas"]["SandboxDateExpirationPolicy"];
+    /**
+     * @description Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w.
+     * @example 24h
+     */
+    SandboxDuration: string;
+    /** @description Delete after the specified period of inactivity. */
+    SandboxTTLIdleExpirationPolicy: {
+      /** @enum {string} */
+      action: "DELETE";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "TTL_IDLE";
+      value: components["schemas"]["SandboxDuration"];
+    };
+    /** @description Delete after the specified total lifetime. */
+    SandboxTTLMaxAgeExpirationPolicy: {
+      /** @enum {string} */
+      action: "DELETE";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "TTL_MAX_AGE";
+      value: components["schemas"]["SandboxDuration"];
+    };
+    /** @description Delete at the specified absolute timestamp. */
+    SandboxDateExpirationPolicy: {
+      /** @enum {string} */
+      action: "DELETE";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "DATE";
+      /**
+       * Format: date-time
+       * @example 2026-09-23T21:26:58Z
+       */
+      value: string;
+    };
+    /**
+     * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
+     * @example {
+     *       "proxy": {
+     *         "allowed_domains": [
+     *           "api.openai.com",
+     *           "pypi.org",
+     *           "files.pythonhosted.org",
+     *           "registry.npmjs.org"
+     *         ],
+     *         "bypass": [
+     *           "registry.npmjs.org"
+     *         ],
+     *         "forbidden_domains": [
+     *           "facebook.com",
+     *           "*.facebook.com"
+     *         ],
+     *         "routing": [
+     *           {
+     *             "destinations": [
+     *               "api.openai.com"
+     *             ],
+     *             "headers": {
+     *               "Authorization": "Bearer {{SECRET:openai-key}}"
+     *             },
+     *             "body": {
+     *               "user": "baseten-api-review-0916"
+     *             },
+     *             "secrets": {
+     *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *             }
+     *           }
+     *         ]
+     *       },
+     *       "subnet": "default"
+     *     }
+     */
+    SandboxNetwork: {
+      /**
+       * @description Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection
+       * @example {
+       *       "allowed_domains": [
+       *         "api.openai.com",
+       *         "pypi.org",
+       *         "files.pythonhosted.org",
+       *         "registry.npmjs.org"
+       *       ],
+       *       "bypass": [
+       *         "registry.npmjs.org"
+       *       ],
+       *       "forbidden_domains": [
+       *         "facebook.com",
+       *         "*.facebook.com"
+       *       ],
+       *       "routing": [
+       *         {
+       *           "destinations": [
+       *             "api.openai.com"
+       *           ],
+       *           "headers": {
+       *             "Authorization": "Bearer {{SECRET:openai-key}}"
+       *           },
+       *           "body": {
+       *             "user": "baseten-api-review-0916"
+       *           },
+       *           "secrets": {
+       *             "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *           }
+       *         }
+       *       ]
+       *     }
+       */
+      proxy?: components["schemas"]["SandboxProxyConfig"];
+      /**
+       * @description Subnet name for the sandbox. Defaults to "default" at creation.
+       * @example default
+       */
+      subnet?: string;
+    };
+    /**
+     * @description Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection
+     * @example {
+     *       "allowed_domains": [
+     *         "api.openai.com",
+     *         "pypi.org",
+     *         "files.pythonhosted.org",
+     *         "registry.npmjs.org"
+     *       ],
+     *       "bypass": [
+     *         "registry.npmjs.org"
+     *       ],
+     *       "forbidden_domains": [
+     *         "facebook.com",
+     *         "*.facebook.com"
+     *       ],
+     *       "routing": [
+     *         {
+     *           "destinations": [
+     *             "api.openai.com"
+     *           ],
+     *           "headers": {
+     *             "Authorization": "Bearer {{SECRET:openai-key}}"
+     *           },
+     *           "body": {
+     *             "user": "baseten-api-review-0916"
+     *           },
+     *           "secrets": {
+     *             "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *           }
+     *         }
+     *       ]
+     *     }
+     */
+    SandboxProxyConfig: {
+      /**
+       * @description List of allowed external domains (allowlist). When set, only these domains are reachable. Supports wildcards (e.g. *.storage.example.com).
+       * @example [
+       *       "api.openai.com",
+       *       "pypi.org",
+       *       "files.pythonhosted.org",
+       *       "registry.npmjs.org"
+       *     ]
+       */
+      allowed_domains?: string[];
+      /**
+       * @description Domains that bypass the proxy entirely via the NO_PROXY directive. Traffic to these destinations goes direct, not through the CONNECT tunnel. Supports wildcards. Note that localhost, private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 169.254.169.254, .local and .internal are always bypassed by default.
+       * @example [
+       *       "registry.npmjs.org"
+       *     ]
+       */
+      bypass?: string[];
+      /**
+       * @description List of forbidden external domains (denylist). When set, all domains except these are reachable. Supports wildcards (e.g. *.malware.com). If both allowed_domains and forbidden_domains are set, allowed_domains takes precedence.
+       * @example [
+       *       "facebook.com",
+       *       "*.facebook.com"
+       *     ]
+       */
+      forbidden_domains?: string[];
+      /**
+       * @description Per-destination routing rules with header/body injection and secrets. Use destinations ["*"] for global rules that apply to all destinations.
+       * @example [
+       *       {
+       *         "destinations": [
+       *           "api.openai.com"
+       *         ],
+       *         "headers": {
+       *           "Authorization": "Bearer {{SECRET:openai-key}}"
+       *         },
+       *         "body": {
+       *           "user": "baseten-api-review-0916"
+       *         },
+       *         "secrets": {
+       *           "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *         }
+       *       }
+       *     ]
+       */
+      routing?: components["schemas"]["SandboxProxyTarget"][];
+    };
+    /**
+     * @description Routing rule that injects headers and body fields into requests matching the given destinations. Use destinations ["*"] for a global rule that applies to all proxied traffic.
+     * @example {
+     *       "destinations": [
+     *         "api.openai.com"
+     *       ],
+     *       "headers": {
+     *         "Authorization": "Bearer {{SECRET:openai-key}}"
+     *       },
+     *       "body": {
+     *         "user": "baseten-api-review-0916"
+     *       },
+     *       "secrets": {
+     *         "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *       }
+     *     }
+     */
+    SandboxProxyTarget: {
+      /**
+       * @description Body fields to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.
+       * @example {
+       *       "user": "baseten-api-review-0916"
+       *     }
+       */
+      body?: {
+        [key: string]: string;
+      };
+      /**
+       * @description Destination domains this rule applies to. Use ["*"] for a global rule that matches all destinations.
+       * @example [
+       *       "api.openai.com"
+       *     ]
+       */
+      destinations?: string[];
+      /**
+       * @description Headers to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.
+       * @example {
+       *       "Authorization": "Bearer {{SECRET:openai-key}}"
+       *     }
+       */
+      headers?: {
+        [key: string]: string;
+      };
+      /**
+       * @description Named secret values for this routing rule, referenced in headers/body via {{SECRET:name}}. Stored encrypted at rest. Write-only: never returned in API responses.
+       * @example {
+       *       "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *     }
+       */
+      secrets?: {
+        [key: string]: string;
+      };
+    };
+    /**
+     * @description Environment variable with name and value
+     * @example {
+     *       "name": "NODE_ENV",
+     *       "secret": false,
+     *       "value": "production"
+     *     }
+     */
+    SandboxEnv: {
+      /**
+       * @description Name of the environment variable
+       * @example NODE_ENV
+       */
+      name?: string;
+      /**
+       * @description Whether the value is a secret
+       * @example false
+       */
+      secret?: boolean;
+      /**
+       * @description Value of the environment variable
+       * @example production
+       */
+      value?: string;
+    };
+    /**
+     * @description Set of ports for a resource
+     * @example [
+     *       {
+     *         "name": "http",
+     *         "protocol": "HTTP",
+     *         "target": 3000
+     *       }
+     *     ]
+     */
+    SandboxPorts: components["schemas"]["SandboxPort"][];
+    /**
+     * @description A port for a resource
+     * @example {
+     *       "name": "http",
+     *       "protocol": "HTTP",
+     *       "target": 3000
+     *     }
+     */
+    SandboxPort: {
+      /**
+       * @description The name of the port
+       * @example http
+       */
+      name?: string;
+      /**
+       * @description The protocol of the port
+       * @example HTTP
+       * @enum {string}
+       */
+      protocol?: "HTTP" | "TCP" | "UDP" | "TLS";
+      /**
+       * @description The target port of the port
+       * @example 3000
+       */
+      target: number;
+    };
+    /**
+     * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+     * @example {
+     *       "env": "development",
+     *       "project": "api-review",
+     *       "team": "engineering"
+     *     }
+     */
+    SandboxMetadataLabels: {
+      [key: string]: string;
+    };
+    /**
+     * @description Writable sandbox configuration. Fields are serialized at the root of the request or resource.
+     * @example {
+     *       "enabled": true,
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "network": {
+     *         "proxy": {
+     *           "allowed_domains": [
+     *             "api.openai.com",
+     *             "pypi.org",
+     *             "files.pythonhosted.org",
+     *             "registry.npmjs.org"
+     *           ],
+     *           "bypass": [
+     *             "registry.npmjs.org"
+     *           ],
+     *           "forbidden_domains": [
+     *             "facebook.com",
+     *             "*.facebook.com"
+     *           ],
+     *           "routing": [
+     *             {
+     *               "destinations": [
+     *                 "api.openai.com"
+     *               ],
+     *               "headers": {
+     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
+     *               },
+     *               "body": {
+     *                 "user": "baseten-api-review-0916"
+     *               },
+     *               "secrets": {
+     *                 "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *               }
+     *             }
+     *           ]
+     *         },
+     *         "subnet": "default"
+     *       },
+     *       "region": "us-pdx-1",
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "image": "blaxel/base-image:latest",
+     *       "memory": 4096,
+     *       "ports": [
+     *         {
+     *           "name": "http",
+     *           "protocol": "HTTP",
+     *           "target": 3000
+     *         }
+     *       ],
+     *       "display_name": "Baseten API review",
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering"
+     *       }
+     *     }
+     */
+    SandboxConfiguration: {
+      /**
+       * @description When false, the sandbox is disabled and will not accept connections
+       * @default true
+       * @example true
+       */
+      enabled: boolean;
+      /**
+       * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+       * @example {
+       *       "expiration_policies": [
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_IDLE",
+       *           "value": "24h"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_MAX_AGE",
+       *           "value": "7d"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "DATE",
+       *           "value": "2026-09-23T21:26:58Z"
+       *         }
+       *       ],
+       *       "terminated_retention": "24h"
+       *     }
+       */
+      lifecycle?: components["schemas"]["SandboxLifecycle"];
+      /**
+       * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
+       * @example {
+       *       "proxy": {
+       *         "allowed_domains": [
+       *           "api.openai.com",
+       *           "pypi.org",
+       *           "files.pythonhosted.org",
+       *           "registry.npmjs.org"
+       *         ],
+       *         "bypass": [
+       *           "registry.npmjs.org"
+       *         ],
+       *         "forbidden_domains": [
+       *           "facebook.com",
+       *           "*.facebook.com"
+       *         ],
+       *         "routing": [
+       *           {
+       *             "destinations": [
+       *               "api.openai.com"
+       *             ],
+       *             "headers": {
+       *               "Authorization": "Bearer {{SECRET:openai-key}}"
+       *             },
+       *             "body": {
+       *               "user": "baseten-api-review-0916"
+       *             },
+       *             "secrets": {
+       *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *             }
+       *           }
+       *         ]
+       *       },
+       *       "subnet": "default"
+       *     }
+       */
+      network?: components["schemas"]["SandboxNetwork"];
+      /**
+       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
+       * @example us-pdx-1
+       */
+      region?: string;
+      /**
+       * @description Environment variables injected into the sandbox.
+       * @example [
+       *       {
+       *         "name": "NODE_ENV",
+       *         "secret": false,
+       *         "value": "production"
+       *       },
+       *       {
+       *         "name": "PORT",
+       *         "secret": false,
+       *         "value": "3000"
+       *       }
+       *     ]
+       */
+      envs?: components["schemas"]["SandboxEnv"][];
+      /**
+       * @description Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example blaxel/base-image:latest
+       */
+      image?: string;
+      /**
+       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).
+       * @example 4096
+       */
+      memory?: number;
+      /**
+       * @description Set of ports for a resource
+       * @example [
+       *       {
+       *         "name": "http",
+       *         "protocol": "HTTP",
+       *         "target": 3000
+       *       }
+       *     ]
+       */
+      ports?: components["schemas"]["SandboxPorts"];
+      /**
+       * @description Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.
+       * @example Baseten API review
+       */
+      display_name?: string;
+      /**
+       * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+      /**
+       * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+       * @example {
+       *       "env": "development",
+       *       "project": "api-review",
+       *       "team": "engineering"
+       *     }
+       */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /**
+     * @description Configuration for a new sandbox. The client may provide a name; otherwise the server generates one. The name is immutable after creation.
+     * @example {
+     *       "name": "baseten-api-review-0916",
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "network": {
+     *         "proxy": {
+     *           "allowed_domains": [
+     *             "api.openai.com",
+     *             "pypi.org",
+     *             "files.pythonhosted.org",
+     *             "registry.npmjs.org"
+     *           ],
+     *           "bypass": [
+     *             "registry.npmjs.org"
+     *           ],
+     *           "forbidden_domains": [
+     *             "facebook.com",
+     *             "*.facebook.com"
+     *           ],
+     *           "routing": [
+     *             {
+     *               "destinations": [
+     *                 "api.openai.com"
+     *               ],
+     *               "headers": {
+     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
+     *               },
+     *               "body": {
+     *                 "user": "baseten-api-review-0916"
+     *               },
+     *               "secrets": {
+     *                 "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *               }
+     *             }
+     *           ]
+     *         },
+     *         "subnet": "default"
+     *       },
+     *       "region": "us-pdx-1",
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "image": "blaxel/base-image:latest",
+     *       "memory": 4096,
+     *       "ports": [
+     *         {
+     *           "name": "http",
+     *           "protocol": "HTTP",
+     *           "target": 3000
+     *         }
+     *       ],
+     *       "display_name": "Baseten API review",
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering"
+     *       }
+     *     }
+     */
+    CreateSandboxRequest: {
+      /**
+       * @description Optional unique sandbox name. Generated by the server when omitted; immutable after creation.
+       * @example baseten-api-review-0916
+       */
+      name?: string;
+      /**
+       * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+       * @example {
+       *       "expiration_policies": [
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_IDLE",
+       *           "value": "24h"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_MAX_AGE",
+       *           "value": "7d"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "DATE",
+       *           "value": "2026-09-23T21:26:58Z"
+       *         }
+       *       ],
+       *       "terminated_retention": "24h"
+       *     }
+       */
+      lifecycle?: components["schemas"]["SandboxLifecycle"];
+      /**
+       * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
+       * @example {
+       *       "proxy": {
+       *         "allowed_domains": [
+       *           "api.openai.com",
+       *           "pypi.org",
+       *           "files.pythonhosted.org",
+       *           "registry.npmjs.org"
+       *         ],
+       *         "bypass": [
+       *           "registry.npmjs.org"
+       *         ],
+       *         "forbidden_domains": [
+       *           "facebook.com",
+       *           "*.facebook.com"
+       *         ],
+       *         "routing": [
+       *           {
+       *             "destinations": [
+       *               "api.openai.com"
+       *             ],
+       *             "headers": {
+       *               "Authorization": "Bearer {{SECRET:openai-key}}"
+       *             },
+       *             "body": {
+       *               "user": "baseten-api-review-0916"
+       *             },
+       *             "secrets": {
+       *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *             }
+       *           }
+       *         ]
+       *       },
+       *       "subnet": "default"
+       *     }
+       */
+      network?: components["schemas"]["SandboxNetwork"];
+      /**
+       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
+       * @example us-pdx-1
+       */
+      region?: string;
+      /**
+       * @description Environment variables injected into the sandbox.
+       * @example [
+       *       {
+       *         "name": "NODE_ENV",
+       *         "secret": false,
+       *         "value": "production"
+       *       },
+       *       {
+       *         "name": "PORT",
+       *         "secret": false,
+       *         "value": "3000"
+       *       }
+       *     ]
+       */
+      envs?: components["schemas"]["SandboxEnv"][];
+      /**
+       * @description Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example blaxel/base-image:latest
+       */
+      image?: string;
+      /**
+       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).
+       * @example 4096
+       */
+      memory?: number;
+      /**
+       * @description Set of ports for a resource
+       * @example [
+       *       {
+       *         "name": "http",
+       *         "protocol": "HTTP",
+       *         "target": 3000
+       *       }
+       *     ]
+       */
+      ports?: components["schemas"]["SandboxPorts"];
+      /**
+       * @description Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.
+       * @example Baseten API review
+       */
+      display_name?: string;
+      /**
+       * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+      /**
+       * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+       * @example {
+       *       "env": "development",
+       *       "project": "api-review",
+       *       "team": "engineering"
+       *     }
+       */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /**
+     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, and network configuration are immutable after creation. Supplying memory or network returns 400, including unchanged, empty, or null values.
+     * @example {
+     *       "enabled": true,
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "region": "us-pdx-1",
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "image": "blaxel/base-image:latest",
+     *       "ports": [
+     *         {
+     *           "name": "http",
+     *           "protocol": "HTTP",
+     *           "target": 3000
+     *         }
+     *       ],
+     *       "display_name": "Baseten API review - revised",
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering",
+     *         "revision": "2"
+     *       }
+     *     }
+     */
+    UpdateSandboxRequest: {
+      /**
+       * @description When false, the sandbox is disabled and will not accept connections
+       * @example true
+       */
+      enabled?: boolean;
+      /**
+       * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+       * @example {
+       *       "expiration_policies": [
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_IDLE",
+       *           "value": "24h"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_MAX_AGE",
+       *           "value": "7d"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "DATE",
+       *           "value": "2026-09-23T21:26:58Z"
+       *         }
+       *       ],
+       *       "terminated_retention": "24h"
+       *     }
+       */
+      lifecycle?: components["schemas"]["SandboxLifecycle"];
+      /**
+       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
+       * @example us-pdx-1
+       */
+      region?: string;
+      /**
+       * @description Environment variables injected into the sandbox.
+       * @example [
+       *       {
+       *         "name": "NODE_ENV",
+       *         "secret": false,
+       *         "value": "production"
+       *       },
+       *       {
+       *         "name": "PORT",
+       *         "secret": false,
+       *         "value": "3000"
+       *       }
+       *     ]
+       */
+      envs?: components["schemas"]["SandboxEnv"][];
+      /**
+       * @description Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example blaxel/base-image:latest
+       */
+      image?: string;
+      /**
+       * @description Set of ports for a resource
+       * @example [
+       *       {
+       *         "name": "http",
+       *         "protocol": "HTTP",
+       *         "target": 3000
+       *       }
+       *     ]
+       */
+      ports?: components["schemas"]["SandboxPorts"];
+      /**
+       * @description Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.
+       * @example Baseten API review - revised
+       */
+      display_name?: string;
+      /**
+       * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+      /**
+       * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+       * @example {
+       *       "env": "development",
+       *       "project": "api-review",
+       *       "team": "engineering",
+       *       "revision": "2"
+       *     }
+       */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /**
+     * @description Sandbox resource with configuration and server-managed fields at the root. No metadata, spec, or runtime wrapper.
+     * @example {
+     *       "enabled": true,
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "network": {
+     *         "proxy": {
+     *           "allowed_domains": [
+     *             "api.openai.com",
+     *             "pypi.org",
+     *             "files.pythonhosted.org",
+     *             "registry.npmjs.org"
+     *           ],
+     *           "bypass": [
+     *             "registry.npmjs.org"
+     *           ],
+     *           "forbidden_domains": [
+     *             "facebook.com",
+     *             "*.facebook.com"
+     *           ],
+     *           "routing": [
+     *             {
+     *               "destinations": [
+     *                 "api.openai.com"
+     *               ],
+     *               "headers": {
+     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
+     *               },
+     *               "body": {
+     *                 "user": "baseten-api-review-0916"
+     *               }
+     *             }
+     *           ]
+     *         },
+     *         "subnet": "default"
+     *       },
+     *       "region": "us-pdx-1",
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "image": "blaxel/base-image:latest",
+     *       "memory": 4096,
+     *       "ports": [
+     *         {
+     *           "name": "http",
+     *           "protocol": "HTTP",
+     *           "target": 3000
+     *         }
+     *       ],
+     *       "display_name": "Baseten API review",
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering"
+     *       },
+     *       "name": "baseten-api-review-0916",
+     *       "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
+     *       "status": "DEPLOYED",
+     *       "state": "RUNNING",
+     *       "created_at": "2026-09-16T21:26:58.545765901Z",
+     *       "updated_at": "2026-09-16T21:31:13Z",
+     *       "created_by": "sandbox-automation",
+     *       "updated_by": "sandbox-automation",
+     *       "last_used_at": "2026-09-16T21:31:13Z",
+     *       "expires_in": 86400
+     *     }
+     */
+    Sandbox: components["schemas"]["SandboxConfiguration"] & {
+      /**
+       * @description Immutable sandbox name, provided by the client or generated by the server, used in sandbox_name path parameters.
+       * @example baseten-api-review-0916
+       */
+      readonly name: string;
+      /**
+       * Format: uri
+       * @description Base URL of this sandbox's execution API. Use this exact returned URL; do not reconstruct its hostname. Authenticate requests with the same Authorization: Bearer <api_key> header used to create the sandbox. No additional routing headers are required. Fetch GET {url}/swagger/doc.json with that header for the API reference served by this sandbox. For example, POST {url}/process with Content-Type: application/json and {"command":"echo hello","waitForCompletion":true} executes a command and waits for its result. Execution API fields use camelCase, independently of this API's snake_case fields.
+       * @example https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run
+       */
+      readonly url?: string;
+      /**
+       * @description Sandbox deployment status.
+       * @example DEPLOYED
+       */
+      status: components["schemas"]["SandboxStatus"];
+      /**
+       * @description Current execution state when available.
+       * @example RUNNING
+       * @enum {string}
+       */
+      readonly state?: "RUNNING" | "STANDBY";
+      /**
+       * Format: date-time
+       * @description Time the sandbox was created.
+       * @example 2026-09-16T21:26:58.545765901Z
+       */
+      readonly created_at: string;
+      /**
+       * Format: date-time
+       * @description Time the sandbox was last updated.
+       * @example 2026-09-16T21:31:13Z
+       */
+      readonly updated_at?: string;
+      /**
+       * @description User or service account that created the sandbox.
+       * @example sandbox-automation
+       */
+      readonly created_by?: string;
+      /**
+       * @description User or service account that last updated the sandbox.
+       * @example sandbox-automation
+       */
+      readonly updated_by?: string;
+      /**
+       * Format: date-time
+       * @description Time the sandbox was last used.
+       * @example 2026-09-16T21:31:13Z
+       */
+      readonly last_used_at?: string;
+      /**
+       * @description Seconds remaining before automatic deletion, when expiration is configured.
+       * @example 86400
+       */
+      readonly expires_in?: number;
+    };
+    /**
+     * @description Sandbox deployment status.
+     * @example DEPLOYED
+     * @enum {string}
+     */
+    SandboxStatus:
+      | "DEPLOYING"
+      | "DEPLOYED"
+      | "FAILED"
+      | "DEACTIVATING"
+      | "DEACTIVATED"
+      | "DELETING"
+      | "TERMINATED"
+      | "ARCHIVING"
+      | "ARCHIVED"
+      | "UNARCHIVING"
+      | "BUILDING"
+      | "UPLOADING";
+    /**
+     * @description Cursor pagination information. The cursor is present only when another page is available.
+     * @example {
+     *       "has_more": true,
+     *       "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+     *     }
+     */
+    SandboxApiPagination: {
+      /**
+       * @description Whether another page is available.
+       * @example true
+       */
+      has_more: boolean;
+      /**
+       * @description Opaque cursor to pass to the next list request. Keep the same filters.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+    };
+    /**
+     * @description One page of sandboxes.
+     * @example {
+     *       "items": [
+     *         {
+     *           "enabled": true,
+     *           "lifecycle": {
+     *             "expiration_policies": [
+     *               {
+     *                 "action": "DELETE",
+     *                 "type": "TTL_IDLE",
+     *                 "value": "24h"
+     *               },
+     *               {
+     *                 "action": "DELETE",
+     *                 "type": "TTL_MAX_AGE",
+     *                 "value": "7d"
+     *               },
+     *               {
+     *                 "action": "DELETE",
+     *                 "type": "DATE",
+     *                 "value": "2026-09-23T21:26:58Z"
+     *               }
+     *             ],
+     *             "terminated_retention": "24h"
+     *           },
+     *           "network": {
+     *             "proxy": {
+     *               "allowed_domains": [
+     *                 "api.openai.com",
+     *                 "pypi.org",
+     *                 "files.pythonhosted.org",
+     *                 "registry.npmjs.org"
+     *               ],
+     *               "bypass": [
+     *                 "registry.npmjs.org"
+     *               ],
+     *               "forbidden_domains": [
+     *                 "facebook.com",
+     *                 "*.facebook.com"
+     *               ],
+     *               "routing": [
+     *                 {
+     *                   "destinations": [
+     *                     "api.openai.com"
+     *                   ],
+     *                   "headers": {
+     *                     "Authorization": "Bearer {{SECRET:openai-key}}"
+     *                   },
+     *                   "body": {
+     *                     "user": "baseten-api-review-0916"
+     *                   }
+     *                 }
+     *               ]
+     *             },
+     *             "subnet": "default"
+     *           },
+     *           "region": "us-pdx-1",
+     *           "envs": [
+     *             {
+     *               "name": "NODE_ENV",
+     *               "secret": false,
+     *               "value": "production"
+     *             },
+     *             {
+     *               "name": "PORT",
+     *               "secret": false,
+     *               "value": "3000"
+     *             }
+     *           ],
+     *           "image": "blaxel/base-image:latest",
+     *           "memory": 4096,
+     *           "ports": [
+     *             {
+     *               "name": "http",
+     *               "protocol": "HTTP",
+     *               "target": 3000
+     *             }
+     *           ],
+     *           "display_name": "Baseten API review",
+     *           "external_id": "api-review-20260916-001",
+     *           "labels": {
+     *             "env": "development",
+     *             "project": "api-review",
+     *             "team": "engineering"
+     *           },
+     *           "name": "baseten-api-review-0916",
+     *           "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
+     *           "status": "DEPLOYED",
+     *           "state": "RUNNING",
+     *           "created_at": "2026-09-16T21:26:58.545765901Z",
+     *           "updated_at": "2026-09-16T21:31:13Z",
+     *           "created_by": "sandbox-automation",
+     *           "updated_by": "sandbox-automation",
+     *           "last_used_at": "2026-09-16T21:31:13Z",
+     *           "expires_in": 86400
+     *         }
+     *       ],
+     *       "pagination": {
+     *         "has_more": true,
+     *         "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+     *       }
+     *     }
+     */
+    ListSandboxesResponse: {
+      /**
+       * @description Resources on this page.
+       * @example [
+       *       {
+       *         "enabled": true,
+       *         "lifecycle": {
+       *           "expiration_policies": [
+       *             {
+       *               "action": "DELETE",
+       *               "type": "TTL_IDLE",
+       *               "value": "24h"
+       *             },
+       *             {
+       *               "action": "DELETE",
+       *               "type": "TTL_MAX_AGE",
+       *               "value": "7d"
+       *             },
+       *             {
+       *               "action": "DELETE",
+       *               "type": "DATE",
+       *               "value": "2026-09-23T21:26:58Z"
+       *             }
+       *           ],
+       *           "terminated_retention": "24h"
+       *         },
+       *         "network": {
+       *           "proxy": {
+       *             "allowed_domains": [
+       *               "api.openai.com",
+       *               "pypi.org",
+       *               "files.pythonhosted.org",
+       *               "registry.npmjs.org"
+       *             ],
+       *             "bypass": [
+       *               "registry.npmjs.org"
+       *             ],
+       *             "forbidden_domains": [
+       *               "facebook.com",
+       *               "*.facebook.com"
+       *             ],
+       *             "routing": [
+       *               {
+       *                 "destinations": [
+       *                   "api.openai.com"
+       *                 ],
+       *                 "headers": {
+       *                   "Authorization": "Bearer {{SECRET:openai-key}}"
+       *                 },
+       *                 "body": {
+       *                   "user": "baseten-api-review-0916"
+       *                 }
+       *               }
+       *             ]
+       *           },
+       *           "subnet": "default"
+       *         },
+       *         "region": "us-pdx-1",
+       *         "envs": [
+       *           {
+       *             "name": "NODE_ENV",
+       *             "secret": false,
+       *             "value": "production"
+       *           },
+       *           {
+       *             "name": "PORT",
+       *             "secret": false,
+       *             "value": "3000"
+       *           }
+       *         ],
+       *         "image": "blaxel/base-image:latest",
+       *         "memory": 4096,
+       *         "ports": [
+       *           {
+       *             "name": "http",
+       *             "protocol": "HTTP",
+       *             "target": 3000
+       *           }
+       *         ],
+       *         "display_name": "Baseten API review",
+       *         "external_id": "api-review-20260916-001",
+       *         "labels": {
+       *           "env": "development",
+       *           "project": "api-review",
+       *           "team": "engineering"
+       *         },
+       *         "name": "baseten-api-review-0916",
+       *         "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
+       *         "status": "DEPLOYED",
+       *         "state": "RUNNING",
+       *         "created_at": "2026-09-16T21:26:58.545765901Z",
+       *         "updated_at": "2026-09-16T21:31:13Z",
+       *         "created_by": "sandbox-automation",
+       *         "updated_by": "sandbox-automation",
+       *         "last_used_at": "2026-09-16T21:31:13Z",
+       *         "expires_in": 86400
+       *       }
+       *     ]
+       */
+      items: components["schemas"]["Sandbox"][];
+      /**
+       * @description Cursor pagination information. The cursor is present only when another page is available.
+       * @example {
+       *       "has_more": true,
+       *       "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+       *     }
+       */
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    /** @description One page of image repository summaries. Fetch tags through the separate tag listing endpoint. */
+    ListImagesResponse: {
+      /** @description Image repositories on this page. */
+      items: components["schemas"]["Image"][];
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    /** @description One page of image tags. */
+    ListImageTagsResponse: {
+      items: components["schemas"]["ImageTag"][];
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    /**
+     * @description Image processing status. Only BUILT images are ready to use.
+     * @example BUILT
+     * @enum {string}
+     */
+    ImageStatus: "UPLOADING" | "BUILDING" | "BUILT" | "FAILED";
+    /**
+     * @description A tag identifying a version of a sandbox image.
+     * @example {
+     *       "name": "latest",
+     *       "created_at": "2026-09-16T21:20:00Z",
+     *       "updated_at": "2026-09-16T21:25:00Z",
+     *       "size": 134217728
+     *     }
+     */
+    ImageTag: {
+      /**
+       * @description Image tag name.
+       * @example latest
+       */
+      name: string;
+      /**
+       * Format: date-time
+       * @description Time the tag was created.
+       * @example 2026-09-16T21:20:00Z
+       */
+      readonly created_at?: string;
+      /**
+       * Format: date-time
+       * @description Time the tag was last updated.
+       * @example 2026-09-16T21:25:00Z
+       */
+      readonly updated_at?: string;
+      /**
+       * Format: int64
+       * @description Image size in bytes.
+       * @example 134217728
+       */
+      readonly size?: number;
+    };
+    /**
+     * @description Sandbox image repository. List and get operations return a summary without embedded tags.
+     * @example {
+     *       "name": "base-image",
+     *       "display_name": "b10/base-image",
+     *       "status": "BUILT",
+     *       "created_at": "2026-09-15T21:20:00Z",
+     *       "updated_at": "2026-09-16T21:25:00Z",
+     *       "last_deployed_at": "2026-09-16T21:26:58.545765901Z",
+     *       "size": 260046848,
+     *       "tags": [
+     *         {
+     *           "name": "latest",
+     *           "created_at": "2026-09-16T21:20:00Z",
+     *           "updated_at": "2026-09-16T21:25:00Z",
+     *           "size": 134217728
+     *         },
+     *         {
+     *           "name": "20260915212000",
+     *           "created_at": "2026-09-15T21:20:00Z",
+     *           "updated_at": "2026-09-15T21:25:00Z",
+     *           "size": 125829120
+     *         }
+     *       ]
+     *     }
+     */
+    Image: {
+      /**
+       * @description Stable repository name supplied when pushing the image.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Human-readable image repository name.
+       * @example b10/base-image
+       */
+      display_name?: string;
+      /**
+       * @description Image processing status. Only BUILT images are ready to use.
+       * @example BUILT
+       */
+      status: components["schemas"]["ImageStatus"];
+      /**
+       * Format: date-time
+       * @description Time the image was created.
+       * @example 2026-09-15T21:20:00Z
+       */
+      readonly created_at?: string;
+      /**
+       * Format: date-time
+       * @description Time the image was last updated.
+       * @example 2026-09-16T21:25:00Z
+       */
+      readonly updated_at?: string;
+      /**
+       * Format: date-time
+       * @description Most recent deployment time across all tags, if deployed.
+       * @example 2026-09-16T21:26:58.545765901Z
+       */
+      readonly last_deployed_at?: string;
+      /**
+       * Format: int64
+       * @description Total repository size in bytes.
+       * @example 260046848
+       */
+      readonly size?: number;
+      /**
+       * Format: int64
+       * @description Number of image versions in the repository.
+       * @example 2
+       */
+      readonly tag_count?: number;
+      /**
+       * @description Empty for list and get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.
+       * @example [
+       *       {
+       *         "name": "latest",
+       *         "created_at": "2026-09-16T21:20:00Z",
+       *         "updated_at": "2026-09-16T21:25:00Z",
+       *         "size": 134217728
+       *       },
+       *       {
+       *         "name": "20260915212000",
+       *         "created_at": "2026-09-15T21:20:00Z",
+       *         "updated_at": "2026-09-15T21:25:00Z",
+       *         "size": 125829120
+       *       }
+       *     ]
+       */
+      tags: components["schemas"]["ImageTag"][];
+    };
+    /**
+     * @description Push a sandbox image from a source archive or an existing registry image.
+     * @example {
+     *       "name": "base-image",
+     *       "image": "docker.io/b10/base-image:latest",
+     *       "docker_config": "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"YjEwLXJldmlldzpkZW1vLW5vdC1hLXZhbGlkLXJlZ2lzdHJ5LXRva2Vu\"}}}"
+     *     }
+     */
+    PushImageRequest: {
+      /**
+       * @description Target image repository name. Reusing a name pushes a new version to the existing repository.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Optional source registry image reference including a registry hostname. When omitted, the response provides an archive upload URL.
+       * @example docker.io/b10/base-image:latest
+       */
+      image?: string;
+      /**
+       * @description Optional serialized registry authentication configuration for importing a private image. Used only when image is supplied; never returned.
+       * @example {"auths":{"https://index.docker.io/v1/":{"auth":"YjEwLXJldmlldzpkZW1vLW5vdC1hLXZhbGlkLXJlZ2lzdHJ5LXRva2Vu"}}}
+       */
+      docker_config?: string;
+    };
+    /**
+     * @description Accepted image push. Acceptance does not imply readiness; poll GET /sandboxes/images/{image_name} until status is BUILT or FAILED.
+     * @example {
+     *       "name": "base-image",
+     *       "status": "BUILDING",
+     *       "image": "b10/base-image:latest"
+     *     }
+     */
+    PushImageResponse: {
+      /**
+       * @description Target image repository name.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Image processing status. Only BUILT images are ready to use.
+       * @example BUILDING
+       */
+      status: components["schemas"]["ImageStatus"];
+      /**
+       * Format: uri
+       * @description Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.
+       * @example https://uploads.b10.run/images/base-image/20260916212658/source.zip?expires=2026-09-16T22%3A26%3A58Z&signature=demo-not-a-valid-upload-signature
+       */
+      upload_url?: string;
+      /**
+       * @description Registered image reference including its tag, when available. Tags are assigned by the service; GET /sandboxes/images/{image_name} returns the available tags once processing completes.
+       * @example b10/base-image:latest
+       */
+      image?: string;
+    };
+    /**
+     * @description Result of cleaning up unused sandbox images.
+     * @example {
+     *       "deleted": 3,
+     *       "message": "Removed 3 unused image versions. Image versions used by active sandboxes were retained."
+     *     }
+     */
+    CleanupImagesResponse: {
+      /**
+       * @description Number of image versions removed.
+       * @example 3
+       */
+      deleted: number;
+      /**
+       * @description Human-readable cleanup result.
+       * @example Removed 3 unused image versions. Image versions used by active sandboxes were retained.
+       */
+      message: string;
+    };
+    GetVolumesParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9695,7 +12411,7 @@ export type components = {
        */
       namespace: string;
     };
-    GetVolumesNamespacesRequest: {
+    GetVolumesNamespacesParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9707,21 +12423,38 @@ export type components = {
        */
       limit?: number;
     };
-    GetVolumesVersionsRequest: {
+    GetVolumesSyncsParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Ref
+       * @description Exact destination reference to match.
+       */
+      ref?: string | null;
+    };
+    GetVolumesVersionsParams: {
       /**
        * Include Tombstoned
-       * @description Whether to include deleted versions. A deleted version carries a TOMBSTONED lifecycle and stays restorable until its recovery deadline passes.
+       * @description Whether to include deleted and expired versions. Such a version carries a TOMBSTONED lifecycle and stays restorable until its recovery deadline passes.
        */
       include_tombstoned?: boolean;
     };
-    GetTeamsRequest: {
+    GetTeamsParams: {
       /**
        * Name
        * @description When set, returns only the team with this exact name, if any.
        */
       name?: string | null;
     };
-    GetAuditLogsRequest: {
+    GetAuditLogsParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9780,21 +12513,21 @@ export type components = {
        */
       end_epoch_millis?: number | null;
     };
-    GetModelsRequest: {
+    GetModelsParams: {
       /**
        * Name
        * @description When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.
        */
       name?: string | null;
     };
-    GetTeamsModelsRequest: {
+    GetTeamsModelsParams: {
       /**
        * Name
        * @description When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.
        */
       name?: string | null;
     };
-    GetModelsAuditLogsRequest: {
+    GetModelsAuditLogsParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9853,18 +12586,18 @@ export type components = {
        */
       end_epoch_millis?: number | null;
     };
-    GetModelsDeploymentsRequest: {
+    GetModelsDeploymentsParams: {
       /**
        * Name
        * @description When set, returns only the deployment with this exact name, if any.
        */
       name?: string | null;
     };
-    GetModelsDeploymentsConfigRequest: {
+    GetModelsDeploymentsConfigParams: {
       /** @description 'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated. */
       output_format?: components["schemas"]["DeploymentConfigOutputFormat"];
     };
-    GetModelsDeploymentsLogsRequest: {
+    GetModelsDeploymentsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -9915,7 +12648,7 @@ export type components = {
        */
       excludes?: string[];
     };
-    GetModelsDeploymentsMetricsRequest: {
+    GetModelsDeploymentsMetricsParams: {
       /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
       mode?: components["schemas"]["ModelMetricMode"];
       /**
@@ -9934,7 +12667,7 @@ export type components = {
        */
       metrics?: string[];
     };
-    GetModelsEnvironmentsLogsRequest: {
+    GetModelsEnvironmentsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -9985,7 +12718,7 @@ export type components = {
        */
       excludes?: string[];
     };
-    GetModelsEnvironmentsMetricsRequest: {
+    GetModelsEnvironmentsMetricsParams: {
       /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
       mode?: components["schemas"]["ModelMetricMode"];
       /**
@@ -10004,7 +12737,7 @@ export type components = {
        */
       metrics?: string[];
     };
-    GetChainsAuditLogsRequest: {
+    GetChainsAuditLogsParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10063,7 +12796,7 @@ export type components = {
        */
       end_epoch_millis?: number | null;
     };
-    GetChainsDeploymentsChainletsLogsRequest: {
+    GetChainsDeploymentsChainletsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -10114,7 +12847,7 @@ export type components = {
        */
       excludes?: string[];
     };
-    GetTrainingProjectsJobsLogsRequest: {
+    GetTrainingProjectsJobsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -10135,7 +12868,7 @@ export type components = {
       /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
       min_level?: components["schemas"]["LogLevel"] | null;
     };
-    GetTrainingProjectsJobsMetricsRequest: {
+    GetTrainingProjectsJobsMetricsParams: {
       /**
        * End Epoch Millis
        * @description Epoch millis timestamp to end fetching metrics
@@ -10152,7 +12885,7 @@ export type components = {
        */
       step_seconds?: number | null;
     };
-    GetTrainingProjectsJobsCheckpointFilesRequest: {
+    GetTrainingProjectsJobsCheckpointFilesParams: {
       /**
        * Page Size
        * @description Max files per page (default 1000).
@@ -10164,7 +12897,26 @@ export type components = {
        */
       page_token?: number;
     };
-    GetLoopsRunsRequest: {
+    GetLoopsCapabilitiesParams: {
+      /**
+       * Model
+       * @description Restrict the response to one model, identified by its HuggingFace repo id. A supported model comes back with its 'enabled' flag and, when false, its 'enablement_details'. An empty list means Baseten does not support that model. Omit to list every supported model.
+       * @example Qwen/Qwen3-8B
+       */
+      model?: string | null;
+      /**
+       * @description What the caller intends to run. Defaults to 'rl', the stricter of the two: an RL run needs both a trainer and a sampler, so anything enabled for 'rl' is also enabled for 'sft'.
+       * @example rl
+       */
+      use_case?: components["schemas"]["LoopsUseCase"];
+      /**
+       * Max Seq Len
+       * @description The sequence length the caller intends to train at — the same value they would pass as 'max_seq_len' when creating the run. Models that cannot serve it are reported as not enabled rather than returned with a ceiling the caller cannot use. Omit for the model's highest enabled sequence length.
+       * @example 32768
+       */
+      max_seq_len?: number | null;
+    };
+    GetLoopsRunsParams: {
       /**
        * Run Id
        * @description Filter by run ID.
@@ -10184,7 +12936,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetLoopsSamplersRequest: {
+    GetLoopsSamplersParams: {
       /**
        * Scope
        * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
@@ -10192,7 +12944,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetLoopsCheckpointsRequest: {
+    GetLoopsCheckpointsParams: {
       /**
        * Run Id
        * @description Filter by run ID. Returns all checkpoints saved by the run.
@@ -10212,7 +12964,7 @@ export type components = {
        */
       checkpoint_path?: string | null;
     };
-    GetLoopsCheckpointsFilesRequest: {
+    GetLoopsCheckpointsFilesParams: {
       /**
        * Page Size
        * @description Max files per page (default 1000).
@@ -10224,7 +12976,7 @@ export type components = {
        */
       page_token?: number;
     };
-    GetLoopsDeploymentsRequest: {
+    GetLoopsDeploymentsParams: {
       /**
        * Scope
        * @description Defaults to the caller's own deployments; pass 'org' to list every deployment in the caller's organization.
@@ -10232,7 +12984,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetLoopsDeploymentsDebugArchiveFilesRequest: {
+    GetLoopsDeploymentsDebugArchiveFilesParams: {
       /**
        * Page Size
        * @description Max files per page (default and maximum 1000).
@@ -10244,7 +12996,7 @@ export type components = {
        */
       page_token?: string | null;
     };
-    GetLoopsDeploymentsLogsRequest: {
+    GetLoopsDeploymentsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -10265,7 +13017,7 @@ export type components = {
       /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
       min_level?: components["schemas"]["LogLevel"] | null;
     };
-    GetTeamsLoopsRunsRequest: {
+    GetTeamsLoopsRunsParams: {
       /**
        * Run Id
        * @description Filter by run ID.
@@ -10285,7 +13037,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetTeamsLoopsSamplersRequest: {
+    GetTeamsLoopsSamplersParams: {
       /**
        * Scope
        * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
@@ -10293,7 +13045,16 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetModelApisRequest: {
+    GetApiKeysParams: {
+      /** @description Filter by API key type */
+      type?: components["schemas"]["APIKeyCategory"] | null;
+      /**
+       * Created By Me
+       * @description Return only keys created by the authenticated user
+       */
+      created_by_me?: boolean;
+    };
+    GetModelApisParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10310,7 +13071,7 @@ export type components = {
        */
       added_only?: boolean;
     };
-    GetModelApisUsageRequest: {
+    GetModelApisUsageParams: {
       /**
        * Start Time
        * @description Start of the query range (ISO 8601, UTC), inclusive. Snapped down to the start of its bucket. Required on the first page, and ignored when you pass a cursor.
@@ -10354,7 +13115,7 @@ export type components = {
        */
       cursor?: string | null;
     };
-    GetBillingModelApisRequest: {
+    GetBillingModelApisParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10401,7 +13162,7 @@ export type components = {
        */
       service_tiers?: string[];
     };
-    GetBillingUsageSummaryRequest: {
+    GetBillingUsageSummaryParams: {
       /**
        * Start Date
        * Format: date-time
@@ -10415,7 +13176,20 @@ export type components = {
        */
       end_date: string;
     };
-    GetUsersRequest: {
+    GetBillingToolCallUsageParams: {
+      /**
+       * Start Date
+       * Format: date
+       * @description Inclusive UTC calendar day at the start of the query range.
+       */
+      start_date: string;
+      /**
+       * End Date
+       * @description Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included. The date range cannot exceed 90 days.
+       */
+      end_date?: string | null;
+    };
+    GetUsersParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10432,7 +13206,7 @@ export type components = {
        */
       email?: string | null;
     };
-    GetGatewayEventsRequest: {
+    GetGatewayEventsParams: {
       /**
        * Start Time
        * @description Inclusive start (ISO 8601, UTC). Required without a cursor.
@@ -10464,9 +13238,339 @@ export type components = {
        */
       cursor?: string | null;
     };
+    GetExploreMetadataParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Provider
+       * @description Filter to a provider by slug prefix, e.g. 'anthropic'. Preserved by the cursor; if repeated, must match the original filter.
+       */
+      provider?: string | null;
+      /**
+       * Q
+       * @description Case-insensitive substring search over metadata slugs. Preserved by the cursor; if repeated, must match the original filter.
+       */
+      q?: string | null;
+    };
+    GetRoutesParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Team Id
+       * @description Filter by owning team ID. Preserved by the cursor; if repeated, must match the original filter.
+       */
+      team_id?: string | null;
+      /**
+       * Name
+       * @description Filter by exact route name. Preserved by the cursor; if repeated, must match the original filter.
+       */
+      name?: string | null;
+    };
+    GetRoutesUsageParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Number of daily buckets to return. Defaults to 7; maximum 31.
+       */
+      limit?: number;
+      /**
+       * Start Date
+       * @description Inclusive UTC calendar day at the start of the query range. Defaults to the previous UTC date, and is ignored when you pass a cursor.
+       */
+      start_date?: string | null;
+      /**
+       * End Date
+       * @description Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included.
+       */
+      end_date?: string | null;
+      /**
+       * Group By
+       * @description Dimensions to break usage down by, repeated once per dimension: API_KEY_PREFIX, USER, ROUTE, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.
+       */
+      group_by?: components["schemas"]["RouteUsageDimension"][];
+      /**
+       * Api Key Prefixes
+       * @description Return only usage for these exact Routes key prefixes, repeated once per prefix.
+       */
+      api_key_prefixes?: string[];
+      /**
+       * User Ids
+       * @description Return only usage from Routes keys created by these user IDs, repeated once per ID.
+       */
+      user_ids?: string[];
+      /**
+       * Route Ids
+       * @description Return only usage for these route IDs, repeated once per ID.
+       */
+      route_ids?: string[];
+      /**
+       * Models
+       * @description Return only usage for these exact model names, repeated once per model.
+       */
+      models?: string[];
+      /**
+       * Providers
+       * @description Return only usage for these providers, repeated once per provider.
+       */
+      providers?: components["schemas"]["RouteProvider"][];
+    };
+    ListSandboxesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+      /**
+       * @description Search indexed sandbox names and labels. Search is applied before pagination.
+       * @example api-review
+       */
+      q?: string;
+      /**
+       * @description Deployment statuses. Repeat the query parameter for each status, for example status=DEPLOYED&status=FAILED. Unknown values are rejected. Cannot be combined with external_id.
+       * @example [
+       *       "DEPLOYED",
+       *       "FAILED"
+       *     ]
+       */
+      status?: string[];
+      /**
+       * @description Filter by a caller-owned external identifier. Cannot be combined with status.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+    };
+    CreateSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    GetSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    UpdateSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    DeleteSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    ListImagesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+      /** @description Sort by repository name or creation time: name:asc, name:desc, createdAt:asc, or createdAt:desc. Keep the same sort when following a cursor. */
+      sort?: string;
+      /** @description Case-sensitive repository name prefix. Search is applied before pagination. */
+      q?: string;
+    };
+    PushImageParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    CleanupImagesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    GetImageParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    DeleteImageParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    ListImageTagsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+      /** @description Sort by tag name: name:asc or name:desc. Keep the same sort when following a cursor. */
+      sort?: string;
+      /** @description Case-sensitive tag name prefix. Cannot be combined with name. Forces ascending name order. */
+      q?: string;
+      /** @description Exact tag name. Cannot be combined with q. Forces ascending name order. */
+      name?: string;
+    };
+    DeleteImageTagParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
   };
-  responses: never;
+  responses: {
+    /** @description Invalid request. Returns a JSON error with code, message, and optional details. */
+    SandboxError400: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "INVALID_REQUEST",
+         *       "message": "One or more request parameters are invalid.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Missing or invalid authentication. Returns a JSON error with code, message, and optional details. */
+    SandboxError401: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "UNAUTHORIZED",
+         *       "message": "Provide a valid API key in the Authorization header.",
+         *       "details": {
+         *         "header": "Authorization"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Insufficient permissions. Returns a JSON error with code, message, and optional details. */
+    SandboxError403: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "FORBIDDEN",
+         *       "message": "This API key does not have permission to perform this operation.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Resource not found. Returns a JSON error with code, message, and optional details. */
+    SandboxError404: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "NOT_FOUND",
+         *       "message": "The requested resource was not found.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Resource is currently in use or conflicts with the requested operation. Returns a JSON error with code, message, and optional details. */
+    SandboxError409: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "RESOURCE_IN_USE",
+         *       "message": "The resource is currently in use or conflicts with the requested operation.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Request limit exceeded. Returns a JSON error with code, message, and optional details. */
+    SandboxError429: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "RATE_LIMITED",
+         *       "message": "Too many requests. Try again in 30 seconds.",
+         *       "details": {
+         *         "retry_after_seconds": 30
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Internal server error. Returns a JSON error with code, message, and optional details. */
+    SandboxError500: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "INTERNAL_ERROR",
+         *       "message": "The request could not be completed. Try again later.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+  };
   parameters: {
+    volume_sync_id: string;
     volume_namespace: string;
     volume_name: string;
     volume_version: string;
@@ -10490,8 +13594,23 @@ export type components = {
     user_defined_listing_id: string;
     version_tag: string;
     user_id: string;
+    route_id: string;
     endpoint_id: string;
     group_id: string;
+    /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+    TeamId: string;
+    /** @description Optional team ID. Must match the team_id query parameter when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+    TeamIdHeader: string;
+    /** @description Immutable sandbox name returned by creation. */
+    SandboxName: string;
+    /** @description Image repository name. */
+    ImageName: string;
+    /** @description Image tag name. */
+    TagName: string;
+    /** @description Opaque cursor from the previous page; omit for the first page. */
+    Cursor: string;
+    /** @description Maximum number of items to return. */
+    Limit: number;
   };
   requestBodies: never;
   headers: never;
@@ -10534,6 +13653,26 @@ export type VolumeTokenScope = components["schemas"]["VolumeTokenScope"];
 export type CreateVolumeTokenRequest = components["schemas"]["CreateVolumeTokenRequest"];
 export type CreateVolumeTokenResponse = components["schemas"]["CreateVolumeTokenResponse"];
 export type ListVolumeNamespacesResponse = components["schemas"]["ListVolumeNamespacesResponse"];
+export type VolumeSyncAuthenticationAwsAssumeRole =
+  components["schemas"]["VolumeSyncAuthenticationAWSAssumeRole"];
+export type VolumeSyncAuthenticationAwsoidc =
+  components["schemas"]["VolumeSyncAuthenticationAWSOIDC"];
+export type VolumeSyncAuthenticationGcpoidc =
+  components["schemas"]["VolumeSyncAuthenticationGCPOIDC"];
+export type VolumeSyncDestination = components["schemas"]["VolumeSyncDestination"];
+export type VolumeSyncError = components["schemas"]["VolumeSyncError"];
+export type VolumeSyncSourceAzure = components["schemas"]["VolumeSyncSourceAzure"];
+export type VolumeSyncSourceBasetenTraining =
+  components["schemas"]["VolumeSyncSourceBasetenTraining"];
+export type VolumeSyncSourceCoreWeave = components["schemas"]["VolumeSyncSourceCoreWeave"];
+export type VolumeSyncSourceGcs = components["schemas"]["VolumeSyncSourceGCS"];
+export type VolumeSyncSourceHuggingFace = components["schemas"]["VolumeSyncSourceHuggingFace"];
+export type VolumeSyncSourceR2 = components["schemas"]["VolumeSyncSourceR2"];
+export type VolumeSyncSourceS3 = components["schemas"]["VolumeSyncSourceS3"];
+export type VolumeSyncStatus = components["schemas"]["VolumeSyncStatus"];
+export type VolumeSync = components["schemas"]["VolumeSync"];
+export type VolumeSyncs = components["schemas"]["VolumeSyncs"];
+export type CreateVolumeSyncRequest = components["schemas"]["CreateVolumeSyncRequest"];
 export type DeleteVolumeRequest = components["schemas"]["DeleteVolumeRequest"];
 export type DeleteVolumeResponse = components["schemas"]["DeleteVolumeResponse"];
 export type VolumeVersion = components["schemas"]["VolumeVersion"];
@@ -10543,6 +13682,9 @@ export type DeleteVolumeVersionResponse = components["schemas"]["DeleteVolumeVer
 export type VolumeVersionDetail = components["schemas"]["VolumeVersionDetail"];
 export type RestoreVolumeVersionRequest = components["schemas"]["RestoreVolumeVersionRequest"];
 export type RestoreVolumeVersionResponse = components["schemas"]["RestoreVolumeVersionResponse"];
+export type TokenScope = components["schemas"]["TokenScope"];
+export type CreateTokenRequest = components["schemas"]["CreateTokenRequest"];
+export type Token = components["schemas"]["Token"];
 export type Secret = components["schemas"]["Secret"];
 export type Secrets = components["schemas"]["Secrets"];
 export type UpsertSecretRequest = components["schemas"]["UpsertSecretRequest"];
@@ -10638,6 +13780,7 @@ export type AuditLogEventModelDeploymentRetried =
   components["schemas"]["AuditLogEventModelDeploymentRetried"];
 export type AuditLogEventModelPromotionControlAction =
   components["schemas"]["AuditLogEventModelPromotionControlAction"];
+export type AuditLogEventModelRenamed = components["schemas"]["AuditLogEventModelRenamed"];
 export type AuditLogEventReplicaTerminated =
   components["schemas"]["AuditLogEventReplicaTerminated"];
 export type AuditLogEventRequireGroupBasedAdminsEnabled =
@@ -10683,6 +13826,7 @@ export type RequestBackpressurePolicy = components["schemas"]["RequestBackpressu
 export type RequestBackpressureSettings = components["schemas"]["RequestBackpressureSettings"];
 export type CreatedModelDeployment = components["schemas"]["CreatedModelDeployment"];
 export type ModelTombstone = components["schemas"]["ModelTombstone"];
+export type UpdateModelRequest = components["schemas"]["UpdateModelRequest"];
 export type Deployments = components["schemas"]["Deployments"];
 export type DeploymentArchiveSource = components["schemas"]["DeploymentArchiveSource"];
 export type CreateModelDeploymentRequest = components["schemas"]["CreateModelDeploymentRequest"];
@@ -10851,8 +13995,10 @@ export type GetTrainingProjectResponse = components["schemas"]["GetTrainingProje
 export type OrderBy = components["schemas"]["OrderBy"];
 export type SearchTrainingJobsRequest = components["schemas"]["SearchTrainingJobsRequest"];
 export type SearchTrainingJobsResponse = components["schemas"]["SearchTrainingJobsResponse"];
+export type EnablementDetails = components["schemas"]["EnablementDetails"];
 export type SupportedModel = components["schemas"]["SupportedModel"];
 export type GetLoopsCapabilitiesResponse = components["schemas"]["GetLoopsCapabilitiesResponse"];
+export type LoopsUseCase = components["schemas"]["LoopsUseCase"];
 export type LoopsSession = components["schemas"]["LoopsSession"];
 export type CreateLoopsSessionResponse = components["schemas"]["CreateLoopsSessionResponse"];
 export type GetLoopsSessionResponse = components["schemas"]["GetLoopsSessionResponse"];
@@ -10877,6 +14023,9 @@ export type ValidateLoopsCheckpointRequest =
 export type ValidateLoopsCheckpointResponse =
   components["schemas"]["ValidateLoopsCheckpointResponse"];
 export type LoopsCheckpointFilesResponse = components["schemas"]["LoopsCheckpointFilesResponse"];
+export type LoopsCheckpointS3Source = components["schemas"]["LoopsCheckpointS3Source"];
+export type LoopsCheckpointVolumeSource = components["schemas"]["LoopsCheckpointVolumeSource"];
+export type LoopsCheckpointSourceResponse = components["schemas"]["LoopsCheckpointSourceResponse"];
 export type LoopsDeploymentStatus = components["schemas"]["LoopsDeploymentStatus"];
 export type LoopsDeployment = components["schemas"]["LoopsDeployment"];
 export type ListLoopsDeploymentsResponse = components["schemas"]["ListLoopsDeploymentsResponse"];
@@ -10961,6 +14110,8 @@ export type ModelApisUsage = components["schemas"]["ModelApisUsage"];
 export type TrainingItem = components["schemas"]["TrainingItem"];
 export type TrainingUsage = components["schemas"]["TrainingUsage"];
 export type UsageSummary = components["schemas"]["UsageSummary"];
+export type ToolCallUsageBucket = components["schemas"]["ToolCallUsageBucket"];
+export type ToolCallUsageResponse = components["schemas"]["ToolCallUsageResponse"];
 export type UserInfo = components["schemas"]["UserInfo"];
 export type UsersResponse = components["schemas"]["UsersResponse"];
 export type AwsAssumeRole = components["schemas"]["AwsAssumeRole"];
@@ -10968,10 +14119,29 @@ export type OrganizationInfo = components["schemas"]["OrganizationInfo"];
 export type GatewayEventTokens = components["schemas"]["GatewayEventTokens"];
 export type GatewayEvent = components["schemas"]["GatewayEvent"];
 export type GatewayEventsResponse = components["schemas"]["GatewayEventsResponse"];
+export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAPIFormats"];
+export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
+export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
+export type RouteTargetAnthropic = components["schemas"]["RouteTargetAnthropic"];
+export type RouteTargetBasetenModelApi = components["schemas"]["RouteTargetBasetenModelAPI"];
+export type RouteTargetOpenAiCompatible = components["schemas"]["RouteTargetOpenAICompatible"];
+export type RouteTargetOpenAi = components["schemas"]["RouteTargetOpenAI"];
+export type RouteTargetVertex = components["schemas"]["RouteTargetVertex"];
+export type RouteTargetXai = components["schemas"]["RouteTargetXAI"];
+export type Route = components["schemas"]["Route"];
+export type VertexTargetConfig = components["schemas"]["VertexTargetConfig"];
+export type RoutesResponse = components["schemas"]["RoutesResponse"];
+export type CreateRouteRequest = components["schemas"]["CreateRouteRequest"];
+export type RouteProvider = components["schemas"]["RouteProvider"];
+export type RoutesUsageBucket = components["schemas"]["RoutesUsageBucket"];
+export type RoutesUsageResult = components["schemas"]["RoutesUsageResult"];
+export type RoutesUsageResponse = components["schemas"]["RoutesUsageResponse"];
+export type RouteUsageDimension = components["schemas"]["RouteUsageDimension"];
+export type RouteTombstone = components["schemas"]["RouteTombstone"];
+export type UpdateRouteRequest = components["schemas"]["UpdateRouteRequest"];
 export type EndpointTarget = components["schemas"]["EndpointTarget"];
 export type Endpoint = components["schemas"]["Endpoint"];
 export type SharedEndpointRegion = components["schemas"]["SharedEndpointRegion"];
-export type VertexTargetConfig = components["schemas"]["VertexTargetConfig"];
 export type EndpointsResponse = components["schemas"]["EndpointsResponse"];
 export type EndpointTargetRequest = components["schemas"]["EndpointTargetRequest"];
 export type CreateEndpointRequest = components["schemas"]["CreateEndpointRequest"];
@@ -10998,49 +14168,97 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
-export type GetVolumesRequest = components["schemas"]["GetVolumesRequest"];
-export type GetVolumesNamespacesRequest = components["schemas"]["GetVolumesNamespacesRequest"];
-export type GetVolumesVersionsRequest = components["schemas"]["GetVolumesVersionsRequest"];
-export type GetTeamsRequest = components["schemas"]["GetTeamsRequest"];
-export type GetAuditLogsRequest = components["schemas"]["GetAuditLogsRequest"];
-export type GetModelsRequest = components["schemas"]["GetModelsRequest"];
-export type GetTeamsModelsRequest = components["schemas"]["GetTeamsModelsRequest"];
-export type GetModelsAuditLogsRequest = components["schemas"]["GetModelsAuditLogsRequest"];
-export type GetModelsDeploymentsRequest = components["schemas"]["GetModelsDeploymentsRequest"];
-export type GetModelsDeploymentsConfigRequest =
-  components["schemas"]["GetModelsDeploymentsConfigRequest"];
-export type GetModelsDeploymentsLogsRequest =
-  components["schemas"]["GetModelsDeploymentsLogsRequest"];
-export type GetModelsDeploymentsMetricsRequest =
-  components["schemas"]["GetModelsDeploymentsMetricsRequest"];
-export type GetModelsEnvironmentsLogsRequest =
-  components["schemas"]["GetModelsEnvironmentsLogsRequest"];
-export type GetModelsEnvironmentsMetricsRequest =
-  components["schemas"]["GetModelsEnvironmentsMetricsRequest"];
-export type GetChainsAuditLogsRequest = components["schemas"]["GetChainsAuditLogsRequest"];
-export type GetChainsDeploymentsChainletsLogsRequest =
-  components["schemas"]["GetChainsDeploymentsChainletsLogsRequest"];
-export type GetTrainingProjectsJobsLogsRequest =
-  components["schemas"]["GetTrainingProjectsJobsLogsRequest"];
-export type GetTrainingProjectsJobsMetricsRequest =
-  components["schemas"]["GetTrainingProjectsJobsMetricsRequest"];
-export type GetTrainingProjectsJobsCheckpointFilesRequest =
-  components["schemas"]["GetTrainingProjectsJobsCheckpointFilesRequest"];
-export type GetLoopsRunsRequest = components["schemas"]["GetLoopsRunsRequest"];
-export type GetLoopsSamplersRequest = components["schemas"]["GetLoopsSamplersRequest"];
-export type GetLoopsCheckpointsRequest = components["schemas"]["GetLoopsCheckpointsRequest"];
-export type GetLoopsCheckpointsFilesRequest =
-  components["schemas"]["GetLoopsCheckpointsFilesRequest"];
-export type GetLoopsDeploymentsRequest = components["schemas"]["GetLoopsDeploymentsRequest"];
-export type GetLoopsDeploymentsDebugArchiveFilesRequest =
-  components["schemas"]["GetLoopsDeploymentsDebugArchiveFilesRequest"];
-export type GetLoopsDeploymentsLogsRequest =
-  components["schemas"]["GetLoopsDeploymentsLogsRequest"];
-export type GetTeamsLoopsRunsRequest = components["schemas"]["GetTeamsLoopsRunsRequest"];
-export type GetTeamsLoopsSamplersRequest = components["schemas"]["GetTeamsLoopsSamplersRequest"];
-export type GetModelApisRequest = components["schemas"]["GetModelApisRequest"];
-export type GetModelApisUsageRequest = components["schemas"]["GetModelApisUsageRequest"];
-export type GetBillingModelApisRequest = components["schemas"]["GetBillingModelApisRequest"];
-export type GetBillingUsageSummaryRequest = components["schemas"]["GetBillingUsageSummaryRequest"];
-export type GetUsersRequest = components["schemas"]["GetUsersRequest"];
-export type GetGatewayEventsRequest = components["schemas"]["GetGatewayEventsRequest"];
+export type SandboxLifecycle = components["schemas"]["SandboxLifecycle"];
+export type SandboxExpirationPolicy = components["schemas"]["SandboxExpirationPolicy"];
+export type SandboxDuration = components["schemas"]["SandboxDuration"];
+export type SandboxTtlIdleExpirationPolicy =
+  components["schemas"]["SandboxTTLIdleExpirationPolicy"];
+export type SandboxTtlMaxAgeExpirationPolicy =
+  components["schemas"]["SandboxTTLMaxAgeExpirationPolicy"];
+export type SandboxDateExpirationPolicy = components["schemas"]["SandboxDateExpirationPolicy"];
+export type SandboxNetwork = components["schemas"]["SandboxNetwork"];
+export type SandboxProxyConfig = components["schemas"]["SandboxProxyConfig"];
+export type SandboxProxyTarget = components["schemas"]["SandboxProxyTarget"];
+export type SandboxEnv = components["schemas"]["SandboxEnv"];
+export type SandboxPorts = components["schemas"]["SandboxPorts"];
+export type SandboxPort = components["schemas"]["SandboxPort"];
+export type SandboxMetadataLabels = components["schemas"]["SandboxMetadataLabels"];
+export type SandboxConfiguration = components["schemas"]["SandboxConfiguration"];
+export type CreateSandboxRequest = components["schemas"]["CreateSandboxRequest"];
+export type UpdateSandboxRequest = components["schemas"]["UpdateSandboxRequest"];
+export type Sandbox = components["schemas"]["Sandbox"];
+export type SandboxStatus = components["schemas"]["SandboxStatus"];
+export type SandboxApiPagination = components["schemas"]["SandboxApiPagination"];
+export type ListSandboxesResponse = components["schemas"]["ListSandboxesResponse"];
+export type ListImagesResponse = components["schemas"]["ListImagesResponse"];
+export type ListImageTagsResponse = components["schemas"]["ListImageTagsResponse"];
+export type ImageStatus = components["schemas"]["ImageStatus"];
+export type ImageTag = components["schemas"]["ImageTag"];
+export type Image = components["schemas"]["Image"];
+export type PushImageRequest = components["schemas"]["PushImageRequest"];
+export type PushImageResponse = components["schemas"]["PushImageResponse"];
+export type CleanupImagesResponse = components["schemas"]["CleanupImagesResponse"];
+export type GetVolumesParams = components["schemas"]["GetVolumesParams"];
+export type GetVolumesNamespacesParams = components["schemas"]["GetVolumesNamespacesParams"];
+export type GetVolumesSyncsParams = components["schemas"]["GetVolumesSyncsParams"];
+export type GetVolumesVersionsParams = components["schemas"]["GetVolumesVersionsParams"];
+export type GetTeamsParams = components["schemas"]["GetTeamsParams"];
+export type GetAuditLogsParams = components["schemas"]["GetAuditLogsParams"];
+export type GetModelsParams = components["schemas"]["GetModelsParams"];
+export type GetTeamsModelsParams = components["schemas"]["GetTeamsModelsParams"];
+export type GetModelsAuditLogsParams = components["schemas"]["GetModelsAuditLogsParams"];
+export type GetModelsDeploymentsParams = components["schemas"]["GetModelsDeploymentsParams"];
+export type GetModelsDeploymentsConfigParams =
+  components["schemas"]["GetModelsDeploymentsConfigParams"];
+export type GetModelsDeploymentsLogsParams =
+  components["schemas"]["GetModelsDeploymentsLogsParams"];
+export type GetModelsDeploymentsMetricsParams =
+  components["schemas"]["GetModelsDeploymentsMetricsParams"];
+export type GetModelsEnvironmentsLogsParams =
+  components["schemas"]["GetModelsEnvironmentsLogsParams"];
+export type GetModelsEnvironmentsMetricsParams =
+  components["schemas"]["GetModelsEnvironmentsMetricsParams"];
+export type GetChainsAuditLogsParams = components["schemas"]["GetChainsAuditLogsParams"];
+export type GetChainsDeploymentsChainletsLogsParams =
+  components["schemas"]["GetChainsDeploymentsChainletsLogsParams"];
+export type GetTrainingProjectsJobsLogsParams =
+  components["schemas"]["GetTrainingProjectsJobsLogsParams"];
+export type GetTrainingProjectsJobsMetricsParams =
+  components["schemas"]["GetTrainingProjectsJobsMetricsParams"];
+export type GetTrainingProjectsJobsCheckpointFilesParams =
+  components["schemas"]["GetTrainingProjectsJobsCheckpointFilesParams"];
+export type GetLoopsCapabilitiesParams = components["schemas"]["GetLoopsCapabilitiesParams"];
+export type GetLoopsRunsParams = components["schemas"]["GetLoopsRunsParams"];
+export type GetLoopsSamplersParams = components["schemas"]["GetLoopsSamplersParams"];
+export type GetLoopsCheckpointsParams = components["schemas"]["GetLoopsCheckpointsParams"];
+export type GetLoopsCheckpointsFilesParams =
+  components["schemas"]["GetLoopsCheckpointsFilesParams"];
+export type GetLoopsDeploymentsParams = components["schemas"]["GetLoopsDeploymentsParams"];
+export type GetLoopsDeploymentsDebugArchiveFilesParams =
+  components["schemas"]["GetLoopsDeploymentsDebugArchiveFilesParams"];
+export type GetLoopsDeploymentsLogsParams = components["schemas"]["GetLoopsDeploymentsLogsParams"];
+export type GetTeamsLoopsRunsParams = components["schemas"]["GetTeamsLoopsRunsParams"];
+export type GetTeamsLoopsSamplersParams = components["schemas"]["GetTeamsLoopsSamplersParams"];
+export type GetApiKeysParams = components["schemas"]["GetApiKeysParams"];
+export type GetModelApisParams = components["schemas"]["GetModelApisParams"];
+export type GetModelApisUsageParams = components["schemas"]["GetModelApisUsageParams"];
+export type GetBillingModelApisParams = components["schemas"]["GetBillingModelApisParams"];
+export type GetBillingUsageSummaryParams = components["schemas"]["GetBillingUsageSummaryParams"];
+export type GetBillingToolCallUsageParams = components["schemas"]["GetBillingToolCallUsageParams"];
+export type GetUsersParams = components["schemas"]["GetUsersParams"];
+export type GetGatewayEventsParams = components["schemas"]["GetGatewayEventsParams"];
+export type GetExploreMetadataParams = components["schemas"]["GetExploreMetadataParams"];
+export type GetRoutesParams = components["schemas"]["GetRoutesParams"];
+export type GetRoutesUsageParams = components["schemas"]["GetRoutesUsageParams"];
+export type ListSandboxesParams = components["schemas"]["ListSandboxesParams"];
+export type CreateSandboxParams = components["schemas"]["CreateSandboxParams"];
+export type GetSandboxParams = components["schemas"]["GetSandboxParams"];
+export type UpdateSandboxParams = components["schemas"]["UpdateSandboxParams"];
+export type DeleteSandboxParams = components["schemas"]["DeleteSandboxParams"];
+export type ListImagesParams = components["schemas"]["ListImagesParams"];
+export type PushImageParams = components["schemas"]["PushImageParams"];
+export type CleanupImagesParams = components["schemas"]["CleanupImagesParams"];
+export type GetImageParams = components["schemas"]["GetImageParams"];
+export type DeleteImageParams = components["schemas"]["DeleteImageParams"];
+export type ListImageTagsParams = components["schemas"]["ListImageTagsParams"];
+export type DeleteImageTagParams = components["schemas"]["DeleteImageTagParams"];

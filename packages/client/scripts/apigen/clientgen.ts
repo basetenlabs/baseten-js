@@ -5,21 +5,10 @@
  * are imported from the generated models.gen.d.ts.
  */
 
-/** Per-API knobs for the generated client. */
-export interface ClientOptions {
-  /**
-   * Name of the params field carrying query parameters. Defaults to `request`,
-   * which doubles as the request-body field; an API with an operation taking
-   * both must set this to `query` so the two do not collide.
-   */
-  queryField?: "request" | "query";
-}
-
-export function generateClient(specData: Uint8Array, options: ClientOptions = {}): string {
+export function generateClient(specData: Uint8Array): string {
   const spec = JSON.parse(new TextDecoder().decode(specData));
-  const queryField = options.queryField ?? "request";
-  const ops = extractOperations(spec, queryField);
-  return renderClient(ops, queryField);
+  const ops = extractOperations(spec);
+  return renderClient(ops);
 }
 
 const JSON_CONTENT = "application/json";
@@ -77,13 +66,26 @@ export function resolveMethodNames(spec: Record<string, unknown>): Map<string, s
 }
 
 /**
- * Model name for an operation's injected query-parameter schema. Named after
- * the params field it lands on, so `query` gets `...Query` while the default
- * shared `request` field keeps `...Request`.
+ * Query parameters for an operation, from both the path item and the
+ * operation, with `$ref`s to components/parameters resolved.
  */
-export function queryTypeName(methodName: string, queryField: string): string {
-  const suffix = queryField === "query" ? "Query" : "Request";
-  return methodName.charAt(0).toUpperCase() + methodName.slice(1) + suffix;
+export function operationQueryParams(
+  spec: Record<string, unknown>,
+  pathItem: Record<string, unknown>,
+  op: Record<string, unknown>,
+): Record<string, unknown>[] {
+  const params = [
+    ...((pathItem.parameters as Record<string, unknown>[]) ?? []),
+    ...((op.parameters as Record<string, unknown>[]) ?? []),
+  ];
+  return params
+    .map((p) => resolveRef(spec, p))
+    .filter((p): p is Record<string, unknown> => p !== null && p.in === "query");
+}
+
+/** Model name for an operation's injected query-parameter schema. */
+export function queryTypeName(methodName: string): string {
+  return methodName.charAt(0).toUpperCase() + methodName.slice(1) + "Params";
 }
 
 /** Model name for an operation's hoisted inline JSON response schema. */
@@ -91,7 +93,7 @@ export function responseTypeName(methodName: string): string {
   return methodName.charAt(0).toUpperCase() + methodName.slice(1) + "Response";
 }
 
-function extractOperations(spec: Record<string, unknown>, queryField: string): Operation[] {
+function extractOperations(spec: Record<string, unknown>): Operation[] {
   const paths = (spec.paths ?? {}) as Record<string, Record<string, unknown>>;
   const names = resolveMethodNames(spec);
 
@@ -102,17 +104,8 @@ function extractOperations(spec: Record<string, unknown>, queryField: string): O
         continue;
       const opData = opDataRaw as Record<string, unknown>;
       const name = names.get(`${httpMethod}\0${path}`)!;
-      const queryParams = ((opData.parameters as unknown[]) ?? []).filter(
-        (p): p is Record<string, unknown> =>
-          typeof p === "object" && p !== null && (p as Record<string, unknown>).in === "query",
-      );
+      const queryParams = operationQueryParams(spec, pathItem, opData);
       const hasBody = "requestBody" in opData;
-      if (hasBody && queryParams.length > 0 && queryField === "request") {
-        throw new Error(
-          `${httpMethod.toUpperCase()} ${path} has both a request body and query parameters; ` +
-            'set the queryField option to "query" for this API so the two do not collide',
-        );
-      }
       const successCodes = extractSuccessCodes(opData, httpMethod, path);
       ops.push({
         name,
@@ -296,7 +289,7 @@ function pathFmt(path: string): string {
 
 // --- Rendering ---
 
-function renderClient(ops: Operation[], queryField: string): string {
+function renderClient(ops: Operation[]): string {
   const hasTypedResp = ops.some((op) => op.jsonResponses.length > 0);
   const hasNoResp = ops.some((op) => op.jsonResponses.length === 0 && op.rawAccepts.length === 0);
 
@@ -305,7 +298,7 @@ function renderClient(ops: Operation[], queryField: string): string {
   const modelImports = new Set<string>();
   for (const op of ops) {
     if (op.reqBodyRef) modelImports.add(op.reqBodyRef);
-    if (op.hasQuery) modelImports.add(queryTypeName(op.name, queryField));
+    if (op.hasQuery) modelImports.add(queryTypeName(op.name));
     for (const { ref } of op.jsonResponses) modelImports.add(ref);
     for (const ref of op.errorCodes?.values() ?? []) modelImports.add(ref);
   }
@@ -386,14 +379,14 @@ export class ApiClient {
 `;
 
   for (const op of ops) {
-    // An operation with no JSON success body returns the response directly;
-    // there is nothing to deserialize into.
+    // An operation with no JSON success body returns the response directly,
+    // since there is nothing to deserialize into.
     const rawOnly = op.jsonResponses.length === 0 && op.rawAccepts.length > 0;
-    src += `\n${renderMethod(op, queryField, rawOnly)}`;
+    src += `\n${renderMethod(op, rawOnly)}`;
     // A content-negotiated operation also gets a sibling returning the raw
     // response, since Accept changes the body's type entirely.
     if (op.jsonResponses.length > 0 && op.rawAccepts.length > 0) {
-      src += `\n${renderMethod(op, queryField, true)}`;
+      src += `\n${renderMethod(op, true)}`;
     }
   }
 
@@ -436,8 +429,12 @@ export class ApiClient {
         headers["Content-Type"] = contentType;
         init.body = JSON.stringify(request.body);
       } else if (contentType === "multipart/form-data") {
-        // Deliberately unset: fetch derives it from the FormData, including the
-        // boundary, which cannot be computed here.
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
         init.body = request.body as BodyInit;
       } else {
         headers["Content-Type"] = contentType;
@@ -515,18 +512,16 @@ export class ApiClient {
  * Renders one method. With `raw`, renders the content-negotiated sibling
  * instead: it takes an `accept` argument and returns the response untouched.
  */
-function renderMethod(op: Operation, queryField: string, raw = false): string {
-  // A request body is always required so an empty body still sends `{}`; query
-  // params are optional unless the spec marks one required. When queryField is
-  // "request" the two share a field, which is why an operation with both is
-  // rejected for those APIs.
+function renderMethod(op: Operation, raw = false): string {
+  // Query params go on `params` and the request body on `request`. A request
+  // body is always required so an empty body still sends `{}`. Query params
+  // are optional unless the spec marks one required.
   let bodyType = "";
   if (op.hasBody) {
     bodyType = op.reqBodyRef || bodyTypeForContent(op.bodyContentType);
   }
-  const queryType = op.hasQuery ? queryTypeName(op.name, queryField) : "";
+  const queryType = op.hasQuery ? queryTypeName(op.name) : "";
   const queryOptional = op.hasQuery && !op.queryRequired;
-  const sharedField = queryField === "request";
 
   // Every content type the success responses can produce. More than one means
   // the caller has to say which it wants.
@@ -538,10 +533,8 @@ function renderMethod(op: Operation, queryField: string, raw = false): string {
   if (needsAcceptParam) {
     fields.push(`accept: ${contentTypes.map((c) => `"${c}"`).join(" | ")}`);
   }
-  if (queryType && !sharedField)
-    fields.push(`${queryField}${queryOptional ? "?" : ""}: ${queryType}`);
+  if (queryType) fields.push(`params${queryOptional ? "?" : ""}: ${queryType}`);
   if (bodyType) fields.push(`request: ${bodyType}`);
-  if (queryType && sharedField) fields.push(`request${queryOptional ? "?" : ""}: ${queryType}`);
 
   const hasParams = fields.length > 0;
   // The whole params argument is optional only when every field it holds is.
@@ -552,9 +545,7 @@ function renderMethod(op: Operation, queryField: string, raw = false): string {
     op.pathParams.length > 0 ? `[${op.pathParams.map((p) => `params.${p}`).join(", ")}]` : "[]";
   const paramsRef = paramsOptional ? "params?" : "params";
   const bodyArg = bodyType ? "params.request" : "null";
-  const queryArg = queryType
-    ? `${paramsRef}.${sharedField ? "request" : queryField} ?? null`
-    : "null";
+  const queryArg = queryType ? `${paramsRef}.params ?? null` : "null";
 
   let errorExpr: string;
   if (op.errorCodes) {
