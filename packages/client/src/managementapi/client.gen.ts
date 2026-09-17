@@ -232,7 +232,12 @@ interface ApiRequest {
   pathArgs: string[];
   query: Record<string, unknown> | null;
   body: unknown;
-  successCode: number;
+  /** Request body encoding. Defaults to application/json. */
+  bodyContentType?: string;
+  /** Accept header to send. Omitted when the response is JSON. */
+  accept?: string;
+  /** Accepted success statuses. Defaults to [200]. */
+  successCodes?: number[];
   errorCodes: Record<number, string> | null;
 }
 
@@ -262,7 +267,6 @@ export class ApiClient {
       pathArgs: [params.api_key_prefix],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -275,7 +279,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -291,7 +294,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.chain_deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -304,7 +306,6 @@ export class ApiClient {
       pathArgs: [params.endpoint_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -319,7 +320,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -335,7 +335,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id, params.version_tag],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -348,7 +347,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -364,7 +362,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -381,7 +378,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id, params.replica_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -397,7 +393,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -410,7 +405,6 @@ export class ApiClient {
       pathArgs: [params.secret_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -426,7 +420,6 @@ export class ApiClient {
       pathArgs: [params.team_id, params.secret_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -441,7 +434,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -457,7 +449,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -474,7 +465,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -492,7 +482,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -505,7 +494,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -518,7 +506,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -533,7 +520,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -548,7 +534,6 @@ export class ApiClient {
       pathArgs: [],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -561,7 +546,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -574,7 +558,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -587,7 +570,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -603,7 +585,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -616,7 +597,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -629,7 +609,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -645,7 +624,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.chain_deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -663,7 +641,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.chain_deployment_id, params.chainlet_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -676,7 +653,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -692,7 +668,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -705,7 +680,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -718,7 +692,6 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -731,7 +704,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -744,7 +716,6 @@ export class ApiClient {
       pathArgs: [params.endpoint_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -759,7 +730,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -772,7 +742,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -785,7 +754,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -801,7 +769,6 @@ export class ApiClient {
       pathArgs: [params.group_id, params.api_key_prefix],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -814,7 +781,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -827,7 +793,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -840,7 +805,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -853,7 +817,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -868,7 +831,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -883,7 +845,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -899,7 +860,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id, params.version_tag],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -912,7 +872,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -927,7 +886,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -943,7 +901,6 @@ export class ApiClient {
       pathArgs: [params.checkpoint_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -958,7 +915,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -974,7 +930,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -989,7 +944,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1005,7 +959,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1018,7 +971,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1031,7 +983,6 @@ export class ApiClient {
       pathArgs: [params.run_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1046,7 +997,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1061,7 +1011,6 @@ export class ApiClient {
       pathArgs: [params.sampler_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1074,7 +1023,6 @@ export class ApiClient {
       pathArgs: [params.session_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1087,7 +1035,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1100,7 +1047,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1113,7 +1059,6 @@ export class ApiClient {
       pathArgs: [params.model_api_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1128,7 +1073,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1141,7 +1085,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1157,7 +1100,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1173,7 +1115,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1190,7 +1131,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1206,7 +1146,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1219,7 +1158,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1235,7 +1173,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1252,7 +1189,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1269,7 +1205,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1285,7 +1220,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1298,7 +1232,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1311,7 +1244,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1327,7 +1259,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1344,7 +1275,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1361,7 +1291,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1374,7 +1303,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1387,7 +1315,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1400,7 +1327,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1413,7 +1339,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1426,7 +1351,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1439,7 +1363,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1455,7 +1378,6 @@ export class ApiClient {
       pathArgs: [params.team_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1471,7 +1393,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1487,7 +1408,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1503,7 +1423,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1516,7 +1435,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1529,7 +1447,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1542,7 +1459,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1555,7 +1471,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1570,7 +1485,6 @@ export class ApiClient {
       pathArgs: [params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1583,7 +1497,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1598,7 +1511,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1613,7 +1525,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1629,7 +1540,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1646,7 +1556,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1662,7 +1571,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1678,7 +1586,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1695,7 +1602,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1712,7 +1618,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1728,7 +1633,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1743,7 +1647,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1756,7 +1659,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1769,7 +1671,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1782,7 +1683,6 @@ export class ApiClient {
       pathArgs: [params.user_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1795,7 +1695,6 @@ export class ApiClient {
       pathArgs: [],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1810,7 +1709,6 @@ export class ApiClient {
       pathArgs: [],
       query: params?.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1827,7 +1725,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name],
       query: params.request ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1844,7 +1741,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1860,7 +1756,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1877,7 +1772,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1894,7 +1788,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1910,7 +1803,6 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1926,7 +1818,6 @@ export class ApiClient {
       pathArgs: [params.endpoint_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1942,7 +1833,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1958,7 +1848,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1975,7 +1864,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id, params.version_tag],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1990,7 +1878,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2007,7 +1894,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2024,7 +1910,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2040,7 +1925,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2056,7 +1940,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2073,7 +1956,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2090,7 +1972,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2107,7 +1988,6 @@ export class ApiClient {
       pathArgs: [params.team_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2122,7 +2002,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2139,7 +2018,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2157,7 +2035,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id, params.session_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2170,7 +2047,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2186,7 +2062,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.chain_deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2202,7 +2077,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2219,7 +2093,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2236,7 +2109,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2249,7 +2121,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2262,7 +2133,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2278,7 +2148,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2294,7 +2163,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2309,7 +2177,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2325,7 +2192,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2338,7 +2204,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2354,7 +2219,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2369,7 +2233,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2384,7 +2247,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2400,7 +2262,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2413,7 +2274,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2426,7 +2286,6 @@ export class ApiClient {
       pathArgs: [params.run_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2441,7 +2300,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2454,7 +2312,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2469,7 +2326,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2482,7 +2338,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2498,7 +2353,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2514,7 +2368,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2530,7 +2383,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2545,7 +2397,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2560,7 +2411,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2576,7 +2426,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2591,7 +2440,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2608,7 +2456,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2625,7 +2472,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2642,7 +2488,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2657,7 +2502,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2672,7 +2516,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2687,7 +2530,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2704,7 +2546,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2720,7 +2561,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2737,7 +2577,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2753,7 +2592,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2769,7 +2607,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2785,7 +2622,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2801,7 +2637,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2817,7 +2652,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2833,7 +2667,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2849,7 +2682,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2866,7 +2698,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2882,7 +2713,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2897,7 +2727,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2910,7 +2739,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2926,7 +2754,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2942,7 +2769,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2958,7 +2784,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2974,7 +2799,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2987,7 +2811,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3003,7 +2826,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3019,7 +2841,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3035,7 +2856,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3051,7 +2871,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3066,7 +2885,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3081,7 +2899,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3097,7 +2914,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3114,7 +2930,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3131,7 +2946,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3147,7 +2961,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3164,7 +2977,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3181,7 +2993,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3196,7 +3007,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3214,7 +3024,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3247,26 +3056,40 @@ export class ApiClient {
       method: request.method,
       headers: { ...this.headers },
     };
+    const headers = init.headers as Record<string, string>;
+    if (request.accept !== undefined) {
+      headers["Accept"] = request.accept;
+    }
     if (request.body !== null) {
-      (init.headers as Record<string, string>)["Content-Type"] = "application/json";
-      init.body = JSON.stringify(request.body);
+      const contentType = request.bodyContentType ?? "application/json";
+      if (contentType === "application/json") {
+        headers["Content-Type"] = contentType;
+        init.body = JSON.stringify(request.body);
+      } else if (contentType === "multipart/form-data") {
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
+        init.body = request.body as BodyInit;
+      } else {
+        headers["Content-Type"] = contentType;
+        init.body = request.body as BodyInit;
+      }
     }
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
-    if (response.status !== request.successCode) {
+    if (!(request.successCodes ?? [200]).includes(response.status)) {
       throw new ResponseError(response.status, await response.text());
     }
     return response;
   }
 
-  // TODO(https://github.com/basetenlabs/baseten-js/issues/2): support non-JSON response content types
   private async _doJson<T>(request: ApiRequest): Promise<T> {
     const response = await this._do(request);
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-      throw new ResponseError(
-        response.status,
-        `non-JSON response content type not currently supported, got ${contentType}`,
-      );
+      throw new ResponseError(response.status, `expected a JSON response, got ${contentType}`);
     }
     return (await response.json()) as T;
   }
