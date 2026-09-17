@@ -9,8 +9,8 @@
 export interface ClientOptions {
   /**
    * Name of the params field carrying query parameters. Defaults to `request`,
-   * which doubles as the request-body field; an API with an operation taking
-   * both must set this to `query` so the two do not collide.
+   * which doubles as the request-body field, so an API with an operation taking
+   * both must set this to `query` to keep the two from colliding.
    */
   queryField?: "request" | "query";
 }
@@ -386,8 +386,8 @@ export class ApiClient {
 `;
 
   for (const op of ops) {
-    // An operation with no JSON success body returns the response directly;
-    // there is nothing to deserialize into.
+    // An operation with no JSON success body returns the response directly,
+    // since there is nothing to deserialize into.
     const rawOnly = op.jsonResponses.length === 0 && op.rawAccepts.length > 0;
     src += `\n${renderMethod(op, queryField, rawOnly)}`;
     // A content-negotiated operation also gets a sibling returning the raw
@@ -436,8 +436,12 @@ export class ApiClient {
         headers["Content-Type"] = contentType;
         init.body = JSON.stringify(request.body);
       } else if (contentType === "multipart/form-data") {
-        // Deliberately unset: fetch derives it from the FormData, including the
-        // boundary, which cannot be computed here.
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
         init.body = request.body as BodyInit;
       } else {
         headers["Content-Type"] = contentType;
@@ -516,7 +520,7 @@ export class ApiClient {
  * instead: it takes an `accept` argument and returns the response untouched.
  */
 function renderMethod(op: Operation, queryField: string, raw = false): string {
-  // A request body is always required so an empty body still sends `{}`; query
+  // A request body is always required so an empty body still sends `{}`. Query
   // params are optional unless the spec marks one required. When queryField is
   // "request" the two share a field, which is why an operation with both is
   // rejected for those APIs.

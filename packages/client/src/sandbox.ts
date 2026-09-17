@@ -122,7 +122,7 @@ export class SandboxClient {
   /**
    * Runs a command and streams its output as Server-Sent Events.
    *
-   * Returns the response unread; the process result arrives as the final
+   * Returns the response unread, with the process result arriving as the final
    * event. Use {@link ApiClient.postProcess} for the non-streaming form.
    */
   async execStreaming(request: ProcessRequest): Promise<Response> {
@@ -143,9 +143,15 @@ async function* readLines(response: Response, signal?: AbortSignal): AsyncGenera
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  if (signal?.aborted) return;
+  // These streams are quiet most of the time, so abort has to cancel the
+  // reader: testing the flag between reads would never fire while a read is
+  // parked waiting for a chunk that may never come. Cancelling resolves the
+  // pending read as done, which ends the loop.
+  const onAbort = () => void reader.cancel().catch(() => {});
+  signal?.addEventListener("abort", onAbort, { once: true });
   try {
     while (true) {
-      if (signal?.aborted) return;
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -155,9 +161,14 @@ async function* readLines(response: Response, signal?: AbortSignal): AsyncGenera
         if (line !== "") yield line;
       }
     }
-    buffer += decoder.decode();
-    if (buffer !== "") yield buffer;
+    // A stream cancelled mid-line has no complete record to report, so the
+    // trailing partial line is only flushed when the stream ended on its own.
+    if (!signal?.aborted) {
+      buffer += decoder.decode();
+      if (buffer !== "") yield buffer;
+    }
   } finally {
+    signal?.removeEventListener("abort", onAbort);
     await reader.cancel().catch(() => {});
   }
 }

@@ -780,8 +780,12 @@ export class ApiClient {
         headers["Content-Type"] = contentType;
         init.body = JSON.stringify(request.body);
       } else if (contentType === "multipart/form-data") {
-        // Deliberately unset: fetch derives it from the FormData, including the
-        // boundary, which cannot be computed here.
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
         init.body = request.body as BodyInit;
       } else {
         headers["Content-Type"] = contentType;
