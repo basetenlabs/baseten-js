@@ -13,6 +13,8 @@ import type {
   ChainEnvironment,
   ChainTombstone,
   Chains,
+  CleanupImagesParams,
+  CleanupImagesResponse,
   CreateApiKeyForGroupRequest,
   CreateApiKeyForGroupResponse,
   CreateApiKeyRequest,
@@ -33,14 +35,22 @@ import type {
   CreateLoopsSessionResponse,
   CreateModelDeploymentRequest,
   CreateModelRequest,
+  CreateRouteRequest,
+  CreateSandboxParams,
+  CreateSandboxRequest,
+  CreateTokenRequest,
   CreateTrainingJobRequest,
   CreateTrainingJobResponse,
+  CreateVolumeSyncRequest,
   CreateVolumeTokenRequest,
   CreateVolumeTokenResponse,
   CreatedModelDeployment,
   DeactivateLoopsDeploymentResponse,
   DeactivateLoopsRunResponse,
   DeactivateResponse,
+  DeleteImageParams,
+  DeleteImageTagParams,
+  DeleteSandboxParams,
   DeleteVolumeRequest,
   DeleteVolumeResponse,
   DeleteVolumeVersionRequest,
@@ -59,50 +69,59 @@ import type {
   EnvironmentGroups,
   EnvironmentTombstone,
   Environments,
+  ExploreMetadataResponse,
   GatewayEventsResponse,
   GatewayKeyInfo,
-  GetAuditLogsRequest,
+  GetApiKeysParams,
+  GetAuditLogsParams,
   GetAuthCodesResponse,
-  GetBillingModelApisRequest,
-  GetBillingUsageSummaryRequest,
+  GetBillingModelApisParams,
+  GetBillingToolCallUsageParams,
+  GetBillingUsageSummaryParams,
   GetBlobCredentialsResponse,
   GetCacheSummaryResponse,
-  GetChainsAuditLogsRequest,
-  GetChainsDeploymentsChainletsLogsRequest,
+  GetChainsAuditLogsParams,
+  GetChainsDeploymentsChainletsLogsParams,
   GetDeploymentLogsRequest,
   GetDeploymentPatchesStateResponse,
-  GetGatewayEventsRequest,
+  GetExploreMetadataParams,
+  GetGatewayEventsParams,
+  GetImageParams,
   GetLogsResponse,
+  GetLoopsCapabilitiesParams,
   GetLoopsCapabilitiesResponse,
-  GetLoopsCheckpointsFilesRequest,
-  GetLoopsCheckpointsRequest,
+  GetLoopsCheckpointsFilesParams,
+  GetLoopsCheckpointsParams,
   GetLoopsDeploymentMetricsRequest,
   GetLoopsDeploymentMetricsResponse,
   GetLoopsDeploymentResponse,
-  GetLoopsDeploymentsDebugArchiveFilesRequest,
-  GetLoopsDeploymentsLogsRequest,
-  GetLoopsDeploymentsRequest,
+  GetLoopsDeploymentsDebugArchiveFilesParams,
+  GetLoopsDeploymentsLogsParams,
+  GetLoopsDeploymentsParams,
   GetLoopsRunResponse,
-  GetLoopsRunsRequest,
+  GetLoopsRunsParams,
   GetLoopsSamplerResponse,
-  GetLoopsSamplersRequest,
+  GetLoopsSamplersParams,
   GetLoopsSessionResponse,
   GetLoopsUserConfigResponse,
-  GetModelApisRequest,
-  GetModelApisUsageRequest,
+  GetModelApisParams,
+  GetModelApisUsageParams,
   GetModelMetricsResponse,
-  GetModelsAuditLogsRequest,
-  GetModelsDeploymentsConfigRequest,
-  GetModelsDeploymentsLogsRequest,
-  GetModelsDeploymentsMetricsRequest,
-  GetModelsDeploymentsRequest,
-  GetModelsEnvironmentsLogsRequest,
-  GetModelsEnvironmentsMetricsRequest,
-  GetModelsRequest,
-  GetTeamsLoopsRunsRequest,
-  GetTeamsLoopsSamplersRequest,
-  GetTeamsModelsRequest,
-  GetTeamsRequest,
+  GetModelsAuditLogsParams,
+  GetModelsDeploymentsConfigParams,
+  GetModelsDeploymentsLogsParams,
+  GetModelsDeploymentsMetricsParams,
+  GetModelsDeploymentsParams,
+  GetModelsEnvironmentsLogsParams,
+  GetModelsEnvironmentsMetricsParams,
+  GetModelsParams,
+  GetRoutesParams,
+  GetRoutesUsageParams,
+  GetSandboxParams,
+  GetTeamsLoopsRunsParams,
+  GetTeamsLoopsSamplersParams,
+  GetTeamsModelsParams,
+  GetTeamsParams,
   GetTrainingGpuCapacityResponse,
   GetTrainingJobCheckpointFilesResponse,
   GetTrainingJobCheckpointsResponse,
@@ -112,15 +131,17 @@ import type {
   GetTrainingJobQueueContextResponse,
   GetTrainingJobResponse,
   GetTrainingProjectResponse,
-  GetTrainingProjectsJobsCheckpointFilesRequest,
-  GetTrainingProjectsJobsLogsRequest,
-  GetTrainingProjectsJobsMetricsRequest,
-  GetUsersRequest,
-  GetVolumesNamespacesRequest,
-  GetVolumesRequest,
-  GetVolumesVersionsRequest,
+  GetTrainingProjectsJobsCheckpointFilesParams,
+  GetTrainingProjectsJobsLogsParams,
+  GetTrainingProjectsJobsMetricsParams,
+  GetUsersParams,
+  GetVolumesNamespacesParams,
+  GetVolumesParams,
+  GetVolumesSyncsParams,
+  GetVolumesVersionsParams,
   Group,
   GroupsResponse,
+  Image,
   InstanceTypePrices,
   InstanceTypes,
   KeysForGroupResponse,
@@ -131,10 +152,16 @@ import type {
   LibraryListingVersions,
   LibraryListings,
   ListAuditLogsResponse,
+  ListImageTagsParams,
+  ListImageTagsResponse,
+  ListImagesParams,
+  ListImagesResponse,
   ListLoopsCheckpointsResponse,
   ListLoopsDeploymentsResponse,
   ListLoopsRunsResponse,
   ListLoopsSamplersResponse,
+  ListSandboxesParams,
+  ListSandboxesResponse,
   ListTrainingJobsResponse,
   ListTrainingProjectsResponse,
   ListVolumeNamespacesResponse,
@@ -142,6 +169,7 @@ import type {
   ListVolumesResponse,
   LlmModelHandle,
   LoopsCheckpointFilesResponse,
+  LoopsCheckpointSourceResponse,
   LoopsDebugArchiveFilesResponse,
   Model,
   ModelApIsResponse,
@@ -162,6 +190,9 @@ import type {
   PromoteRequest,
   PromoteToChainEnvironmentRequest,
   PromoteToEnvironmentRequest,
+  PushImageParams,
+  PushImageRequest,
+  PushImageResponse,
   RecreateTrainingJobResponse,
   Regions,
   RegisterApiKeyRequest,
@@ -170,6 +201,11 @@ import type {
   RestoreVolumeVersionRequest,
   RestoreVolumeVersionResponse,
   RetryDeploymentResponse,
+  Route,
+  RouteTombstone,
+  RoutesResponse,
+  RoutesUsageResponse,
+  Sandbox,
   SearchTrainingJobsRequest,
   SearchTrainingJobsResponse,
   Secret,
@@ -185,6 +221,8 @@ import type {
   Team,
   Teams,
   TerminateReplicaResponse,
+  Token,
+  ToolCallUsageResponse,
   TrainingJobTombstone,
   TrainingProjectTombstone,
   UpdateAutoscalingSettings,
@@ -202,7 +240,11 @@ import type {
   UpdateGroupRequest,
   UpdateLibraryListingRequest,
   UpdateLibraryListingVersionRequest,
+  UpdateModelRequest,
   UpdateRequestBackpressureSettings,
+  UpdateRouteRequest,
+  UpdateSandboxParams,
+  UpdateSandboxRequest,
   UpdateTrainingJobRequest,
   UpdateTrainingJobResponse,
   UpsertSecretRequest,
@@ -214,6 +256,8 @@ import type {
   ValidateLoopsCheckpointRequest,
   ValidateLoopsCheckpointResponse,
   Volume,
+  VolumeSync,
+  VolumeSyncs,
   VolumeVersionDetail,
 } from "./models.gen";
 
@@ -232,7 +276,12 @@ interface ApiRequest {
   pathArgs: string[];
   query: Record<string, unknown> | null;
   body: unknown;
-  successCode: number;
+  /** Request body encoding. Defaults to application/json. */
+  bodyContentType?: string;
+  /** Accept header to send. Omitted when the response is JSON. */
+  accept?: string;
+  /** Accepted success statuses. Defaults to [200]. */
+  successCodes?: number[];
   errorCodes: Record<number, string> | null;
 }
 
@@ -254,6 +303,34 @@ export class ApiClient {
     this.fetchImpl = options.fetch ?? globalThis.fetch;
   }
 
+  /** Clean up unused images */
+  async cleanupImages(params?: { params?: CleanupImagesParams }): Promise<CleanupImagesResponse> {
+    return this._doJson<CleanupImagesResponse>({
+      method: "POST",
+      pathFmt: "/v1/sandboxes/cleanup_images",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Create a sandbox */
+  async createSandbox(params: {
+    params?: CreateSandboxParams;
+    request: CreateSandboxRequest;
+  }): Promise<Sandbox> {
+    return this._doJson<Sandbox>({
+      method: "POST",
+      pathFmt: "/v1/sandboxes/instances",
+      pathArgs: [],
+      query: params.params ?? null,
+      body: params.request,
+      successCodes: [201],
+      errorCodes: null,
+    });
+  }
+
   /** Deletes an API key by prefix */
   async deleteApiKeys(params: { api_key_prefix: string }): Promise<ApiKeyTombstone> {
     return this._doJson<ApiKeyTombstone>({
@@ -262,7 +339,6 @@ export class ApiClient {
       pathArgs: [params.api_key_prefix],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -275,7 +351,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -291,7 +366,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.chain_deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -304,7 +378,34 @@ export class ApiClient {
       pathArgs: [params.endpoint_id],
       query: null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Delete a sandbox image */
+  async deleteImage(params: { image_name: string; params?: DeleteImageParams }): Promise<Image> {
+    return this._doJson<Image>({
+      method: "DELETE",
+      pathFmt: "/v1/sandboxes/images/{}",
+      pathArgs: [params.image_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Delete an image tag */
+  async deleteImageTag(params: {
+    image_name: string;
+    tag_name: string;
+    params?: DeleteImageTagParams;
+  }): Promise<Image> {
+    return this._doJson<Image>({
+      method: "DELETE",
+      pathFmt: "/v1/sandboxes/images/{}/tags/{}",
+      pathArgs: [params.image_name, params.tag_name],
+      query: params.params ?? null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -319,7 +420,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -335,7 +435,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id, params.version_tag],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -348,7 +447,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -364,7 +462,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -381,7 +478,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id, params.replica_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -397,7 +493,34 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes a route */
+  async deleteRoutes(params: { route_id: string }): Promise<RouteTombstone> {
+    return this._doJson<RouteTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/routes/{}",
+      pathArgs: [params.route_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Delete a sandbox */
+  async deleteSandbox(params: {
+    sandbox_name: string;
+    params?: DeleteSandboxParams;
+  }): Promise<Sandbox> {
+    return this._doJson<Sandbox>({
+      method: "DELETE",
+      pathFmt: "/v1/sandboxes/instances/{}",
+      pathArgs: [params.sandbox_name],
+      query: params.params ?? null,
+      body: null,
+      successCodes: [202],
       errorCodes: null,
     });
   }
@@ -410,7 +533,6 @@ export class ApiClient {
       pathArgs: [params.secret_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -426,7 +548,6 @@ export class ApiClient {
       pathArgs: [params.team_id, params.secret_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -441,7 +562,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -457,7 +577,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -474,7 +593,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -492,63 +610,72 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists API keys (metadata only, no plain text keys) */
-  async getApiKeys(): Promise<ApiKeys> {
+  async getApiKeys(params?: { params?: GetApiKeysParams }): Promise<ApiKeys> {
     return this._doJson<ApiKeys>({
       method: "GET",
       pathFmt: "/v1/api_keys",
       pathArgs: [],
-      query: null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Gets the audit log for the workspace */
-  async getAuditLogs(params?: { request?: GetAuditLogsRequest }): Promise<ListAuditLogsResponse> {
+  async getAuditLogs(params?: { params?: GetAuditLogsParams }): Promise<ListAuditLogsResponse> {
     return this._doJson<ListAuditLogsResponse>({
       method: "GET",
       pathFmt: "/v1/audit_logs",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Gets daily Model APIs costs */
   async getBillingModelApis(params?: {
-    request?: GetBillingModelApisRequest;
+    params?: GetBillingModelApisParams;
   }): Promise<ModelApisCostsResponse> {
     return this._doJson<ModelApisCostsResponse>({
       method: "GET",
       pathFmt: "/v1/billing/model_apis",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets server-side tool call usage */
+  async getBillingToolCallUsage(params: {
+    params: GetBillingToolCallUsageParams;
+  }): Promise<ToolCallUsageResponse> {
+    return this._doJson<ToolCallUsageResponse>({
+      method: "GET",
+      pathFmt: "/v1/billing/tool_call_usage",
+      pathArgs: [],
+      query: params.params ?? null,
+      body: null,
       errorCodes: null,
     });
   }
 
   /** Gets billing usage summary for a date range */
   async getBillingUsageSummary(params: {
-    request: GetBillingUsageSummaryRequest;
+    params: GetBillingUsageSummaryParams;
   }): Promise<UsageSummary> {
     return this._doJson<UsageSummary>({
       method: "GET",
       pathFmt: "/v1/billing/usage_summary",
       pathArgs: [],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -561,7 +688,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -574,7 +700,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -587,7 +712,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -595,15 +719,14 @@ export class ApiClient {
   /** Gets the audit log for a chain */
   async getChainsAuditLogs(params: {
     chain_id: string;
-    request?: GetChainsAuditLogsRequest;
+    params?: GetChainsAuditLogsParams;
   }): Promise<ListAuditLogsResponse> {
     return this._doJson<ListAuditLogsResponse>({
       method: "GET",
       pathFmt: "/v1/chains/{}/audit_logs",
       pathArgs: [params.chain_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -616,7 +739,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -629,7 +751,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -645,7 +766,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.chain_deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -655,15 +775,14 @@ export class ApiClient {
     chain_id: string;
     chain_deployment_id: string;
     chainlet_id: string;
-    request?: GetChainsDeploymentsChainletsLogsRequest;
+    params?: GetChainsDeploymentsChainletsLogsParams;
   }): Promise<GetLogsResponse> {
     return this._doJson<GetLogsResponse>({
       method: "GET",
       pathFmt: "/v1/chains/{}/deployments/{}/chainlets/{}/logs",
       pathArgs: [params.chain_id, params.chain_deployment_id, params.chainlet_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -676,7 +795,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -692,7 +810,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -705,7 +822,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -718,7 +834,20 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists model metadata */
+  async getExploreMetadata(params?: {
+    params?: GetExploreMetadataParams;
+  }): Promise<ExploreMetadataResponse> {
+    return this._doJson<ExploreMetadataResponse>({
+      method: "GET",
+      pathFmt: "/v1/explore/metadata",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -731,7 +860,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -744,22 +872,20 @@ export class ApiClient {
       pathArgs: [params.endpoint_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists gateway events */
   async getGatewayEvents(params?: {
-    request?: GetGatewayEventsRequest;
+    params?: GetGatewayEventsParams;
   }): Promise<GatewayEventsResponse> {
     return this._doJson<GatewayEventsResponse>({
       method: "GET",
       pathFmt: "/v1/gateway/events",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -772,7 +898,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -785,7 +910,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -801,7 +925,6 @@ export class ApiClient {
       pathArgs: [params.group_id, params.api_key_prefix],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -814,7 +937,18 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Get a sandbox image */
+  async getImage(params: { image_name: string; params?: GetImageParams }): Promise<Image> {
+    return this._doJson<Image>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/images/{}",
+      pathArgs: [params.image_name],
+      query: params.params ?? null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -827,7 +961,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -840,7 +973,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -853,7 +985,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -868,7 +999,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -883,7 +1013,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -899,35 +1028,34 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id, params.version_tag],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Gets Loops server capabilities */
-  async getLoopsCapabilities(): Promise<GetLoopsCapabilitiesResponse> {
+  async getLoopsCapabilities(params?: {
+    params?: GetLoopsCapabilitiesParams;
+  }): Promise<GetLoopsCapabilitiesResponse> {
     return this._doJson<GetLoopsCapabilitiesResponse>({
       method: "GET",
       pathFmt: "/v1/loops/capabilities",
       pathArgs: [],
-      query: null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists Loops checkpoints */
   async getLoopsCheckpoints(params?: {
-    request?: GetLoopsCheckpointsRequest;
+    params?: GetLoopsCheckpointsParams;
   }): Promise<ListLoopsCheckpointsResponse> {
     return this._doJson<ListLoopsCheckpointsResponse>({
       method: "GET",
       pathFmt: "/v1/loops/checkpoints",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -935,30 +1063,42 @@ export class ApiClient {
   /** Gets Loops checkpoint files */
   async getLoopsCheckpointsFiles(params: {
     checkpoint_id: string;
-    request?: GetLoopsCheckpointsFilesRequest;
+    params?: GetLoopsCheckpointsFilesParams;
   }): Promise<LoopsCheckpointFilesResponse> {
     return this._doJson<LoopsCheckpointFilesResponse>({
       method: "GET",
       pathFmt: "/v1/loops/checkpoints/{}/files",
       pathArgs: [params.checkpoint_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets where a Loops checkpoint's files come from */
+  async getLoopsCheckpointsSource(params: {
+    checkpoint_id: string;
+  }): Promise<LoopsCheckpointSourceResponse> {
+    return this._doJson<LoopsCheckpointSourceResponse>({
+      method: "GET",
+      pathFmt: "/v1/loops/checkpoints/{}/source",
+      pathArgs: [params.checkpoint_id],
+      query: null,
+      body: null,
       errorCodes: null,
     });
   }
 
   /** Lists Loops deployments */
   async getLoopsDeployments(params?: {
-    request?: GetLoopsDeploymentsRequest;
+    params?: GetLoopsDeploymentsParams;
   }): Promise<ListLoopsDeploymentsResponse> {
     return this._doJson<ListLoopsDeploymentsResponse>({
       method: "GET",
       pathFmt: "/v1/loops/deployments",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -966,15 +1106,14 @@ export class ApiClient {
   /** Gets Loops debug archive files */
   async getLoopsDeploymentsDebugArchiveFiles(params: {
     deployment_id: string;
-    request?: GetLoopsDeploymentsDebugArchiveFilesRequest;
+    params?: GetLoopsDeploymentsDebugArchiveFilesParams;
   }): Promise<LoopsDebugArchiveFilesResponse> {
     return this._doJson<LoopsDebugArchiveFilesResponse>({
       method: "GET",
       pathFmt: "/v1/loops/deployments/{}/debug_archive/files",
       pathArgs: [params.deployment_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -989,7 +1128,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -997,28 +1135,26 @@ export class ApiClient {
   /** Gets logs for a Loops trainer deployment */
   async getLoopsDeploymentsLogs(params: {
     deployment_id: string;
-    request?: GetLoopsDeploymentsLogsRequest;
+    params?: GetLoopsDeploymentsLogsParams;
   }): Promise<GetLogsResponse> {
     return this._doJson<GetLogsResponse>({
       method: "GET",
       pathFmt: "/v1/loops/deployments/{}/logs",
       pathArgs: [params.deployment_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists Loops runs */
-  async getLoopsRuns(params?: { request?: GetLoopsRunsRequest }): Promise<ListLoopsRunsResponse> {
+  async getLoopsRuns(params?: { params?: GetLoopsRunsParams }): Promise<ListLoopsRunsResponse> {
     return this._doJson<ListLoopsRunsResponse>({
       method: "GET",
       pathFmt: "/v1/loops/runs",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1031,22 +1167,20 @@ export class ApiClient {
       pathArgs: [params.run_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists Loops samplers */
   async getLoopsSamplers(params?: {
-    request?: GetLoopsSamplersRequest;
+    params?: GetLoopsSamplersParams;
   }): Promise<ListLoopsSamplersResponse> {
     return this._doJson<ListLoopsSamplersResponse>({
       method: "GET",
       pathFmt: "/v1/loops/samplers",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1061,7 +1195,6 @@ export class ApiClient {
       pathArgs: [params.sampler_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1074,7 +1207,6 @@ export class ApiClient {
       pathArgs: [params.session_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1087,20 +1219,18 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists Model APIs */
-  async getModelApis(params?: { request?: GetModelApisRequest }): Promise<ModelApIsResponse> {
+  async getModelApis(params?: { params?: GetModelApisParams }): Promise<ModelApIsResponse> {
     return this._doJson<ModelApIsResponse>({
       method: "GET",
       pathFmt: "/v1/model_apis",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1113,35 +1243,32 @@ export class ApiClient {
       pathArgs: [params.model_api_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Gets Model APIs token usage in time buckets */
   async getModelApisUsage(params?: {
-    request?: GetModelApisUsageRequest;
+    params?: GetModelApisUsageParams;
   }): Promise<ModelApisUsageResponse> {
     return this._doJson<ModelApisUsageResponse>({
       method: "GET",
       pathFmt: "/v1/model_apis/usage",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Gets all models */
-  async getModels(params?: { request?: GetModelsRequest }): Promise<Models> {
+  async getModels(params?: { params?: GetModelsParams }): Promise<Models> {
     return this._doJson<Models>({
       method: "GET",
       pathFmt: "/v1/models",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1149,15 +1276,14 @@ export class ApiClient {
   /** Gets the audit log for a model */
   async getModelsAuditLogs(params: {
     model_id: string;
-    request?: GetModelsAuditLogsRequest;
+    params?: GetModelsAuditLogsParams;
   }): Promise<ListAuditLogsResponse> {
     return this._doJson<ListAuditLogsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/audit_logs",
       pathArgs: [params.model_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1165,15 +1291,14 @@ export class ApiClient {
   /** Gets all deployments of a model */
   async getModelsDeployments(params: {
     model_id: string;
-    request?: GetModelsDeploymentsRequest;
+    params?: GetModelsDeploymentsParams;
   }): Promise<Deployments> {
     return this._doJson<Deployments>({
       method: "GET",
       pathFmt: "/v1/models/{}/deployments",
       pathArgs: [params.model_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1182,15 +1307,14 @@ export class ApiClient {
   async getModelsDeploymentsConfig(params: {
     model_id: string;
     deployment_id: string;
-    request?: GetModelsDeploymentsConfigRequest;
+    params?: GetModelsDeploymentsConfigParams;
   }): Promise<DeploymentConfigResponse> {
     return this._doJson<DeploymentConfigResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/deployments/{}/config",
       pathArgs: [params.model_id, params.deployment_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1206,7 +1330,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1219,7 +1342,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1235,7 +1357,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1244,15 +1365,14 @@ export class ApiClient {
   async getModelsDeploymentsLogs(params: {
     model_id: string;
     deployment_id: string;
-    request?: GetModelsDeploymentsLogsRequest;
+    params?: GetModelsDeploymentsLogsParams;
   }): Promise<GetLogsResponse> {
     return this._doJson<GetLogsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/deployments/{}/logs",
       pathArgs: [params.model_id, params.deployment_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1261,15 +1381,14 @@ export class ApiClient {
   async getModelsDeploymentsMetrics(params: {
     model_id: string;
     deployment_id: string;
-    request?: GetModelsDeploymentsMetricsRequest;
+    params?: GetModelsDeploymentsMetricsParams;
   }): Promise<GetModelMetricsResponse> {
     return this._doJson<GetModelMetricsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/deployments/{}/metrics",
       pathArgs: [params.model_id, params.deployment_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1285,7 +1404,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1298,7 +1416,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1311,7 +1428,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1327,7 +1443,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1336,15 +1451,14 @@ export class ApiClient {
   async getModelsEnvironmentsLogs(params: {
     model_id: string;
     env_name: string;
-    request?: GetModelsEnvironmentsLogsRequest;
+    params?: GetModelsEnvironmentsLogsParams;
   }): Promise<GetLogsResponse> {
     return this._doJson<GetLogsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/environments/{}/logs",
       pathArgs: [params.model_id, params.env_name],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1353,15 +1467,14 @@ export class ApiClient {
   async getModelsEnvironmentsMetrics(params: {
     model_id: string;
     env_name: string;
-    request?: GetModelsEnvironmentsMetricsRequest;
+    params?: GetModelsEnvironmentsMetricsParams;
   }): Promise<GetModelMetricsResponse> {
     return this._doJson<GetModelMetricsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/environments/{}/metrics",
       pathArgs: [params.model_id, params.env_name],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1374,7 +1487,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1387,7 +1499,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1400,7 +1511,54 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists routes */
+  async getRoutes(params?: { params?: GetRoutesParams }): Promise<RoutesResponse> {
+    return this._doJson<RoutesResponse>({
+      method: "GET",
+      pathFmt: "/v1/routes",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a route */
+  async getRoutesRouteId(params: { route_id: string }): Promise<Route> {
+    return this._doJson<Route>({
+      method: "GET",
+      pathFmt: "/v1/routes/{}",
+      pathArgs: [params.route_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets daily route usage and estimated costs */
+  async getRoutesUsage(params?: { params?: GetRoutesUsageParams }): Promise<RoutesUsageResponse> {
+    return this._doJson<RoutesUsageResponse>({
+      method: "GET",
+      pathFmt: "/v1/routes/usage",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Get a sandbox */
+  async getSandbox(params: { sandbox_name: string; params?: GetSandboxParams }): Promise<Sandbox> {
+    return this._doJson<Sandbox>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/instances/{}",
+      pathArgs: [params.sandbox_name],
+      query: params.params ?? null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -1413,20 +1571,18 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists all teams */
-  async getTeams(params?: { request?: GetTeamsRequest }): Promise<Teams> {
+  async getTeams(params?: { params?: GetTeamsParams }): Promise<Teams> {
     return this._doJson<Teams>({
       method: "GET",
       pathFmt: "/v1/teams",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1439,7 +1595,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1455,7 +1610,6 @@ export class ApiClient {
       pathArgs: [params.team_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1463,15 +1617,14 @@ export class ApiClient {
   /** Lists a team's Loops runs */
   async getTeamsLoopsRuns(params: {
     team_id: string;
-    request?: GetTeamsLoopsRunsRequest;
+    params?: GetTeamsLoopsRunsParams;
   }): Promise<ListLoopsRunsResponse> {
     return this._doJson<ListLoopsRunsResponse>({
       method: "GET",
       pathFmt: "/v1/teams/{}/loops/runs",
       pathArgs: [params.team_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1479,15 +1632,14 @@ export class ApiClient {
   /** Lists a team's Loops samplers */
   async getTeamsLoopsSamplers(params: {
     team_id: string;
-    request?: GetTeamsLoopsSamplersRequest;
+    params?: GetTeamsLoopsSamplersParams;
   }): Promise<ListLoopsSamplersResponse> {
     return this._doJson<ListLoopsSamplersResponse>({
       method: "GET",
       pathFmt: "/v1/teams/{}/loops/samplers",
       pathArgs: [params.team_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1495,15 +1647,14 @@ export class ApiClient {
   /** Gets all models */
   async getTeamsModels(params: {
     team_id: string;
-    request?: GetTeamsModelsRequest;
+    params?: GetTeamsModelsParams;
   }): Promise<Models> {
     return this._doJson<Models>({
       method: "GET",
       pathFmt: "/v1/teams/{}/models",
       pathArgs: [params.team_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1516,7 +1667,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1529,7 +1679,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1542,7 +1691,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1555,7 +1703,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1570,7 +1717,6 @@ export class ApiClient {
       pathArgs: [params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1583,7 +1729,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1598,7 +1743,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1613,7 +1757,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1629,7 +1772,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1638,15 +1780,14 @@ export class ApiClient {
   async getTrainingProjectsJobsCheckpointFiles(params: {
     training_project_id: string;
     training_job_id: string;
-    request?: GetTrainingProjectsJobsCheckpointFilesRequest;
+    params?: GetTrainingProjectsJobsCheckpointFilesParams;
   }): Promise<GetTrainingJobCheckpointFilesResponse> {
     return this._doJson<GetTrainingJobCheckpointFilesResponse>({
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}/checkpoint_files",
       pathArgs: [params.training_project_id, params.training_job_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1662,7 +1803,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1678,7 +1818,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1687,15 +1826,14 @@ export class ApiClient {
   async getTrainingProjectsJobsLogs(params: {
     training_project_id: string;
     training_job_id: string;
-    request?: GetTrainingProjectsJobsLogsRequest;
+    params?: GetTrainingProjectsJobsLogsParams;
   }): Promise<GetLogsResponse> {
     return this._doJson<GetLogsResponse>({
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}/logs",
       pathArgs: [params.training_project_id, params.training_job_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1704,15 +1842,14 @@ export class ApiClient {
   async getTrainingProjectsJobsMetrics(params: {
     training_project_id: string;
     training_job_id: string;
-    request?: GetTrainingProjectsJobsMetricsRequest;
+    params?: GetTrainingProjectsJobsMetricsParams;
   }): Promise<GetTrainingJobMetricsResponse> {
     return this._doJson<GetTrainingJobMetricsResponse>({
       method: "GET",
       pathFmt: "/v1/training_projects/{}/jobs/{}/metrics",
       pathArgs: [params.training_project_id, params.training_job_id],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1728,7 +1865,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1743,20 +1879,18 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Lists users in the workspace */
-  async getUsers(params?: { request?: GetUsersRequest }): Promise<UsersResponse> {
+  async getUsers(params?: { params?: GetUsersParams }): Promise<UsersResponse> {
     return this._doJson<UsersResponse>({
       method: "GET",
       pathFmt: "/v1/users",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1769,7 +1903,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1782,35 +1915,56 @@ export class ApiClient {
       pathArgs: [params.user_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Gets the volumes in a namespace */
-  async getVolumes(params: { request: GetVolumesRequest }): Promise<ListVolumesResponse> {
+  async getVolumes(params: { params: GetVolumesParams }): Promise<ListVolumesResponse> {
     return this._doJson<ListVolumesResponse>({
       method: "GET",
       pathFmt: "/v1/volumes",
       pathArgs: [],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
   /** Gets the volume namespaces in your workspace */
   async getVolumesNamespaces(params?: {
-    request?: GetVolumesNamespacesRequest;
+    params?: GetVolumesNamespacesParams;
   }): Promise<ListVolumeNamespacesResponse> {
     return this._doJson<ListVolumeNamespacesResponse>({
       method: "GET",
       pathFmt: "/v1/volumes/namespaces",
       pathArgs: [],
-      query: params?.request ?? null,
+      query: params?.params ?? null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists volume syncs */
+  async getVolumesSyncs(params?: { params?: GetVolumesSyncsParams }): Promise<VolumeSyncs> {
+    return this._doJson<VolumeSyncs>({
+      method: "GET",
+      pathFmt: "/v1/volumes/syncs",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a volume sync */
+  async getVolumesSyncsVolumeSyncId(params: { volume_sync_id: string }): Promise<VolumeSync> {
+    return this._doJson<VolumeSync>({
+      method: "GET",
+      pathFmt: "/v1/volumes/syncs/{}",
+      pathArgs: [params.volume_sync_id],
+      query: null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -1819,15 +1973,14 @@ export class ApiClient {
   async getVolumesVersions(params: {
     volume_namespace: string;
     volume_name: string;
-    request?: GetVolumesVersionsRequest;
+    params?: GetVolumesVersionsParams;
   }): Promise<ListVolumeVersionsResponse> {
     return this._doJson<ListVolumeVersionsResponse>({
       method: "GET",
       pathFmt: "/v1/volumes/{}/{}/versions",
       pathArgs: [params.volume_namespace, params.volume_name],
-      query: params.request ?? null,
+      query: params.params ?? null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1844,7 +1997,6 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1860,7 +2012,45 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name],
       query: null,
       body: null,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** List sandbox images */
+  async listImages(params?: { params?: ListImagesParams }): Promise<ListImagesResponse> {
+    return this._doJson<ListImagesResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/images",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** List image tags */
+  async listImageTags(params: {
+    image_name: string;
+    params?: ListImageTagsParams;
+  }): Promise<ListImageTagsResponse> {
+    return this._doJson<ListImageTagsResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/images/{}/tags",
+      pathArgs: [params.image_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** List sandboxes */
+  async listSandboxes(params?: { params?: ListSandboxesParams }): Promise<ListSandboxesResponse> {
+    return this._doJson<ListSandboxesResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/instances",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -1877,7 +2067,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1894,7 +2083,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1910,7 +2098,6 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1926,7 +2113,6 @@ export class ApiClient {
       pathArgs: [params.endpoint_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1942,7 +2128,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1958,7 +2143,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1975,7 +2159,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id, params.version_tag],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -1990,7 +2173,18 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a model by ID */
+  async patchModels(params: { model_id: string; request: UpdateModelRequest }): Promise<Model> {
+    return this._doJson<Model>({
+      method: "PATCH",
+      pathFmt: "/v1/models/{}",
+      pathArgs: [params.model_id],
+      query: null,
+      body: params.request,
       errorCodes: null,
     });
   }
@@ -2007,7 +2201,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2024,7 +2217,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2040,7 +2232,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2056,7 +2247,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2073,7 +2263,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2090,7 +2279,18 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a route */
+  async patchRoutes(params: { route_id: string; request: UpdateRouteRequest }): Promise<Route> {
+    return this._doJson<Route>({
+      method: "PATCH",
+      pathFmt: "/v1/routes/{}",
+      pathArgs: [params.route_id],
+      query: null,
+      body: params.request,
       errorCodes: null,
     });
   }
@@ -2107,7 +2307,6 @@ export class ApiClient {
       pathArgs: [params.team_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2122,7 +2321,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2139,7 +2337,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2157,7 +2354,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id, params.session_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2170,7 +2366,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2186,7 +2381,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.chain_deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2202,7 +2396,6 @@ export class ApiClient {
       pathArgs: [params.chain_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2219,7 +2412,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2236,7 +2428,6 @@ export class ApiClient {
       pathArgs: [params.chain_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2249,7 +2440,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2262,7 +2452,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2278,7 +2467,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2294,7 +2482,6 @@ export class ApiClient {
       pathArgs: [params.group_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2309,7 +2496,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2325,7 +2511,6 @@ export class ApiClient {
       pathArgs: [params.user_defined_listing_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2338,7 +2523,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2354,7 +2538,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2369,7 +2552,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2384,7 +2566,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2400,7 +2581,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2413,7 +2593,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2426,7 +2605,6 @@ export class ApiClient {
       pathArgs: [params.run_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2441,7 +2619,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2454,7 +2631,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2469,7 +2645,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2482,7 +2657,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2498,7 +2672,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2514,7 +2687,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2530,7 +2702,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2545,7 +2716,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2560,7 +2730,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2576,7 +2745,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2591,7 +2759,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2608,7 +2775,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2625,7 +2791,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2642,7 +2807,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2657,7 +2821,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2672,7 +2835,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2687,7 +2849,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2704,7 +2865,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2720,7 +2880,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2737,7 +2896,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2753,7 +2911,6 @@ export class ApiClient {
       pathArgs: [params.model_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2769,7 +2926,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2785,7 +2941,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2801,7 +2956,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2817,7 +2971,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2833,7 +2986,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2849,7 +3001,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2866,7 +3017,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2882,7 +3032,6 @@ export class ApiClient {
       pathArgs: [params.model_id, params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2897,7 +3046,18 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a route */
+  async postRoutes(params: { request: CreateRouteRequest }): Promise<Route> {
+    return this._doJson<Route>({
+      method: "POST",
+      pathFmt: "/v1/routes",
+      pathArgs: [],
+      query: null,
+      body: params.request,
       errorCodes: null,
     });
   }
@@ -2910,7 +3070,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2926,7 +3085,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2942,7 +3100,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2958,7 +3115,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2974,7 +3130,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -2987,7 +3142,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3003,7 +3157,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3019,7 +3172,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3035,7 +3187,6 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3051,7 +3202,18 @@ export class ApiClient {
       pathArgs: [params.team_id],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a sandbox access token */
+  async postToken(params: { request: CreateTokenRequest }): Promise<Token> {
+    return this._doJson<Token>({
+      method: "POST",
+      pathFmt: "/v1/token",
+      pathArgs: [],
+      query: null,
+      body: params.request,
       errorCodes: null,
     });
   }
@@ -3066,7 +3228,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3081,7 +3242,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3097,7 +3257,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3114,7 +3273,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3131,7 +3289,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3147,7 +3304,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3164,7 +3320,6 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
@@ -3181,7 +3336,30 @@ export class ApiClient {
       pathArgs: [params.training_project_id, params.training_job_id],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Starts a volume sync */
+  async postVolumesSyncs(params: { request: CreateVolumeSyncRequest }): Promise<VolumeSync> {
+    return this._doJson<VolumeSync>({
+      method: "POST",
+      pathFmt: "/v1/volumes/syncs",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Cancels a volume sync */
+  async postVolumesSyncsCancel(params: { volume_sync_id: string }): Promise<VolumeSync> {
+    return this._doJson<VolumeSync>({
+      method: "POST",
+      pathFmt: "/v1/volumes/syncs/{}/cancel",
+      pathArgs: [params.volume_sync_id],
+      query: null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -3196,12 +3374,11 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: null,
     });
   }
 
-  /** Restores a deleted version of a volume */
+  /** Restores a deleted or expired version of a volume */
   async postVolumesVersionsRestore(params: {
     volume_namespace: string;
     volume_name: string;
@@ -3214,7 +3391,38 @@ export class ApiClient {
       pathArgs: [params.volume_namespace, params.volume_name, params.volume_version],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: null,
+    });
+  }
+
+  /** Push a sandbox image */
+  async pushImage(params: {
+    params?: PushImageParams;
+    request: PushImageRequest;
+  }): Promise<PushImageResponse> {
+    return this._doJson<PushImageResponse>({
+      method: "POST",
+      pathFmt: "/v1/sandboxes/images",
+      pathArgs: [],
+      query: params.params ?? null,
+      body: params.request,
+      successCodes: [202],
+      errorCodes: null,
+    });
+  }
+
+  /** Update a sandbox */
+  async updateSandbox(params: {
+    sandbox_name: string;
+    params?: UpdateSandboxParams;
+    request: UpdateSandboxRequest;
+  }): Promise<Sandbox> {
+    return this._doJson<Sandbox>({
+      method: "PATCH",
+      pathFmt: "/v1/sandboxes/instances/{}",
+      pathArgs: [params.sandbox_name],
+      query: params.params ?? null,
+      body: params.request,
       errorCodes: null,
     });
   }
@@ -3247,26 +3455,40 @@ export class ApiClient {
       method: request.method,
       headers: { ...this.headers },
     };
+    const headers = init.headers as Record<string, string>;
+    if (request.accept !== undefined) {
+      headers["Accept"] = request.accept;
+    }
     if (request.body !== null) {
-      (init.headers as Record<string, string>)["Content-Type"] = "application/json";
-      init.body = JSON.stringify(request.body);
+      const contentType = request.bodyContentType ?? "application/json";
+      if (contentType === "application/json") {
+        headers["Content-Type"] = contentType;
+        init.body = JSON.stringify(request.body);
+      } else if (contentType === "multipart/form-data") {
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
+        init.body = request.body as BodyInit;
+      } else {
+        headers["Content-Type"] = contentType;
+        init.body = request.body as BodyInit;
+      }
     }
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
-    if (response.status !== request.successCode) {
+    if (!(request.successCodes ?? [200]).includes(response.status)) {
       throw new ResponseError(response.status, await response.text());
     }
     return response;
   }
 
-  // TODO(https://github.com/basetenlabs/baseten-js/issues/2): support non-JSON response content types
   private async _doJson<T>(request: ApiRequest): Promise<T> {
     const response = await this._do(request);
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-      throw new ResponseError(
-        response.status,
-        `non-JSON response content type not currently supported, got ${contentType}`,
-      );
+      throw new ResponseError(response.status, `expected a JSON response, got ${contentType}`);
     }
     return (await response.json()) as T;
   }

@@ -11,6 +11,8 @@ export function generateClient(specData: Uint8Array): string {
   return renderClient(ops);
 }
 
+const JSON_CONTENT = "application/json";
+
 const PATH_PARAM_RE = /\{(\w+)\}/g;
 const PATH_PARAM_FULL_RE = /^\{(\w+)\}$/;
 
@@ -20,11 +22,17 @@ interface Operation {
   path: string;
   pathParams: string[];
   hasBody: boolean;
+  /** Declared request body content type. Empty when the operation has no body. */
+  bodyContentType: string;
   hasQuery: boolean;
   queryRequired: boolean;
+  /** Model name for a JSON request body. Empty for non-JSON bodies. */
   reqBodyRef: string;
-  respRef: string;
-  successCode: number;
+  /** Typed JSON success responses, ascending by status code. */
+  jsonResponses: { code: number; ref: string }[];
+  /** Non-JSON 2xx content types, e.g. text/plain or application/octet-stream. */
+  rawAccepts: string[];
+  successCodes: number[];
   errorCodes: Map<number, string> | null;
   summary: string;
 }
@@ -57,9 +65,32 @@ export function resolveMethodNames(spec: Record<string, unknown>): Map<string, s
   return result;
 }
 
+/**
+ * Query parameters for an operation, from both the path item and the
+ * operation, with `$ref`s to components/parameters resolved.
+ */
+export function operationQueryParams(
+  spec: Record<string, unknown>,
+  pathItem: Record<string, unknown>,
+  op: Record<string, unknown>,
+): Record<string, unknown>[] {
+  const params = [
+    ...((pathItem.parameters as Record<string, unknown>[]) ?? []),
+    ...((op.parameters as Record<string, unknown>[]) ?? []),
+  ];
+  return params
+    .map((p) => resolveRef(spec, p))
+    .filter((p): p is Record<string, unknown> => p !== null && p.in === "query");
+}
+
 /** Model name for an operation's injected query-parameter schema. */
-export function queryRequestTypeName(methodName: string): string {
-  return methodName.charAt(0).toUpperCase() + methodName.slice(1) + "Request";
+export function queryTypeName(methodName: string): string {
+  return methodName.charAt(0).toUpperCase() + methodName.slice(1) + "Params";
+}
+
+/** Model name for an operation's hoisted inline JSON response schema. */
+export function responseTypeName(methodName: string): string {
+  return methodName.charAt(0).toUpperCase() + methodName.slice(1) + "Response";
 }
 
 function extractOperations(spec: Record<string, unknown>): Operation[] {
@@ -73,28 +104,22 @@ function extractOperations(spec: Record<string, unknown>): Operation[] {
         continue;
       const opData = opDataRaw as Record<string, unknown>;
       const name = names.get(`${httpMethod}\0${path}`)!;
-      const queryParams = ((opData.parameters as unknown[]) ?? []).filter(
-        (p): p is Record<string, unknown> =>
-          typeof p === "object" && p !== null && (p as Record<string, unknown>).in === "query",
-      );
+      const queryParams = operationQueryParams(spec, pathItem, opData);
       const hasBody = "requestBody" in opData;
-      if (hasBody && queryParams.length > 0) {
-        throw new Error(
-          `${httpMethod.toUpperCase()} ${path} has both a request body and query parameters; ` +
-            "the generated `request` field cannot represent both",
-        );
-      }
+      const successCodes = extractSuccessCodes(opData, httpMethod, path);
       ops.push({
         name,
         httpMethod: httpMethod.toUpperCase(),
         path,
         pathParams: [...path.matchAll(PATH_PARAM_RE)].map((m) => m[1]!),
         hasBody,
+        bodyContentType: bodyContentType(spec, opData),
         hasQuery: queryParams.length > 0,
         queryRequired: queryParams.some((p) => p.required === true),
         reqBodyRef: bodySchemaRef(spec, opData),
-        respRef: responseSchemaRef(spec, opData),
-        successCode: extractSuccessCode(opData, httpMethod, path),
+        jsonResponses: jsonResponseRefs(spec, opData, successCodes),
+        rawAccepts: rawResponseAccepts(spec, opData, successCodes),
+        successCodes,
         errorCodes: errorCodeMap(spec, opData),
         summary: (opData.summary as string) ?? "",
       });
@@ -104,17 +129,72 @@ function extractOperations(spec: Record<string, unknown>): Operation[] {
   return ops;
 }
 
-function extractSuccessCode(op: Record<string, unknown>, httpMethod: string, path: string): number {
+function extractSuccessCodes(
+  op: Record<string, unknown>,
+  httpMethod: string,
+  path: string,
+): number[] {
   const responses = (op.responses ?? {}) as Record<string, unknown>;
   const codes = Object.keys(responses)
     .filter((c) => /^\d+$/.test(c) && Number(c) >= 200 && Number(c) < 300)
-    .map(Number);
-  if (codes.length !== 1) {
-    throw new Error(
-      `expected exactly one 2xx response for ${httpMethod.toUpperCase()} ${path}, got [${codes}]`,
-    );
+    .map(Number)
+    .sort((a, b) => a - b);
+  if (codes.length === 0) {
+    throw new Error(`expected at least one 2xx response for ${httpMethod.toUpperCase()} ${path}`);
   }
-  return codes[0]!;
+  return codes;
+}
+
+/** Typed JSON success responses, one per 2xx code that declares a JSON body. */
+function jsonResponseRefs(
+  spec: Record<string, unknown>,
+  op: Record<string, unknown>,
+  successCodes: number[],
+): { code: number; ref: string }[] {
+  const responses = (op.responses ?? {}) as Record<string, Record<string, unknown>>;
+  const result: { code: number; ref: string }[] = [];
+  for (const code of successCodes) {
+    const respNode = responses[String(code)];
+    if (!respNode) continue;
+    const resolved = resolveRef(spec, respNode);
+    let ref = jsonContentSchemaRef(resolved);
+    // A response that is itself a $ref with JSON content names the component.
+    if (!ref && respNode.$ref && hasJsonContent(resolved)) {
+      ref = rootTypeName((respNode.$ref as string).split("/").pop()!);
+    }
+    if (ref) result.push({ code, ref });
+  }
+  return result;
+}
+
+/** Non-JSON content types declared on 2xx responses, deduplicated. */
+function rawResponseAccepts(
+  spec: Record<string, unknown>,
+  op: Record<string, unknown>,
+  successCodes: number[],
+): string[] {
+  const responses = (op.responses ?? {}) as Record<string, Record<string, unknown>>;
+  const accepts = new Set<string>();
+  for (const code of successCodes) {
+    const respNode = responses[String(code)];
+    if (!respNode) continue;
+    const resolved = resolveRef(spec, respNode);
+    const content = (resolved?.content ?? {}) as Record<string, unknown>;
+    for (const contentType of Object.keys(content)) {
+      if (contentType !== JSON_CONTENT) accepts.add(contentType);
+    }
+  }
+  return [...accepts].sort();
+}
+
+function bodyContentType(spec: Record<string, unknown>, op: Record<string, unknown>): string {
+  const rb = resolveRef(spec, (op.requestBody as Record<string, unknown>) ?? null);
+  if (!rb) return "";
+  const content = (rb.content ?? {}) as Record<string, unknown>;
+  const types = Object.keys(content);
+  if (types.length === 0) return "";
+  // Prefer JSON when an operation declares several body encodings.
+  return types.includes(JSON_CONTENT) ? JSON_CONTENT : types[0]!;
 }
 
 function deriveMethodName(
@@ -181,23 +261,6 @@ function bodySchemaRef(spec: Record<string, unknown>, op: Record<string, unknown
   return jsonContentSchemaRef(resolveRef(spec, rb));
 }
 
-function responseSchemaRef(spec: Record<string, unknown>, op: Record<string, unknown>): string {
-  const responses = (op.responses ?? {}) as Record<string, Record<string, unknown>>;
-  for (const code of ["200", "201", "202"]) {
-    const respNode = responses[code];
-    if (!respNode) continue;
-    const resolved = resolveRef(spec, respNode);
-    const ref = jsonContentSchemaRef(resolved);
-    if (ref) return ref;
-    // If the response was a $ref and has JSON content, use the component name.
-    if (respNode.$ref && hasJsonContent(resolved)) {
-      const name = (respNode.$ref as string).split("/").pop();
-      if (name) return rootTypeName(name);
-    }
-  }
-  return "";
-}
-
 function hasJsonContent(node: Record<string, unknown> | null): boolean {
   if (!node) return false;
   return "application/json" in ((node.content as Record<string, unknown>) ?? {});
@@ -227,16 +290,16 @@ function pathFmt(path: string): string {
 // --- Rendering ---
 
 function renderClient(ops: Operation[]): string {
-  const hasTypedResp = ops.some((op) => op.respRef);
-  const hasNoResp = ops.some((op) => !op.respRef);
+  const hasTypedResp = ops.some((op) => op.jsonResponses.length > 0);
+  const hasNoResp = ops.some((op) => op.jsonResponses.length === 0 && op.rawAccepts.length === 0);
 
   const errorRefs = [...new Set(ops.flatMap((op) => [...(op.errorCodes?.values() ?? [])]))].sort();
 
   const modelImports = new Set<string>();
   for (const op of ops) {
     if (op.reqBodyRef) modelImports.add(op.reqBodyRef);
-    if (op.hasQuery) modelImports.add(queryRequestTypeName(op.name));
-    if (op.respRef) modelImports.add(op.respRef);
+    if (op.hasQuery) modelImports.add(queryTypeName(op.name));
+    for (const { ref } of op.jsonResponses) modelImports.add(ref);
     for (const ref of op.errorCodes?.values() ?? []) modelImports.add(ref);
   }
 
@@ -287,7 +350,12 @@ interface ApiRequest {
   pathArgs: string[];
   query: Record<string, unknown> | null;
   body: unknown;
-  successCode: number;
+  /** Request body encoding. Defaults to application/json. */
+  bodyContentType?: string;
+  /** Accept header to send. Omitted when the response is JSON. */
+  accept?: string;
+  /** Accepted success statuses. Defaults to [200]. */
+  successCodes?: number[];
   errorCodes: Record<number, string> | null;
 }
 
@@ -311,7 +379,15 @@ export class ApiClient {
 `;
 
   for (const op of ops) {
-    src += `\n${renderMethod(op)}`;
+    // An operation with no JSON success body returns the response directly,
+    // since there is nothing to deserialize into.
+    const rawOnly = op.jsonResponses.length === 0 && op.rawAccepts.length > 0;
+    src += `\n${renderMethod(op, rawOnly)}`;
+    // A content-negotiated operation also gets a sibling returning the raw
+    // response, since Accept changes the body's type entirely.
+    if (op.jsonResponses.length > 0 && op.rawAccepts.length > 0) {
+      src += `\n${renderMethod(op, true)}`;
+    }
   }
 
   src += `
@@ -343,12 +419,30 @@ export class ApiClient {
       method: request.method,
       headers: { ...this.headers },
     };
+    const headers = init.headers as Record<string, string>;
+    if (request.accept !== undefined) {
+      headers["Accept"] = request.accept;
+    }
     if (request.body !== null) {
-      (init.headers as Record<string, string>)["Content-Type"] = "application/json";
-      init.body = JSON.stringify(request.body);
+      const contentType = request.bodyContentType ?? "application/json";
+      if (contentType === "application/json") {
+        headers["Content-Type"] = contentType;
+        init.body = JSON.stringify(request.body);
+      } else if (contentType === "multipart/form-data") {
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
+        init.body = request.body as BodyInit;
+      } else {
+        headers["Content-Type"] = contentType;
+        init.body = request.body as BodyInit;
+      }
     }
     const response = await this.fetchImpl(\`\${this.baseUrl}\${path}\`, init);
-    if (response.status !== request.successCode) {`;
+    if (!(request.successCodes ?? [200]).includes(response.status)) {`;
 
   if (errorRefs.length > 0) {
     src += `
@@ -374,14 +468,30 @@ export class ApiClient {
 
   if (hasTypedResp) {
     src += `
-  // TODO(https://github.com/basetenlabs/baseten-js/issues/2): support non-JSON response content types
   private async _doJson<T>(request: ApiRequest): Promise<T> {
     const response = await this._do(request);
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-      throw new ResponseError(response.status, \`non-JSON response content type not currently supported, got \${contentType}\`);
+      throw new ResponseError(response.status, \`expected a JSON response, got \${contentType}\`);
     }
     return (await response.json()) as T;
+  }
+`;
+  }
+
+  if (ops.some((op) => op.jsonResponses.length > 1)) {
+    src += `
+  /**
+   * Reads a JSON body and pairs it with the status, for operations whose
+   * success statuses return different types.
+   */
+  private async _doJsonWithStatus<T>(request: ApiRequest): Promise<{ status: number; data: T }> {
+    const response = await this._do(request);
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new ResponseError(response.status, \`expected a JSON response, got \${contentType}\`);
+    }
+    return { status: response.status, data: (await response.json()) as T };
   }
 `;
   }
@@ -398,47 +508,44 @@ export class ApiClient {
   return src;
 }
 
-function renderMethod(op: Operation): string {
-  // An operation carries at most one input model on the `request` field: a
-  // request body (non-GET) or query parameters (GET). Both are represented as
-  // the same field since no operation has both. A body is always required so an
-  // empty body still sends `{}`; query params are optional unless the spec
-  // marks one required.
-  let requestType = "";
-  let requestRequired = false;
+/**
+ * Renders one method. With `raw`, renders the content-negotiated sibling
+ * instead: it takes an `accept` argument and returns the response untouched.
+ */
+function renderMethod(op: Operation, raw = false): string {
+  // Query params go on `params` and the request body on `request`. A request
+  // body is always required so an empty body still sends `{}`. Query params
+  // are optional unless the spec marks one required.
+  let bodyType = "";
   if (op.hasBody) {
-    requestType = op.reqBodyRef || "unknown";
-    requestRequired = true;
-  } else if (op.hasQuery) {
-    requestType = queryRequestTypeName(op.name);
-    requestRequired = op.queryRequired;
+    bodyType = op.reqBodyRef || bodyTypeForContent(op.bodyContentType);
   }
+  const queryType = op.hasQuery ? queryTypeName(op.name) : "";
+  const queryOptional = op.hasQuery && !op.queryRequired;
 
-  const hasParams = op.pathParams.length > 0 || requestType !== "";
-  // The whole params argument is optional when every field it holds is
-  // optional, i.e. no path params and an optional request.
-  const paramsOptional = op.pathParams.length === 0 && requestType !== "" && !requestRequired;
+  // Every content type the success responses can produce. More than one means
+  // the caller has to say which it wants.
+  const contentTypes = [...(op.jsonResponses.length > 0 ? [JSON_CONTENT] : []), ...op.rawAccepts];
+  const needsAcceptParam = raw && contentTypes.length > 1;
 
-  let paramsType = "";
-  if (hasParams) {
-    const fields: string[] = [];
-    for (const p of op.pathParams) {
-      fields.push(`${p}: string`);
-    }
-    if (requestType) {
-      fields.push(`request${requestRequired ? "" : "?"}: ${requestType}`);
-    }
-    paramsType = `{ ${fields.join("; ")} }`;
+  const fields: string[] = [];
+  for (const p of op.pathParams) fields.push(`${p}: string`);
+  if (needsAcceptParam) {
+    fields.push(`accept: ${contentTypes.map((c) => `"${c}"`).join(" | ")}`);
   }
+  if (queryType) fields.push(`params${queryOptional ? "?" : ""}: ${queryType}`);
+  if (bodyType) fields.push(`request: ${bodyType}`);
 
-  const paramSig = hasParams ? `params${paramsOptional ? "?" : ""}: ${paramsType}` : "";
-  const retType = op.respRef ? `Promise<${op.respRef}>` : "Promise<void>";
+  const hasParams = fields.length > 0;
+  // The whole params argument is optional only when every field it holds is.
+  const paramsOptional = hasParams && fields.every((f) => f.includes("?:"));
+  const paramSig = hasParams ? `params${paramsOptional ? "?" : ""}: { ${fields.join("; ")} }` : "";
 
   const pathArgs =
     op.pathParams.length > 0 ? `[${op.pathParams.map((p) => `params.${p}`).join(", ")}]` : "[]";
   const paramsRef = paramsOptional ? "params?" : "params";
-  const bodyArg = op.hasBody ? "params.request" : "null";
-  const queryArg = op.hasQuery ? `${paramsRef}.request ?? null` : "null";
+  const bodyArg = bodyType ? "params.request" : "null";
+  const queryArg = queryType ? `${paramsRef}.params ?? null` : "null";
 
   let errorExpr: string;
   if (op.errorCodes) {
@@ -451,17 +558,61 @@ function renderMethod(op: Operation): string {
     errorExpr = "null";
   }
 
-  const req = `{ method: "${op.httpMethod}", pathFmt: "${pathFmt(op.path)}", pathArgs: ${pathArgs}, query: ${queryArg}, body: ${bodyArg}, successCode: ${op.successCode}, errorCodes: ${errorExpr} }`;
+  const parts = [
+    `method: "${op.httpMethod}"`,
+    `pathFmt: "${pathFmt(op.path)}"`,
+    `pathArgs: ${pathArgs}`,
+    `query: ${queryArg}`,
+    `body: ${bodyArg}`,
+  ];
+  if (op.bodyContentType && op.bodyContentType !== JSON_CONTENT) {
+    parts.push(`bodyContentType: "${op.bodyContentType}"`);
+  }
+  if (needsAcceptParam) {
+    parts.push("accept: params.accept");
+  } else if (raw) {
+    parts.push(`accept: "${contentTypes[0]}"`);
+  }
+  // Defaulted in _do, so only emitted when it is not exactly [200].
+  if (op.successCodes.length !== 1 || op.successCodes[0] !== 200) {
+    parts.push(`successCodes: [${op.successCodes.join(", ")}]`);
+  }
+  parts.push(`errorCodes: ${errorExpr}`);
+  const req = `{ ${parts.join(", ")} }`;
 
+  // The suffix marks the sibling of a JSON method, so a raw-only operation,
+  // having no sibling to be confused with, keeps the plain name.
+  const isSibling = raw && op.jsonResponses.length > 0;
+  const name = isSibling ? `${op.name}Raw` : op.name;
   let jsdoc = "";
   if (op.summary) {
-    jsdoc = `  /** ${op.summary} */\n`;
+    jsdoc = isSibling
+      ? `  /** ${op.summary}. Returns the response unread, in the requested content type. */\n`
+      : `  /** ${op.summary} */\n`;
   }
 
-  if (op.respRef) {
-    return `${jsdoc}  async ${op.name}(${paramSig}): ${retType} {\n    return this._doJson<${op.respRef}>(${req});\n  }\n`;
+  if (raw) {
+    return `${jsdoc}  async ${name}(${paramSig}): Promise<Response> {\n    return this._do(${req});\n  }\n`;
   }
-  return `${jsdoc}  async ${op.name}(${paramSig}): ${retType} {\n    await this._doNoResponse(${req});\n  }\n`;
+  if (op.jsonResponses.length > 1) {
+    const union = op.jsonResponses
+      .map(({ code, ref }) => `{ status: ${code}; data: ${ref} }`)
+      .join(" | ");
+    const dataUnion = op.jsonResponses.map(({ ref }) => ref).join(" | ");
+    return `${jsdoc}  async ${name}(${paramSig}): Promise<${union}> {\n    return (await this._doJsonWithStatus<${dataUnion}>(${req})) as ${union};\n  }\n`;
+  }
+  if (op.jsonResponses.length === 1) {
+    const ref = op.jsonResponses[0]!.ref;
+    return `${jsdoc}  async ${name}(${paramSig}): Promise<${ref}> {\n    return this._doJson<${ref}>(${req});\n  }\n`;
+  }
+  return `${jsdoc}  async ${name}(${paramSig}): Promise<void> {\n    await this._doNoResponse(${req});\n  }\n`;
+}
+
+/** TypeScript type accepted for a non-JSON request body. */
+function bodyTypeForContent(contentType: string): string {
+  if (contentType === "multipart/form-data") return "FormData";
+  if (contentType === "application/octet-stream") return "BodyInit";
+  return "unknown";
 }
 
 function camelToSnakeField(s: string): string {
