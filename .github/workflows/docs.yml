@@ -27,25 +27,31 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "26"
 
       - run: pnpm install --frozen-lockfile
 
+      # Each package writes its docs to its own subdirectory of _site.
       - name: Generate docs
-        run: pnpm --filter @basetenlabs/client run generate-docs
+        run: pnpm -r run generate-docs
 
-      # Root landing page redirects to the client package docs; future packages
-      # get their own subdirectory alongside client/.
-      - name: Root redirect to client docs
+      - name: Root landing page
         run: |
-          cat > packages/client/_site/index.html <<'EOF'
-          <!doctype html><meta http-equiv="refresh" content="0; url=client/">
-          <a href="client/">Baseten JS SDK docs</a>
+          cat > _site/index.html <<'EOF'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>Baseten JS SDK docs</title>
+          <h1>Baseten JS SDK docs</h1>
+          <ul>
+            <li><a href="client/">@basetenlabs/client</a></li>
+            <li><a href="sandbox/">@basetenlabs/sandbox</a></li>
+          </ul>
+          <p><a href="https://github.com/basetenlabs/baseten-js">GitHub repository</a></p>
           EOF
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/client/_site
+          path: _site
 
       - id: deployment
         uses: actions/deploy-pages@v4
