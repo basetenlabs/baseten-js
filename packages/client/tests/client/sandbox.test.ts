@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SandboxClient } from "../../src/sandbox";
+import { ResponseError, ResponseErrorResponse } from "../../src/sandboxapi";
 import { type CapturedRequest, fakeFetch } from "../helpers";
 
 // Every test supplies a fake fetch, so nothing is ever dialed. The .invalid TLD
@@ -141,5 +142,26 @@ describe("SandboxClient", () => {
     await client.api.getWatchFilesystem({ path: "/app", params: { ignore: "node_modules,dist" } });
 
     expect(capture().url).toBe(`${BASE_URL}/watch/filesystem/%2Fapp?ignore=node_modules%2Cdist`);
+  });
+
+  it("keeps the status on a typed error", async () => {
+    const { client } = makeClient(404, { error: "no such file" });
+    const err = await client.api.getFilesystem({ path: "/missing" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResponseErrorResponse);
+    expect((err as ResponseErrorResponse).statusCode).toBe(404);
+    expect((err as ResponseErrorResponse).error_response.error).toBe("no such file");
+  });
+
+  it("falls back to an untyped error when a typed error body is not JSON", async () => {
+    const fetch = (async () =>
+      new Response("<html>Bad Gateway</html>", {
+        status: 500,
+        headers: { "content-type": "text/html" },
+      })) as typeof globalThis.fetch;
+    const client = new SandboxClient({ token: "t", baseUrl: BASE_URL, fetch });
+    const err = await client.api.getFilesystem({ path: "/x" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResponseError);
+    expect((err as ResponseError).statusCode).toBe(500);
+    expect((err as ResponseError).body).toBe("<html>Bad Gateway</html>");
   });
 });

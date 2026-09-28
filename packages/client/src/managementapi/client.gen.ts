@@ -3479,7 +3479,8 @@ export class ApiClient {
     }
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (!(request.successCodes ?? [200]).includes(response.status)) {
-      throw new ResponseError(response.status, await response.text());
+      const body = await response.text();
+      throw new ResponseError(response.status, body);
     }
     return response;
   }

@@ -326,7 +326,10 @@ export class ResponseError extends Error {
     src += `
 export class Response${ref} extends Error {
   public readonly ${fieldName}: ${ref};
-  constructor(statusCode: number, data: unknown) {
+  constructor(
+    public readonly statusCode: number,
+    data: unknown,
+  ) {
     super(\`baseten API error (HTTP \${statusCode}): \${JSON.stringify(data)}\`);
     this.${fieldName} = data as ${ref};
   }
@@ -442,25 +445,29 @@ export class ApiClient {
       }
     }
     const response = await this.fetchImpl(\`\${this.baseUrl}\${path}\`, init);
-    if (!(request.successCodes ?? [200]).includes(response.status)) {`;
+    if (!(request.successCodes ?? [200]).includes(response.status)) {
+      const body = await response.text();`;
 
   if (errorRefs.length > 0) {
     src += `
-      if (request.errorCodes?.[response.status]) {
-        const ErrorClass = ERROR_TYPES[request.errorCodes[response.status]!];
-        if (ErrorClass) {
-          try {
-            const data = await response.json();
-            throw new ErrorClass(response.status, data);
-          } catch (e) {
-            if (Object.values(ERROR_TYPES).some((cls) => e instanceof cls)) throw e;
-          }
+      const errorType = request.errorCodes?.[response.status];
+      const ErrorClass = errorType ? ERROR_TYPES[errorType] : undefined;
+      if (ErrorClass) {
+        // Parsed from the text rather than read with json(), since a body can
+        // only be read once and the untyped fallback below still needs it.
+        let data: unknown;
+        try {
+          data = JSON.parse(body);
+        } catch {
+          // A body that is not JSON, such as a proxy's HTML error page, gets
+          // the untyped error instead.
         }
+        if (data !== undefined) throw new ErrorClass(response.status, data);
       }`;
   }
 
   src += `
-      throw new ResponseError(response.status, await response.text());
+      throw new ResponseError(response.status, body);
     }
     return response;
   }
