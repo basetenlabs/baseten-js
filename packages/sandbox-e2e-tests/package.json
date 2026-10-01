@@ -1,0 +1,14 @@
+{
+  "name": "@basetenlabs/sandbox-e2e-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint && oxfmt --check . && tsc --noEmit",
+    "format": "oxfmt --write .",
+    "test": "vitest run --disableConsoleIntercept"
+  },
+  "devDependencies": {
+    "@basetenlabs/sandbox": "workspace:*"
+  }
+}

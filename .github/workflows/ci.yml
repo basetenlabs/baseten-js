@@ -8,6 +8,7 @@ on:
 jobs:
   check:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -20,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "26"
 
       - run: pnpm install --frozen-lockfile
 
@@ -43,6 +44,16 @@ jobs:
           BASETEN_E2E_TEST_DOMAIN: ${{ secrets.BASETEN_E2E_TEST_DOMAIN }}
           BASETEN_E2E_TEST_MODEL_ID: ${{ secrets.BASETEN_E2E_TEST_MODEL_ID }}
         run: pnpm test
+
+      # Node 22 bundles undici 6, so the sandbox package must refuse an
+      # installed undici 8. Last, since it switches Node.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test sandbox transport under Node 22
+        working-directory: packages/sandbox
+        run: pnpm exec vitest run tests/transport.test.ts
 
   test-bun:
     runs-on: ubuntu-latest

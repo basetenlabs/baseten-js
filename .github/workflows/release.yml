@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "26"
           registry-url: "https://registry.npmjs.org"
 
       - run: pnpm install --frozen-lockfile
@@ -26,15 +26,11 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      # npm trusted publishing (tokenless OIDC) is implemented in the npm CLI,
-      # not pnpm, so publish with npm. It landed in npm 11.5.1, newer than the
-      # npm bundled with Node 22, so pin a known-good major (npm versions are
-      # independent of the Node major).
-      - name: Install npm with trusted publishing support
-        run: npm install -g npm@^11.5.1
-
-      # Fails if the version is already on npm, so bump the version before
-      # cutting a release. The private e2e-tests package is not published here.
+      # Publishes every public package in dependency order, with workspace:*
+      # rewritten to exact versions, skipping private packages and versions
+      # already on npm, so bump versions before cutting a release. pnpm hands
+      # each packed tarball to the npm CLI, which does the tokenless OIDC
+      # trusted publishing and which Node 26 bundles at a version with it. The
+      # release checkout is a detached tag, so pnpm's branch check is skipped.
       - name: Publish
-        working-directory: packages/client
-        run: npm publish --provenance --access public
+        run: pnpm publish -r --no-git-checks --provenance --access public

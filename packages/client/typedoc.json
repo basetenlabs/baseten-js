@@ -7,6 +7,6 @@
     "src/modelconfig/index.ts",
     "src/sandboxapi/index.ts"
   ],
-  "out": "_site/client",
+  "out": "../../_site/client",
   "includeVersion": true
 }
