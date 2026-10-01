@@ -29,6 +29,10 @@
     "./modelconfig": {
       "types": "./dist/modelconfig.d.ts",
       "default": "./dist/modelconfig.js"
+    },
+    "./sandboxapi": {
+      "types": "./dist/sandboxapi.d.ts",
+      "default": "./dist/sandboxapi.js"
     }
   },
   "publishConfig": {

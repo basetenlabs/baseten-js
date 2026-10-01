@@ -11,6 +11,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { load as loadYaml } from "js-yaml";
 import { generateClient } from "./clientgen.ts";
 import { postprocessDts } from "./postprocess.ts";
 import { preprocessConfigSchema, preprocessSpec } from "./preprocess.ts";
@@ -21,6 +22,8 @@ const MANAGEMENT_SPEC_URL = "https://api.baseten.co/v1/spec";
 const INFERENCE_SPEC_URL = "https://api.baseten.co/inference-spec";
 const TRUSS_CONFIG_SCHEMA_URL =
   "https://raw.githubusercontent.com/basetenlabs/truss/main/truss/config.schema.json";
+const SANDBOX_SPEC_URL =
+  "https://raw.githubusercontent.com/blaxel-ai/sandbox/main/sandbox-api/docs/openapi.yml";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SPECS_DIR = resolve(SCRIPT_DIR, "specs");
@@ -36,6 +39,7 @@ async function main(): Promise<void> {
     await downloadSpec(MANAGEMENT_SPEC_URL, resolve(SPECS_DIR, "management.json"));
     await downloadSpec(INFERENCE_SPEC_URL, resolve(SPECS_DIR, "inference.json"));
     await downloadSpec(TRUSS_CONFIG_SCHEMA_URL, resolve(SPECS_DIR, "config.schema.json"));
+    await downloadSpec(SANDBOX_SPEC_URL, resolve(SPECS_DIR, "sandbox.yml"));
   }
 
   await generateApi(
@@ -43,6 +47,7 @@ async function main(): Promise<void> {
     resolve(CLIENT_SRC_DIR, "managementapi"),
   );
   await generateApi(resolve(SPECS_DIR, "inference.json"), resolve(CLIENT_SRC_DIR, "inferenceapi"));
+  await generateApi(resolve(SPECS_DIR, "sandbox.yml"), resolve(CLIENT_SRC_DIR, "sandboxapi"));
   await generateModelConfig(
     resolve(SPECS_DIR, "config.schema.json"),
     resolve(CLIENT_SRC_DIR, "modelconfig"),
@@ -72,6 +77,11 @@ async function generateModelConfig(specFile: string, outDir: string): Promise<vo
   await rm(tmpSpec);
 }
 
+async function readYamlAsJson(specFile: string): Promise<Uint8Array> {
+  const doc = loadYaml(await readFile(specFile, "utf-8"));
+  return new TextEncoder().encode(JSON.stringify(doc));
+}
+
 async function downloadSpec(url: string, dest: string): Promise<void> {
   console.log(`  ${url} -> ${dest}`);
   const resp = await fetch(url);
@@ -84,7 +94,12 @@ async function generateApi(specFile: string, outDir: string): Promise<void> {
   console.log(`Generating ${outDir} from ${specFile}`);
   await mkdir(outDir, { recursive: true });
 
-  const raw = await readFile(specFile);
+  // Specs are committed exactly as the upstream serves them, so a YAML spec is
+  // converted here rather than at download time.
+  const raw =
+    specFile.endsWith(".yml") || specFile.endsWith(".yaml")
+      ? await readYamlAsJson(specFile)
+      : await readFile(specFile);
   const preprocessed = preprocessSpec(raw);
 
   // Write preprocessed spec to a temp file for openapi-typescript CLI

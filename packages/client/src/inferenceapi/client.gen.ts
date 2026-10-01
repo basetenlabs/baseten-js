@@ -26,7 +26,10 @@ export class ResponseError extends Error {
 
 export class ResponseErrorResponse extends Error {
   public readonly error_response: ErrorResponse;
-  constructor(statusCode: number, data: unknown) {
+  constructor(
+    public readonly statusCode: number,
+    data: unknown,
+  ) {
     super(`baseten API error (HTTP ${statusCode}): ${JSON.stringify(data)}`);
     this.error_response = data as ErrorResponse;
   }
@@ -42,7 +45,12 @@ interface ApiRequest {
   pathArgs: string[];
   query: Record<string, unknown> | null;
   body: unknown;
-  successCode: number;
+  /** Request body encoding. Defaults to application/json. */
+  bodyContentType?: string;
+  /** Accept header to send. Omitted when the response is JSON. */
+  accept?: string;
+  /** Accepted success statuses. Defaults to [200]. */
+  successCodes?: number[];
   errorCodes: Record<number, string> | null;
 }
 
@@ -75,7 +83,7 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -97,7 +105,7 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -118,7 +126,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -139,7 +147,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -160,7 +168,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -182,7 +190,7 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -203,7 +211,7 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -223,7 +231,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -243,7 +251,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -263,7 +271,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 201,
+      successCodes: [201],
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -281,7 +289,6 @@ export class ApiClient {
       pathArgs: [params.request_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
     });
   }
@@ -294,7 +301,6 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
     });
   }
@@ -309,7 +315,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
     });
   }
@@ -322,7 +327,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
     });
   }
@@ -335,7 +339,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
     });
   }
@@ -348,7 +351,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
     });
   }
@@ -361,7 +363,6 @@ export class ApiClient {
       pathArgs: [params.request_id],
       query: null,
       body: null,
-      successCode: 200,
       errorCodes: { 401: "ErrorResponse", 429: "ErrorResponse" },
     });
   }
@@ -374,7 +375,30 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: {
+        400: "ErrorResponse",
+        401: "ErrorResponse",
+        429: "ErrorResponse",
+        502: "ErrorResponse",
+        503: "ErrorResponse",
+        504: "ErrorResponse",
+      },
+    });
+  }
+
+  /** Call the model deployment associated with a specified environment.. Returns the response unread, in the requested content type. */
+  async predictRaw(params: {
+    env_name: string;
+    accept: "application/json" | "application/octet-stream";
+    request: PredictInput;
+  }): Promise<Response> {
+    return this._do({
+      method: "POST",
+      pathFmt: "/environments/{}/predict",
+      pathArgs: [params.env_name],
+      query: null,
+      body: params.request,
+      accept: params.accept,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -397,7 +421,30 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: {
+        400: "ErrorResponse",
+        401: "ErrorResponse",
+        429: "ErrorResponse",
+        502: "ErrorResponse",
+        503: "ErrorResponse",
+        504: "ErrorResponse",
+      },
+    });
+  }
+
+  /** Call a specific deployment of a model by deployment ID.. Returns the response unread, in the requested content type. */
+  async predictDeploymentRaw(params: {
+    deployment_id: string;
+    accept: "application/json" | "application/octet-stream";
+    request: PredictInput;
+  }): Promise<Response> {
+    return this._do({
+      method: "POST",
+      pathFmt: "/deployment/{}/predict",
+      pathArgs: [params.deployment_id],
+      query: null,
+      body: params.request,
+      accept: params.accept,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -417,7 +464,29 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: {
+        400: "ErrorResponse",
+        401: "ErrorResponse",
+        429: "ErrorResponse",
+        502: "ErrorResponse",
+        503: "ErrorResponse",
+        504: "ErrorResponse",
+      },
+    });
+  }
+
+  /** Call the development deployment of a model.. Returns the response unread, in the requested content type. */
+  async predictDevelopmentRaw(params: {
+    accept: "application/json" | "application/octet-stream";
+    request: PredictInput;
+  }): Promise<Response> {
+    return this._do({
+      method: "POST",
+      pathFmt: "/development/predict",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      accept: params.accept,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -437,7 +506,29 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: {
+        400: "ErrorResponse",
+        401: "ErrorResponse",
+        429: "ErrorResponse",
+        502: "ErrorResponse",
+        503: "ErrorResponse",
+        504: "ErrorResponse",
+      },
+    });
+  }
+
+  /** Call the production environment of a model.. Returns the response unread, in the requested content type. */
+  async predictProductionRaw(params: {
+    accept: "application/json" | "application/octet-stream";
+    request: PredictInput;
+  }): Promise<Response> {
+    return this._do({
+      method: "POST",
+      pathFmt: "/production/predict",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      accept: params.accept,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -457,7 +548,29 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
+      errorCodes: {
+        400: "ErrorResponse",
+        401: "ErrorResponse",
+        429: "ErrorResponse",
+        502: "ErrorResponse",
+        503: "ErrorResponse",
+        504: "ErrorResponse",
+      },
+    });
+  }
+
+  /** Call a regional environment of a model.. Returns the response unread, in the requested content type. */
+  async predictRegionalRaw(params: {
+    accept: "application/json" | "application/octet-stream";
+    request: PredictInput;
+  }): Promise<Response> {
+    return this._do({
+      method: "POST",
+      pathFmt: "/predict",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      accept: params.accept,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -477,7 +590,6 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -500,7 +612,6 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -520,7 +631,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -540,7 +650,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -560,7 +669,6 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      successCode: 200,
       errorCodes: {
         400: "ErrorResponse",
         401: "ErrorResponse",
@@ -580,7 +688,7 @@ export class ApiClient {
       pathArgs: [params.env_name],
       query: null,
       body: null,
-      successCode: 202,
+      successCodes: [202],
       errorCodes: { 401: "ErrorResponse" },
     });
   }
@@ -593,7 +701,7 @@ export class ApiClient {
       pathArgs: [params.deployment_id],
       query: null,
       body: null,
-      successCode: 202,
+      successCodes: [202],
       errorCodes: { 401: "ErrorResponse" },
     });
   }
@@ -606,7 +714,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 202,
+      successCodes: [202],
       errorCodes: { 401: "ErrorResponse" },
     });
   }
@@ -619,7 +727,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 202,
+      successCodes: [202],
       errorCodes: { 401: "ErrorResponse" },
     });
   }
@@ -632,7 +740,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: null,
-      successCode: 202,
+      successCodes: [202],
       errorCodes: { 401: "ErrorResponse" },
     });
   }
@@ -665,37 +773,55 @@ export class ApiClient {
       method: request.method,
       headers: { ...this.headers },
     };
+    const headers = init.headers as Record<string, string>;
+    if (request.accept !== undefined) {
+      headers["Accept"] = request.accept;
+    }
     if (request.body !== null) {
-      (init.headers as Record<string, string>)["Content-Type"] = "application/json";
-      init.body = JSON.stringify(request.body);
+      const contentType = request.bodyContentType ?? "application/json";
+      if (contentType === "application/json") {
+        headers["Content-Type"] = contentType;
+        init.body = JSON.stringify(request.body);
+      } else if (contentType === "multipart/form-data") {
+        // Left for fetch to set, since only it knows the boundary. An inherited
+        // value would suppress that, so drop it, comparing case-insensitively
+        // the way header names do.
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() === "content-type") delete headers[key];
+        }
+        init.body = request.body as BodyInit;
+      } else {
+        headers["Content-Type"] = contentType;
+        init.body = request.body as BodyInit;
+      }
     }
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, init);
-    if (response.status !== request.successCode) {
-      if (request.errorCodes?.[response.status]) {
-        const ErrorClass = ERROR_TYPES[request.errorCodes[response.status]!];
-        if (ErrorClass) {
-          try {
-            const data = await response.json();
-            throw new ErrorClass(response.status, data);
-          } catch (e) {
-            if (Object.values(ERROR_TYPES).some((cls) => e instanceof cls)) throw e;
-          }
+    if (!(request.successCodes ?? [200]).includes(response.status)) {
+      const body = await response.text();
+      const errorType = request.errorCodes?.[response.status];
+      const ErrorClass = errorType ? ERROR_TYPES[errorType] : undefined;
+      if (ErrorClass) {
+        // Parsed from the text rather than read with json(), since a body can
+        // only be read once and the untyped fallback below still needs it.
+        let data: unknown;
+        try {
+          data = JSON.parse(body);
+        } catch {
+          // A body that is not JSON, such as a proxy's HTML error page, gets
+          // the untyped error instead.
         }
+        if (data !== undefined) throw new ErrorClass(response.status, data);
       }
-      throw new ResponseError(response.status, await response.text());
+      throw new ResponseError(response.status, body);
     }
     return response;
   }
 
-  // TODO(https://github.com/basetenlabs/baseten-js/issues/2): support non-JSON response content types
   private async _doJson<T>(request: ApiRequest): Promise<T> {
     const response = await this._do(request);
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-      throw new ResponseError(
-        response.status,
-        `non-JSON response content type not currently supported, got ${contentType}`,
-      );
+      throw new ResponseError(response.status, `expected a JSON response, got ${contentType}`);
     }
     return (await response.json()) as T;
   }
