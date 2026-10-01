@@ -47,14 +47,18 @@ import type {
   CreatedModelDeployment,
   DeactivateLoopsDeploymentResponse,
   DeactivateLoopsRunResponse,
+  DeactivateLoopsSamplerResponse,
   DeactivateResponse,
   DeleteImageParams,
   DeleteImageTagParams,
+  DeleteRoutesHarnessConfigsParams,
   DeleteSandboxParams,
   DeleteVolumeRequest,
   DeleteVolumeResponse,
   DeleteVolumeVersionRequest,
   DeleteVolumeVersionResponse,
+  DeployLoopsCheckpointRequest,
+  DeployLoopsCheckpointResponse,
   Deployment,
   DeploymentConfigResponse,
   DeploymentTombstone,
@@ -86,6 +90,7 @@ import type {
   GetDeploymentPatchesStateResponse,
   GetExploreMetadataParams,
   GetGatewayEventsParams,
+  GetImageBuildLogsParams,
   GetImageParams,
   GetLogsResponse,
   GetLoopsCapabilitiesParams,
@@ -115,6 +120,7 @@ import type {
   GetModelsEnvironmentsLogsParams,
   GetModelsEnvironmentsMetricsParams,
   GetModelsParams,
+  GetRoutesHarnessConfigsParams,
   GetRoutesParams,
   GetRoutesUsageParams,
   GetSandboxParams,
@@ -142,6 +148,7 @@ import type {
   Group,
   GroupsResponse,
   Image,
+  ImageBuildLogsResponse,
   InstanceTypePrices,
   InstanceTypes,
   KeysForGroupResponse,
@@ -202,6 +209,10 @@ import type {
   RestoreVolumeVersionResponse,
   RetryDeploymentResponse,
   Route,
+  RouteHarnessConfig,
+  RouteHarnessConfigTombstone,
+  RouteHarnessConfigsResponse,
+  RouteSpendLimit,
   RouteTombstone,
   RoutesResponse,
   RoutesUsageResponse,
@@ -211,6 +222,7 @@ import type {
   Secret,
   SecretTombstone,
   Secrets,
+  SetRouteHarnessConfigRequest,
   SignSshCertificateRequest,
   SignSshCertificateResponse,
   SignalPromotionResponse,
@@ -242,7 +254,9 @@ import type {
   UpdateLibraryListingVersionRequest,
   UpdateModelRequest,
   UpdateRequestBackpressureSettings,
+  UpdateRouteHarnessConfigRequest,
   UpdateRouteRequest,
+  UpdateRouteSpendLimitRequest,
   UpdateSandboxParams,
   UpdateSandboxRequest,
   UpdateTrainingJobRequest,
@@ -504,6 +518,21 @@ export class ApiClient {
       pathFmt: "/v1/routes/{}",
       pathArgs: [params.route_id],
       query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Clears default models for a coding harness */
+  async deleteRoutesHarnessConfigs(params: {
+    harness: string;
+    params: DeleteRoutesHarnessConfigsParams;
+  }): Promise<RouteHarnessConfigTombstone> {
+    return this._doJson<RouteHarnessConfigTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/routes/harness-configs/{}",
+      pathArgs: [params.harness],
+      query: params.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -946,6 +975,21 @@ export class ApiClient {
     return this._doJson<Image>({
       method: "GET",
       pathFmt: "/v1/sandboxes/images/{}",
+      pathArgs: [params.image_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Get image build logs */
+  async getImageBuildLogs(params: {
+    image_name: string;
+    params?: GetImageBuildLogsParams;
+  }): Promise<ImageBuildLogsResponse> {
+    return this._doJson<ImageBuildLogsResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/images/{}/logs",
       pathArgs: [params.image_name],
       query: params.params ?? null,
       body: null,
@@ -1527,12 +1571,38 @@ export class ApiClient {
     });
   }
 
+  /** Lists default models for coding harnesses */
+  async getRoutesHarnessConfigs(params: {
+    params: GetRoutesHarnessConfigsParams;
+  }): Promise<RouteHarnessConfigsResponse> {
+    return this._doJson<RouteHarnessConfigsResponse>({
+      method: "GET",
+      pathFmt: "/v1/routes/harness-configs",
+      pathArgs: [],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Gets a route */
   async getRoutesRouteId(params: { route_id: string }): Promise<Route> {
     return this._doJson<Route>({
       method: "GET",
       pathFmt: "/v1/routes/{}",
       pathArgs: [params.route_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a user's spend limits */
+  async getRoutesSpendLimits(params: { user_id: string }): Promise<RouteSpendLimit> {
+    return this._doJson<RouteSpendLimit>({
+      method: "GET",
+      pathFmt: "/v1/routes/spend_limits/{}",
+      pathArgs: [params.user_id],
       query: null,
       body: null,
       errorCodes: null,
@@ -2283,12 +2353,41 @@ export class ApiClient {
     });
   }
 
-  /** Updates a route */
+  /** Updates a route's display name or description */
   async patchRoutes(params: { route_id: string; request: UpdateRouteRequest }): Promise<Route> {
     return this._doJson<Route>({
       method: "PATCH",
       pathFmt: "/v1/routes/{}",
       pathArgs: [params.route_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates default models for a coding harness */
+  async patchRoutesHarnessConfigs(params: {
+    request: UpdateRouteHarnessConfigRequest;
+  }): Promise<RouteHarnessConfig> {
+    return this._doJson<RouteHarnessConfig>({
+      method: "PATCH",
+      pathFmt: "/v1/routes/harness-configs",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a user's spend limits */
+  async patchRoutesSpendLimits(params: {
+    user_id: string;
+    request: UpdateRouteSpendLimitRequest;
+  }): Promise<RouteSpendLimit> {
+    return this._doJson<RouteSpendLimit>({
+      method: "PATCH",
+      pathFmt: "/v1/routes/spend_limits/{}",
+      pathArgs: [params.user_id],
       query: null,
       body: params.request,
       errorCodes: null,
@@ -2542,6 +2641,20 @@ export class ApiClient {
     });
   }
 
+  /** Deploys Loops checkpoints */
+  async postLoopsCheckpointsDeploy(params: {
+    request: DeployLoopsCheckpointRequest;
+  }): Promise<DeployLoopsCheckpointResponse> {
+    return this._doJson<DeployLoopsCheckpointResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/checkpoints/deploy",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
   /** Validates a Loops checkpoint bt:// URI */
   async postLoopsCheckpointsValidate(params: {
     request: ValidateLoopsCheckpointRequest;
@@ -2619,6 +2732,20 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Deactivates a standalone Loops sampler */
+  async postLoopsSamplersDeactivate(params: {
+    sampler_id: string;
+  }): Promise<DeactivateLoopsSamplerResponse> {
+    return this._doJson<DeactivateLoopsSamplerResponse>({
+      method: "POST",
+      pathFmt: "/v1/loops/samplers/{}/deactivate",
+      pathArgs: [params.sampler_id],
+      query: null,
+      body: null,
       errorCodes: null,
     });
   }
@@ -3407,6 +3534,20 @@ export class ApiClient {
       query: params.params ?? null,
       body: params.request,
       successCodes: [202],
+      errorCodes: null,
+    });
+  }
+
+  /** Sets default models for a coding harness */
+  async putRoutesHarnessConfigs(params: {
+    request: SetRouteHarnessConfigRequest;
+  }): Promise<RouteHarnessConfig> {
+    return this._doJson<RouteHarnessConfig>({
+      method: "PUT",
+      pathFmt: "/v1/routes/harness-configs",
+      pathArgs: [],
+      query: null,
+      body: params.request,
       errorCodes: null,
     });
   }
