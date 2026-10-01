@@ -345,11 +345,22 @@ export type components = {
       | "TRAINING_JOB"
       | "CHAINLET";
     /**
+     * RouteHarness
+     * @enum {string}
+     */
+    RouteHarness: "claude-code" | "opencode" | "codex";
+    /**
+     * RouteHarnessModelSource
+     * @enum {string}
+     */
+    RouteHarnessModelSource: "team" | "baseten";
+    /**
+     * RouteHarnessRole
+     * @enum {string}
+     */
+    RouteHarnessRole: "primary" | "background";
+    /**
      * GatewayProvider
-     * @description Customer-facing provider for an endpoint target.
-     *
-     *     External providers resolve to a fixed upstream host + protocol adapter via
-     *     ``external_provider_configs()``; ``BASETEN`` derives its host from the referenced oracle.
      * @enum {string}
      */
     GatewayProvider:
@@ -1926,6 +1937,9 @@ export type components = {
         | components["schemas"]["AuditLogEventGatewayEndpointCreated"]
         | components["schemas"]["AuditLogEventGatewayEndpointUpdated"]
         | components["schemas"]["AuditLogEventGatewayEndpointDeleted"]
+        | components["schemas"]["AuditLogEventProviderConnectionCreated"]
+        | components["schemas"]["AuditLogEventProviderConnectionUpdated"]
+        | components["schemas"]["AuditLogEventProviderConnectionDeleted"]
         | components["schemas"]["AuditLogEventUserInvited"]
         | components["schemas"]["AuditLogEventUserJoinedOrganization"]
         | components["schemas"]["AuditLogEventWebhookSigningSecretCreated"]
@@ -2862,6 +2876,48 @@ export type components = {
       /** Previous Name */
       previous_name: string | null;
     };
+    /** AuditLogEventProviderConnectionCreatedV1 */
+    AuditLogEventProviderConnectionCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "PROVIDER_CONNECTION_CREATED";
+      /** Provider Connection Id */
+      provider_connection_id: string;
+      /** Provider */
+      provider: string;
+      /** Secret Name */
+      secret_name: string;
+    };
+    /** AuditLogEventProviderConnectionDeletedV1 */
+    AuditLogEventProviderConnectionDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "PROVIDER_CONNECTION_DELETED";
+      /** Provider Connection Id */
+      provider_connection_id: string;
+      /** Provider */
+      provider: string;
+      /** Secret Name */
+      secret_name: string;
+    };
+    /** AuditLogEventProviderConnectionUpdatedV1 */
+    AuditLogEventProviderConnectionUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "PROVIDER_CONNECTION_UPDATED";
+      /** Provider Connection Id */
+      provider_connection_id: string;
+      /** Provider */
+      provider: string;
+      /** Secret Name */
+      secret_name: string;
+    };
     /**
      * AuditLogEventReplicaTerminatedV1
      * @description A replica of a model deployment was terminated.
@@ -2983,6 +3039,9 @@ export type components = {
       | "GATEWAY_ENDPOINT_CREATED"
       | "GATEWAY_ENDPOINT_UPDATED"
       | "GATEWAY_ENDPOINT_DELETED"
+      | "PROVIDER_CONNECTION_CREATED"
+      | "PROVIDER_CONNECTION_UPDATED"
+      | "PROVIDER_CONNECTION_DELETED"
       | "USER_INVITED"
       | "USER_JOINED_ORGANIZATION"
       | "WEBHOOK_SIGNING_SECRET_CREATED"
@@ -3232,6 +3291,7 @@ export type components = {
       | "SECRETS"
       | "API_KEYS"
       | "GATEWAY"
+      | "CODE"
       | "WEBHOOK_SIGNING_SECRETS"
       | "USER_MANAGEMENT"
       | "DIRECTORY_GROUP_MANAGEMENT"
@@ -7325,6 +7385,8 @@ export type components = {
     };
     /** CreateLoopsSamplerRequestV1 */
     CreateLoopsSamplerRequest: {
+      /** @description Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'dedicated' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it. */
+      availability_model?: components["schemas"]["V1AvailabilityModel"] | null;
       /**
        * Session Id
        * @description ID of the Loops session this sampler belongs to.
@@ -7360,6 +7422,24 @@ export type components = {
     /** CreateLoopsSamplerResponseV1 */
     CreateLoopsSamplerResponse: {
       sampler: components["schemas"]["LoopsSampler"];
+    };
+    /**
+     * DeactivateLoopsSamplerResponseV1
+     * @description Response for ``POST /v1/loops/samplers/<sampler_id>/deactivate``.
+     */
+    DeactivateLoopsSamplerResponse: {
+      /**
+       * Id
+       * @description The deactivated Loops sampler ID.
+       */
+      id: string;
+      /**
+       * Base Model
+       * @description The base model the deactivated sampler was serving.
+       */
+      base_model: string;
+      /** @description The user who owns the Loops sampler. */
+      user: components["schemas"]["User"];
     };
     /**
      * GetLoopsSamplerResponseV1
@@ -7455,6 +7535,42 @@ export type components = {
      *     inaccessible or malformed paths raise 400.
      */
     ValidateLoopsCheckpointResponse: Record<string, unknown>;
+    /** DeployLoopsCheckpointRequestV1 */
+    DeployLoopsCheckpointRequest: {
+      /**
+       * Checkpoint Ids
+       * @description Sampler checkpoint IDs to deploy together.
+       */
+      checkpoint_ids: string[];
+      /**
+       * Model Name
+       * @description Name for the created model.
+       */
+      model_name: string;
+      /**
+       * Instance Type Id
+       * @description Instance type ID for the deployment.
+       */
+      instance_type_id: string;
+      /**
+       * Hf Secret Name
+       * @description Name of the team-scoped secret that supplies HF_TOKEN.
+       */
+      hf_secret_name: string;
+    };
+    /** DeployLoopsCheckpointResponseV1 */
+    DeployLoopsCheckpointResponse: {
+      /**
+       * Model Id
+       * @description ID of the created or updated model.
+       */
+      model_id: string;
+      /**
+       * Deployment Id
+       * @description ID of the created model version deployment.
+       */
+      deployment_id: string;
+    };
     /**
      * LoopsCheckpointFilesResponseV1
      * @description Response with presigned URLs for files under a Loops checkpoint.
@@ -8435,9 +8551,9 @@ export type components = {
        * Model Family
        * @description Family the underlying model belongs to.
        * @default null
-       * @example META
-       * @example DEEPSEEK
-       * @example QWEN
+       * @example Meta
+       * @example DeepSeek
+       * @example Qwen
        */
       model_family: string | null;
       /**
@@ -9471,7 +9587,7 @@ export type components = {
       model_name: string;
       /**
        * Model Family
-       * @description Model family (e.g., llama, mistral)
+       * @description Model family (e.g., Meta, DeepSeek)
        * @default null
        */
       model_family: string | null;
@@ -9792,6 +9908,65 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** ExploreCostV1 */
+    ExploreCost: {
+      /**
+       * Input
+       * @description USD per 1M input tokens, when available.
+       * @default null
+       */
+      input: number | null;
+      /**
+       * Output
+       * @description USD per 1M output tokens, when available.
+       * @default null
+       */
+      output: number | null;
+      /**
+       * Cache Read
+       * @description USD per 1M input tokens read from cache, when available.
+       * @default null
+       */
+      cache_read: number | null;
+      /**
+       * Cache Write
+       * @description USD per 1M input tokens written to cache, when available.
+       * @default null
+       */
+      cache_write: number | null;
+      /**
+       * @description Prices for long-context requests, when the provider tiers by context length.
+       * @default null
+       */
+      long_context: components["schemas"]["ExploreCostValues"] | null;
+    };
+    /** ExploreCostValuesV1 */
+    ExploreCostValues: {
+      /**
+       * Input
+       * @description USD per 1M input tokens, when available.
+       * @default null
+       */
+      input: number | null;
+      /**
+       * Output
+       * @description USD per 1M output tokens, when available.
+       * @default null
+       */
+      output: number | null;
+      /**
+       * Cache Read
+       * @description USD per 1M input tokens read from cache, when available.
+       * @default null
+       */
+      cache_read: number | null;
+      /**
+       * Cache Write
+       * @description USD per 1M input tokens written to cache, when available.
+       * @default null
+       */
+      cache_write: number | null;
+    };
     /** ExploreMetadataAPIFormatsV1 */
     ExploreMetadataAPIFormats: {
       /**
@@ -9867,6 +10042,8 @@ export type components = {
       parallel_tool_calls: boolean | null;
       /** @description API formats the model supports. */
       supported_api_formats: components["schemas"]["ExploreMetadataAPIFormats"] | null;
+      /** @description Provider list prices in USD per 1M tokens, when available. */
+      cost: components["schemas"]["ExploreCost"] | null;
     };
     /** ExploreMetadataResponseV1 */
     ExploreMetadataResponse: {
@@ -9909,29 +10086,6 @@ export type components = {
        */
       model: string;
     };
-    /** RouteTargetOpenAICompatibleV1 */
-    RouteTargetOpenAICompatible: {
-      /**
-       * @description Target kind for an OpenAI-compatible provider. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "OPENAI_COMPATIBLE";
-      /**
-       * Model
-       * @description Model name sent to the provider.
-       */
-      model: string;
-      /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
-       */
-      secret_name: string;
-      /**
-       * Base Url
-       * @description HTTPS base URL of the OpenAI-compatible provider.
-       */
-      base_url: string;
-    };
     /** RouteTargetOpenAIV1 */
     RouteTargetOpenAI: {
       /**
@@ -9949,26 +10103,6 @@ export type components = {
        * @description Name of a credential secret owned by the route's team.
        */
       secret_name: string;
-    };
-    /** RouteTargetVertexV1 */
-    RouteTargetVertex: {
-      /**
-       * @description Target kind for Google Vertex AI. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "VERTEX";
-      /**
-       * Model
-       * @description Model name sent to the provider.
-       */
-      model: string;
-      /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
-       */
-      secret_name: string;
-      /** @description Google Vertex configuration. */
-      vertex_config: components["schemas"]["VertexTargetConfig"];
     };
     /** RouteTargetXAIV1 */
     RouteTargetXAI: {
@@ -9997,7 +10131,7 @@ export type components = {
       id: string;
       /**
        * Name
-       * @description Immutable name to send in the inference request's model field.
+       * @description Name to send in the inference request's model field.
        */
       name: string;
       /**
@@ -10028,9 +10162,7 @@ export type components = {
         | components["schemas"]["RouteTargetBasetenModelAPI"]
         | components["schemas"]["RouteTargetAnthropic"]
         | components["schemas"]["RouteTargetOpenAI"]
-        | components["schemas"]["RouteTargetXAI"]
-        | components["schemas"]["RouteTargetVertex"]
-        | components["schemas"]["RouteTargetOpenAICompatible"];
+        | components["schemas"]["RouteTargetXAI"];
       /** @description Resolved model metadata; null when the route has no linked metadata row. */
       metadata: components["schemas"]["ExploreMetadata"] | null;
       /**
@@ -10045,22 +10177,6 @@ export type components = {
        */
       created_at: string;
     };
-    /** VertexTargetConfigV1 */
-    VertexTargetConfig: {
-      /**
-       * Project Id
-       * @description Google Cloud project ID or project number.
-       * @example my-gcp-project
-       * @example 464036093014
-       */
-      project_id: string;
-      /**
-       * Location
-       * @description Google Cloud location.
-       * @example global
-       */
-      location: string;
-    };
     /** RoutesResponseV1 */
     RoutesResponse: {
       /**
@@ -10073,12 +10189,6 @@ export type components = {
     };
     /** CreateRouteRequestV1 */
     CreateRouteRequest: {
-      /**
-       * Name
-       * @description Immutable, globally unique route name using an organization-owned prefix.
-       * @example my-org/assistant
-       */
-      name: string;
       /**
        * Team Id
        * @description Identifier of the team that owns the route. When omitted, uses your organization's default team.
@@ -10103,20 +10213,13 @@ export type components = {
         | components["schemas"]["RouteTargetBasetenModelAPI"]
         | components["schemas"]["RouteTargetAnthropic"]
         | components["schemas"]["RouteTargetOpenAI"]
-        | components["schemas"]["RouteTargetXAI"]
-        | components["schemas"]["RouteTargetVertex"]
-        | components["schemas"]["RouteTargetOpenAICompatible"];
+        | components["schemas"]["RouteTargetXAI"];
       /**
        * Description
        * @description Short description of the route. Omit for no description; null is not accepted.
        * @example Assistant for code review and debugging.
        */
       description?: string | null;
-      /**
-       * Metadata Slug
-       * @description Slug of a metadata row to link. Omit to auto-resolve from the target; required for OPENAI_COMPATIBLE and VERTEX targets.
-       */
-      metadata_slug?: string | null;
     };
     /**
      * RouteProviderV1
@@ -10147,29 +10250,11 @@ export type components = {
     /** RoutesUsageResultV1 */
     RoutesUsageResult: {
       /**
-       * Api Key Prefix
-       * @description Prefix of the Routes key. Null when not grouping by API_KEY_PREFIX.
-       * @default null
-       */
-      api_key_prefix: string | null;
-      /**
        * User Id
-       * @description ID of the user who created the Routes key. Null when not grouping by USER or when the creator is unknown.
+       * @description ID of the user who created the Routes key. Null when not grouping by USER.
        * @default null
        */
       user_id: string | null;
-      /**
-       * Route Id
-       * @description Route ID. Null when not grouping by ROUTE.
-       * @default null
-       */
-      route_id: string | null;
-      /**
-       * Route Name
-       * @description Route name. Null when not grouping by ROUTE.
-       * @default null
-       */
-      route_name: string | null;
       /**
        * Model
        * @description Model name. For external providers, the model name sent to the provider. Null when not grouping by MODEL.
@@ -10177,16 +10262,16 @@ export type components = {
        */
       model: string | null;
       /**
-       * @description Provider that served the requests. Null when not grouping by PROVIDER or when the provider cannot be determined.
+       * @description Provider that served the requests. Null when not grouping by PROVIDER.
        * @default null
        */
       provider: components["schemas"]["RouteProvider"] | null;
       /**
        * Cost Usd
-       * @description Estimated cost in USD, returned as an exact decimal string. Null when some usage in this result could not be priced, including all Vertex and OpenAI-compatible usage. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.
+       * @description Estimated cost in USD, returned as an exact decimal string. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.
        * @example 0.00035625
        */
-      cost_usd: string | null;
+      cost_usd: string;
       /**
        * Input Tokens
        * @description Input tokens, including cached input tokens.
@@ -10207,11 +10292,6 @@ export type components = {
        * @description Output tokens.
        */
       output_tokens: number;
-      /**
-       * Request Count
-       * @description Number of requests.
-       */
-      request_count: number;
     };
     /** RoutesUsageResponseV1 */
     RoutesUsageResponse: {
@@ -10227,7 +10307,222 @@ export type components = {
      * RouteUsageDimensionV1
      * @enum {string}
      */
-    RouteUsageDimension: "API_KEY_PREFIX" | "USER" | "ROUTE" | "MODEL" | "PROVIDER";
+    RouteUsageDimension: "USER" | "MODEL" | "PROVIDER";
+    /** RouteSpendLimitV1 */
+    RouteSpendLimit: {
+      /**
+       * User Id
+       * @description ID of the user.
+       * @example abc1234
+       */
+      user_id: string;
+      /**
+       * Email
+       * @description Email address of the user.
+       * @example dev@example.com
+       */
+      email: string | null;
+      /**
+       * Monthly Limit Usd
+       * @description Standing spend limit in USD for each UTC calendar month, returned as an exact decimal string. Null when the user has no standing limit.
+       * @example 200
+       */
+      monthly_limit_usd: string | null;
+    };
+    /** UpdateRouteSpendLimitRequestV1 */
+    UpdateRouteSpendLimitRequest: {
+      /**
+       * Monthly Limit Usd
+       * @description Standing spend limit in USD for each UTC calendar month, as a non-negative decimal string with at most 9 decimal places. Send null to remove the limit; omit to leave it unchanged.
+       * @example 200
+       */
+      monthly_limit_usd?: string | null;
+    };
+    /** RouteHarnessConfigV1 */
+    RouteHarnessConfig: {
+      /**
+       * Models
+       * @description Route for each model role, keyed by role.
+       */
+      models: {
+        [key: string]: components["schemas"]["RouteHarnessModel"];
+      };
+    };
+    /** RouteHarnessModelV1 */
+    RouteHarnessModel: {
+      /** @description Who chose this role's route: `team` if a team admin set it, or `baseten` if it is Baseten's default, chosen from the team's Model API routes. */
+      source: components["schemas"]["RouteHarnessModelSource"];
+      /** @description Route to use for this role. */
+      route: components["schemas"]["Route"];
+    };
+    /** RouteHarnessConfigsResponseV1 */
+    RouteHarnessConfigsResponse: {
+      /**
+       * Harness Configs
+       * @description Default models for each harness, keyed by harness. A harness is omitted when none of its roles has a route.
+       */
+      harness_configs: {
+        [key: string]: components["schemas"]["RouteHarnessConfig"];
+      };
+    };
+    /** UpdateBackgroundHarnessModelsV1 */
+    UpdateBackgroundHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+      /**
+       * Background
+       * @description Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use Baseten's default.
+       * @example def5678
+       */
+      background?: string | null;
+    };
+    /** UpdateClaudeCodeHarnessConfigV1 */
+    UpdateClaudeCodeHarnessConfig: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       */
+      team_id: string;
+      /**
+       * @description Claude Code, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      harness: "claude-code";
+      /** @description Route IDs for the model roles to change. Roles left out are unchanged. */
+      models: components["schemas"]["UpdateBackgroundHarnessModels"];
+    };
+    /** UpdateCodexHarnessConfigV1 */
+    UpdateCodexHarnessConfig: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       */
+      team_id: string;
+      /**
+       * @description Codex, which supports only the `primary` role. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      harness: "codex";
+      /** @description Route IDs for the model roles to change. Roles left out are unchanged. */
+      models: components["schemas"]["UpdatePrimaryHarnessModels"];
+    };
+    /** UpdateOpenCodeHarnessConfigV1 */
+    UpdateOpenCodeHarnessConfig: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       */
+      team_id: string;
+      /**
+       * @description OpenCode, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      harness: "opencode";
+      /** @description Route IDs for the model roles to change. Roles left out are unchanged. */
+      models: components["schemas"]["UpdateBackgroundHarnessModels"];
+    };
+    /** UpdatePrimaryHarnessModelsV1 */
+    UpdatePrimaryHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+    };
+    /** UpdateRouteHarnessConfigRequestV1 */
+    UpdateRouteHarnessConfigRequest:
+      | components["schemas"]["UpdateClaudeCodeHarnessConfig"]
+      | components["schemas"]["UpdateOpenCodeHarnessConfig"]
+      | components["schemas"]["UpdateCodexHarnessConfig"];
+    /** BackgroundHarnessModelsV1 */
+    BackgroundHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to use Baseten's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+      /**
+       * Background
+       * @description Route ID for background tasks, such as session titles. Omit to use Baseten's default.
+       * @example def5678
+       */
+      background?: string | null;
+    };
+    /** PrimaryHarnessModelsV1 */
+    PrimaryHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to use Baseten's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+    };
+    /** SetClaudeCodeHarnessConfigV1 */
+    SetClaudeCodeHarnessConfig: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       */
+      team_id: string;
+      /**
+       * @description Claude Code, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      harness: "claude-code";
+      /** @description Route ID for each model role. Roles left out use Baseten's defaults. */
+      models: components["schemas"]["BackgroundHarnessModels"];
+    };
+    /** SetCodexHarnessConfigV1 */
+    SetCodexHarnessConfig: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       */
+      team_id: string;
+      /**
+       * @description Codex, which supports only the `primary` role. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      harness: "codex";
+      /** @description Route ID for each model role. Roles left out use Baseten's defaults. */
+      models: components["schemas"]["PrimaryHarnessModels"];
+    };
+    /** SetOpenCodeHarnessConfigV1 */
+    SetOpenCodeHarnessConfig: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       */
+      team_id: string;
+      /**
+       * @description OpenCode, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      harness: "opencode";
+      /** @description Route ID for each model role. Roles left out use Baseten's defaults. */
+      models: components["schemas"]["BackgroundHarnessModels"];
+    };
+    /** SetRouteHarnessConfigRequestV1 */
+    SetRouteHarnessConfigRequest:
+      | components["schemas"]["SetClaudeCodeHarnessConfig"]
+      | components["schemas"]["SetOpenCodeHarnessConfig"]
+      | components["schemas"]["SetCodexHarnessConfig"];
+    /** RouteHarnessConfigTombstoneV1 */
+    RouteHarnessConfigTombstone: {
+      /** @description Harness whose default models were cleared. */
+      harness: components["schemas"]["RouteHarness"];
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models were cleared.
+       */
+      team_id: string;
+    };
     /** RouteTombstoneV1 */
     RouteTombstone: {
       /**
@@ -10255,29 +10550,6 @@ export type components = {
        * @example Assistant
        */
       display_name?: string | null;
-      /**
-       * Target
-       * @description Replaces the entire target. Omit to keep the current target; null is not accepted.
-       * @example {
-       *       "model": "zai-org/GLM-5.3",
-       *       "type": "BASETEN_MODEL_API"
-       *     }
-       */
-      target?:
-        | (
-            | components["schemas"]["RouteTargetBasetenModelAPI"]
-            | components["schemas"]["RouteTargetAnthropic"]
-            | components["schemas"]["RouteTargetOpenAI"]
-            | components["schemas"]["RouteTargetXAI"]
-            | components["schemas"]["RouteTargetVertex"]
-            | components["schemas"]["RouteTargetOpenAICompatible"]
-          )
-        | null;
-      /**
-       * Metadata Slug
-       * @description Slug of a metadata row to link. Omit to keep the current link, or to re-resolve from the new target when target is provided (OPENAI_COMPATIBLE and VERTEX targets always require an explicit slug). Null is not accepted.
-       */
-      metadata_slug?: string | null;
     };
     /**
      * EndpointTargetV1
@@ -10363,6 +10635,22 @@ export type components = {
      * @enum {string}
      */
     SharedEndpointRegion: "UNRESTRICTED" | "EU";
+    /** VertexTargetConfigV1 */
+    VertexTargetConfig: {
+      /**
+       * Project Id
+       * @description Google Cloud project ID or project number.
+       * @example my-gcp-project
+       * @example 464036093014
+       */
+      project_id: string;
+      /**
+       * Location
+       * @description Google Cloud location.
+       * @example global
+       */
+      location: string;
+    };
     /** EndpointsResponseV1 */
     EndpointsResponse: {
       /**
@@ -10808,6 +11096,21 @@ export type components = {
        */
       ok: boolean;
     };
+    ImageBuildLog: {
+      /** Format: date-time */
+      timestamp: string;
+      message: string;
+      /** @description Numeric OpenTelemetry severity level. */
+      severity: number;
+    };
+    ImageBuildLogsResponse: {
+      logs: components["schemas"]["ImageBuildLog"][];
+      /**
+       * Format: int64
+       * @description Number of matching log entries in the requested time range.
+       */
+      total_count: number;
+    };
     /**
      * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
      * @example {
@@ -11134,7 +11437,7 @@ export type components = {
        */
       name?: string;
       /**
-       * @description Whether the value is a secret
+       * @description Whether the value is a secret. Defaults to true; secret values are returned as "****". Set false explicitly to return the original value.
        * @example false
        */
       secret?: boolean;
@@ -11263,7 +11566,7 @@ export type components = {
      *           "value": "3000"
      *         }
      *       ],
-     *       "image": "blaxel/base-image:latest",
+     *       "image": "baseten/base-image:latest",
      *       "memory": 4096,
      *       "ports": [
      *         {
@@ -11272,7 +11575,6 @@ export type components = {
      *           "target": 3000
      *         }
      *       ],
-     *       "display_name": "Baseten API review",
      *       "external_id": "api-review-20260916-001",
      *       "labels": {
      *         "env": "development",
@@ -11372,8 +11674,8 @@ export type components = {
        */
       envs?: components["schemas"]["SandboxEnv"][];
       /**
-       * @description Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
-       * @example blaxel/base-image:latest
+       * @description Image reference including its tag. Built-in image references are returned in the canonical baseten/ namespace. Use baseten/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example baseten/base-image:latest
        */
       image?: string;
       /**
@@ -11392,11 +11694,6 @@ export type components = {
        *     ]
        */
       ports?: components["schemas"]["SandboxPorts"];
-      /**
-       * @description Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.
-       * @example Baseten API review
-       */
-      display_name?: string;
       /**
        * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
        * @example api-review-20260916-001
@@ -11483,7 +11780,7 @@ export type components = {
      *           "value": "3000"
      *         }
      *       ],
-     *       "image": "blaxel/base-image:latest",
+     *       "image": "baseten/base-image:latest",
      *       "memory": 4096,
      *       "ports": [
      *         {
@@ -11492,7 +11789,6 @@ export type components = {
      *           "target": 3000
      *         }
      *       ],
-     *       "display_name": "Baseten API review",
      *       "external_id": "api-review-20260916-001",
      *       "labels": {
      *         "env": "development",
@@ -11502,6 +11798,8 @@ export type components = {
      *     }
      */
     CreateSandboxRequest: {
+      /** @description When true, return the existing live sandbox with this name or recreate it if it is failed, terminated, or being deleted. The server handles concurrent creation and deletion races with a bounded wait; persistent contention returns a conflict. Requires name. Existing configuration is preserved. Defaults to false when omitted. */
+      create_if_not_exists?: boolean;
       /**
        * @description Optional unique sandbox name. Generated by the server when omitted; immutable after creation.
        * @example baseten-api-review-0916
@@ -11591,12 +11889,12 @@ export type components = {
        */
       envs?: components["schemas"]["SandboxEnv"][];
       /**
-       * @description Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
-       * @example blaxel/base-image:latest
+       * @description Image reference including its tag. Defaults to baseten/base-image:latest, the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example baseten/base-image:latest
        */
       image?: string;
       /**
-       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).
+       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096.
        * @example 4096
        */
       memory?: number;
@@ -11611,11 +11909,6 @@ export type components = {
        *     ]
        */
       ports?: components["schemas"]["SandboxPorts"];
-      /**
-       * @description Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.
-       * @example Baseten API review
-       */
-      display_name?: string;
       /**
        * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
        * @example api-review-20260916-001
@@ -11668,7 +11961,7 @@ export type components = {
      *           "value": "3000"
      *         }
      *       ],
-     *       "image": "blaxel/base-image:latest",
+     *       "image": "baseten/base-image:latest",
      *       "ports": [
      *         {
      *           "name": "http",
@@ -11676,7 +11969,6 @@ export type components = {
      *           "target": 3000
      *         }
      *       ],
-     *       "display_name": "Baseten API review - revised",
      *       "external_id": "api-review-20260916-001",
      *       "labels": {
      *         "env": "development",
@@ -11738,8 +12030,8 @@ export type components = {
        */
       envs?: components["schemas"]["SandboxEnv"][];
       /**
-       * @description Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
-       * @example blaxel/base-image:latest
+       * @description Image reference including its tag. Built-in image references are returned in the canonical baseten/ namespace. Use baseten/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example baseten/base-image:latest
        */
       image?: string;
       /**
@@ -11753,11 +12045,6 @@ export type components = {
        *     ]
        */
       ports?: components["schemas"]["SandboxPorts"];
-      /**
-       * @description Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.
-       * @example Baseten API review - revised
-       */
-      display_name?: string;
       /**
        * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
        * @example api-review-20260916-001
@@ -11842,7 +12129,7 @@ export type components = {
      *           "value": "3000"
      *         }
      *       ],
-     *       "image": "blaxel/base-image:latest",
+     *       "image": "baseten/base-image:latest",
      *       "memory": 4096,
      *       "ports": [
      *         {
@@ -11851,7 +12138,6 @@ export type components = {
      *           "target": 3000
      *         }
      *       ],
-     *       "display_name": "Baseten API review",
      *       "external_id": "api-review-20260916-001",
      *       "labels": {
      *         "env": "development",
@@ -11878,17 +12164,17 @@ export type components = {
       readonly name: string;
       /**
        * Format: uri
-       * @description Base URL of this sandbox's execution API. Use this exact returned URL; do not reconstruct its hostname. Authenticate requests with the same Authorization: Bearer <api_key> header used to create the sandbox. No additional routing headers are required. Fetch GET {url}/swagger/doc.json with that header for the API reference served by this sandbox. For example, POST {url}/process with Content-Type: application/json and {"command":"echo hello","waitForCompletion":true} executes a command and waits for its result. Execution API fields use camelCase, independently of this API's snake_case fields.
+       * @description Base URL of this sandbox's execution API, always present on successful creation. The URL is assigned before deployment completes; inspect status for readiness. Use this exact returned URL; do not reconstruct its hostname. Authenticate requests with your authentication token using Authorization: Bearer <token>. Do not send the Baseten API key directly. No additional routing headers are required. Fetch GET {url}/swagger/doc.json with that header for the API reference served by this sandbox. For example, POST {url}/process with Content-Type: application/json and {"command":"echo hello","waitForCompletion":true} executes a command and waits for its result. Execution API fields use camelCase, independently of this API's snake_case fields.
        * @example https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run
        */
-      readonly url?: string;
+      readonly url: string;
       /**
        * @description Sandbox deployment status.
        * @example DEPLOYED
        */
       status: components["schemas"]["SandboxStatus"];
       /**
-       * @description Current execution state when available.
+       * @description Current execution state when available. Control-plane enum values use uppercase; the execution API uses its own lowercase enum values.
        * @example RUNNING
        * @enum {string}
        */
@@ -11928,7 +12214,7 @@ export type components = {
       readonly expires_in?: number;
     };
     /**
-     * @description Sandbox deployment status.
+     * @description Sandbox deployment status, always uppercase. This tracks provisioning and differs from the execution API state, whose values such as running are lowercase.
      * @example DEPLOYED
      * @enum {string}
      */
@@ -12034,7 +12320,7 @@ export type components = {
      *               "value": "3000"
      *             }
      *           ],
-     *           "image": "blaxel/base-image:latest",
+     *           "image": "baseten/base-image:latest",
      *           "memory": 4096,
      *           "ports": [
      *             {
@@ -12043,7 +12329,6 @@ export type components = {
      *               "target": 3000
      *             }
      *           ],
-     *           "display_name": "Baseten API review",
      *           "external_id": "api-review-20260916-001",
      *           "labels": {
      *             "env": "development",
@@ -12138,7 +12423,7 @@ export type components = {
        *             "value": "3000"
        *           }
        *         ],
-       *         "image": "blaxel/base-image:latest",
+       *         "image": "baseten/base-image:latest",
        *         "memory": 4096,
        *         "ports": [
        *           {
@@ -12147,7 +12432,6 @@ export type components = {
        *             "target": 3000
        *           }
        *         ],
-       *         "display_name": "Baseten API review",
        *         "external_id": "api-review-20260916-001",
        *         "labels": {
        *           "env": "development",
@@ -12232,7 +12516,6 @@ export type components = {
      * @description Sandbox image repository. List and get operations return a summary without embedded tags.
      * @example {
      *       "name": "base-image",
-     *       "display_name": "b10/base-image",
      *       "status": "BUILT",
      *       "created_at": "2026-09-15T21:20:00Z",
      *       "updated_at": "2026-09-16T21:25:00Z",
@@ -12260,11 +12543,6 @@ export type components = {
        * @example base-image
        */
       name: string;
-      /**
-       * @description Human-readable image repository name.
-       * @example b10/base-image
-       */
-      display_name?: string;
       /**
        * @description Image processing status. Only BUILT images are ready to use.
        * @example BUILT
@@ -12334,7 +12612,7 @@ export type components = {
        */
       name: string;
       /**
-       * @description Optional source registry image reference including a registry hostname. When omitted, the response provides an archive upload URL.
+       * @description Optional source registry image reference including a registry hostname. When omitted, the response provides an archive upload URL. The uploaded ZIP archive must not exceed 5 GB.
        * @example docker.io/b10/base-image:latest
        */
       image?: string;
@@ -12365,7 +12643,7 @@ export type components = {
       status: components["schemas"]["ImageStatus"];
       /**
        * Format: uri
-       * @description Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.
+       * @description Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. The uploaded ZIP archive must not exceed 5 GB. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.
        * @example https://uploads.b10.run/images/base-image/20260916212658/source.zip?expires=2026-09-16T22%3A26%3A58Z&signature=demo-not-a-valid-upload-signature
        */
       upload_url?: string;
@@ -13305,24 +13583,14 @@ export type components = {
       end_date?: string | null;
       /**
        * Group By
-       * @description Dimensions to break usage down by, repeated once per dimension: API_KEY_PREFIX, USER, ROUTE, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.
+       * @description Dimensions to break usage down by, repeated once per dimension: USER, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.
        */
       group_by?: components["schemas"]["RouteUsageDimension"][];
-      /**
-       * Api Key Prefixes
-       * @description Return only usage for these exact Routes key prefixes, repeated once per prefix.
-       */
-      api_key_prefixes?: string[];
       /**
        * User Ids
        * @description Return only usage from Routes keys created by these user IDs, repeated once per ID.
        */
       user_ids?: string[];
-      /**
-       * Route Ids
-       * @description Return only usage for these route IDs, repeated once per ID.
-       */
-      route_ids?: string[];
       /**
        * Models
        * @description Return only usage for these exact model names, repeated once per model.
@@ -13333,6 +13601,20 @@ export type components = {
        * @description Return only usage for these providers, repeated once per provider.
        */
       providers?: components["schemas"]["RouteProvider"][];
+    };
+    GetRoutesHarnessConfigsParams: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to list.
+       */
+      team_id: string;
+    };
+    DeleteRoutesHarnessConfigsParams: {
+      /**
+       * Team Id
+       * @description Identifier of the team whose default models to clear.
+       */
+      team_id: string;
     };
     ListSandboxesParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -13373,6 +13655,8 @@ export type components = {
     GetSandboxParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
+      /** @description Reveal environment variable values for workspace administrators. Defaults to false. Callers without the admin role receive masked values even when true. */
+      show_secrets?: boolean;
     };
     UpdateSandboxParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -13415,6 +13699,24 @@ export type components = {
     DeleteImageParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
+    };
+    GetImageBuildLogsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * Format: date-time
+       * @description Inclusive RFC 3339 start time. Defaults to 24 hours before end_time.
+       */
+      start_time?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 end time. Defaults to the current time.
+       */
+      end_time?: string;
+      /** @description Maximum number of log entries to return. */
+      limit?: number;
+      /** @description Number of log entries to skip. Narrow the time range beyond 10000 entries. */
+      offset?: number;
     };
     ListImageTagsParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -13469,7 +13771,7 @@ export type components = {
         /**
          * @example {
          *       "code": "UNAUTHORIZED",
-         *       "message": "Provide a valid API key in the Authorization header.",
+         *       "message": "Provide a valid authentication token in the Authorization header.",
          *       "details": {
          *         "header": "Authorization"
          *       }
@@ -13487,7 +13789,7 @@ export type components = {
         /**
          * @example {
          *       "code": "FORBIDDEN",
-         *       "message": "This API key does not have permission to perform this operation.",
+         *       "message": "This authentication token does not grant permission to perform this operation.",
          *       "details": {
          *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
          *       }
@@ -13594,6 +13896,7 @@ export type components = {
     user_defined_listing_id: string;
     version_tag: string;
     user_id: string;
+    harness: string;
     route_id: string;
     endpoint_id: string;
     group_id: string;
@@ -13643,6 +13946,9 @@ export type ApiKeyCategory = components["schemas"]["APIKeyCategory"];
 export type BucketWidth = components["schemas"]["BucketWidth"];
 export type LibraryListingModality = components["schemas"]["LibraryListingModality"];
 export type ResourceKind = components["schemas"]["ResourceKind"];
+export type RouteHarness = components["schemas"]["RouteHarness"];
+export type RouteHarnessModelSource = components["schemas"]["RouteHarnessModelSource"];
+export type RouteHarnessRole = components["schemas"]["RouteHarnessRole"];
 export type GatewayProvider = components["schemas"]["GatewayProvider"];
 export type PaginationResponse = components["schemas"]["PaginationResponse"];
 export type VolumeTag = components["schemas"]["VolumeTag"];
@@ -13781,6 +14087,12 @@ export type AuditLogEventModelDeploymentRetried =
 export type AuditLogEventModelPromotionControlAction =
   components["schemas"]["AuditLogEventModelPromotionControlAction"];
 export type AuditLogEventModelRenamed = components["schemas"]["AuditLogEventModelRenamed"];
+export type AuditLogEventProviderConnectionCreated =
+  components["schemas"]["AuditLogEventProviderConnectionCreated"];
+export type AuditLogEventProviderConnectionDeleted =
+  components["schemas"]["AuditLogEventProviderConnectionDeleted"];
+export type AuditLogEventProviderConnectionUpdated =
+  components["schemas"]["AuditLogEventProviderConnectionUpdated"];
 export type AuditLogEventReplicaTerminated =
   components["schemas"]["AuditLogEventReplicaTerminated"];
 export type AuditLogEventRequireGroupBasedAdminsEnabled =
@@ -14015,6 +14327,8 @@ export type GetLoopsRunResponse = components["schemas"]["GetLoopsRunResponse"];
 export type ListLoopsSamplersResponse = components["schemas"]["ListLoopsSamplersResponse"];
 export type CreateLoopsSamplerRequest = components["schemas"]["CreateLoopsSamplerRequest"];
 export type CreateLoopsSamplerResponse = components["schemas"]["CreateLoopsSamplerResponse"];
+export type DeactivateLoopsSamplerResponse =
+  components["schemas"]["DeactivateLoopsSamplerResponse"];
 export type GetLoopsSamplerResponse = components["schemas"]["GetLoopsSamplerResponse"];
 export type LoopsCheckpoint = components["schemas"]["LoopsCheckpoint"];
 export type ListLoopsCheckpointsResponse = components["schemas"]["ListLoopsCheckpointsResponse"];
@@ -14022,6 +14336,8 @@ export type ValidateLoopsCheckpointRequest =
   components["schemas"]["ValidateLoopsCheckpointRequest"];
 export type ValidateLoopsCheckpointResponse =
   components["schemas"]["ValidateLoopsCheckpointResponse"];
+export type DeployLoopsCheckpointRequest = components["schemas"]["DeployLoopsCheckpointRequest"];
+export type DeployLoopsCheckpointResponse = components["schemas"]["DeployLoopsCheckpointResponse"];
 export type LoopsCheckpointFilesResponse = components["schemas"]["LoopsCheckpointFilesResponse"];
 export type LoopsCheckpointS3Source = components["schemas"]["LoopsCheckpointS3Source"];
 export type LoopsCheckpointVolumeSource = components["schemas"]["LoopsCheckpointVolumeSource"];
@@ -14119,17 +14435,16 @@ export type OrganizationInfo = components["schemas"]["OrganizationInfo"];
 export type GatewayEventTokens = components["schemas"]["GatewayEventTokens"];
 export type GatewayEvent = components["schemas"]["GatewayEvent"];
 export type GatewayEventsResponse = components["schemas"]["GatewayEventsResponse"];
+export type ExploreCost = components["schemas"]["ExploreCost"];
+export type ExploreCostValues = components["schemas"]["ExploreCostValues"];
 export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAPIFormats"];
 export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
 export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
 export type RouteTargetAnthropic = components["schemas"]["RouteTargetAnthropic"];
 export type RouteTargetBasetenModelApi = components["schemas"]["RouteTargetBasetenModelAPI"];
-export type RouteTargetOpenAiCompatible = components["schemas"]["RouteTargetOpenAICompatible"];
 export type RouteTargetOpenAi = components["schemas"]["RouteTargetOpenAI"];
-export type RouteTargetVertex = components["schemas"]["RouteTargetVertex"];
 export type RouteTargetXai = components["schemas"]["RouteTargetXAI"];
 export type Route = components["schemas"]["Route"];
-export type VertexTargetConfig = components["schemas"]["VertexTargetConfig"];
 export type RoutesResponse = components["schemas"]["RoutesResponse"];
 export type CreateRouteRequest = components["schemas"]["CreateRouteRequest"];
 export type RouteProvider = components["schemas"]["RouteProvider"];
@@ -14137,11 +14452,31 @@ export type RoutesUsageBucket = components["schemas"]["RoutesUsageBucket"];
 export type RoutesUsageResult = components["schemas"]["RoutesUsageResult"];
 export type RoutesUsageResponse = components["schemas"]["RoutesUsageResponse"];
 export type RouteUsageDimension = components["schemas"]["RouteUsageDimension"];
+export type RouteSpendLimit = components["schemas"]["RouteSpendLimit"];
+export type UpdateRouteSpendLimitRequest = components["schemas"]["UpdateRouteSpendLimitRequest"];
+export type RouteHarnessConfig = components["schemas"]["RouteHarnessConfig"];
+export type RouteHarnessModel = components["schemas"]["RouteHarnessModel"];
+export type RouteHarnessConfigsResponse = components["schemas"]["RouteHarnessConfigsResponse"];
+export type UpdateBackgroundHarnessModels = components["schemas"]["UpdateBackgroundHarnessModels"];
+export type UpdateClaudeCodeHarnessConfig = components["schemas"]["UpdateClaudeCodeHarnessConfig"];
+export type UpdateCodexHarnessConfig = components["schemas"]["UpdateCodexHarnessConfig"];
+export type UpdateOpenCodeHarnessConfig = components["schemas"]["UpdateOpenCodeHarnessConfig"];
+export type UpdatePrimaryHarnessModels = components["schemas"]["UpdatePrimaryHarnessModels"];
+export type UpdateRouteHarnessConfigRequest =
+  components["schemas"]["UpdateRouteHarnessConfigRequest"];
+export type BackgroundHarnessModels = components["schemas"]["BackgroundHarnessModels"];
+export type PrimaryHarnessModels = components["schemas"]["PrimaryHarnessModels"];
+export type SetClaudeCodeHarnessConfig = components["schemas"]["SetClaudeCodeHarnessConfig"];
+export type SetCodexHarnessConfig = components["schemas"]["SetCodexHarnessConfig"];
+export type SetOpenCodeHarnessConfig = components["schemas"]["SetOpenCodeHarnessConfig"];
+export type SetRouteHarnessConfigRequest = components["schemas"]["SetRouteHarnessConfigRequest"];
+export type RouteHarnessConfigTombstone = components["schemas"]["RouteHarnessConfigTombstone"];
 export type RouteTombstone = components["schemas"]["RouteTombstone"];
 export type UpdateRouteRequest = components["schemas"]["UpdateRouteRequest"];
 export type EndpointTarget = components["schemas"]["EndpointTarget"];
 export type Endpoint = components["schemas"]["Endpoint"];
 export type SharedEndpointRegion = components["schemas"]["SharedEndpointRegion"];
+export type VertexTargetConfig = components["schemas"]["VertexTargetConfig"];
 export type EndpointsResponse = components["schemas"]["EndpointsResponse"];
 export type EndpointTargetRequest = components["schemas"]["EndpointTargetRequest"];
 export type CreateEndpointRequest = components["schemas"]["CreateEndpointRequest"];
@@ -14168,6 +14503,8 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
+export type ImageBuildLog = components["schemas"]["ImageBuildLog"];
+export type ImageBuildLogsResponse = components["schemas"]["ImageBuildLogsResponse"];
 export type SandboxLifecycle = components["schemas"]["SandboxLifecycle"];
 export type SandboxExpirationPolicy = components["schemas"]["SandboxExpirationPolicy"];
 export type SandboxDuration = components["schemas"]["SandboxDuration"];
@@ -14250,6 +14587,9 @@ export type GetGatewayEventsParams = components["schemas"]["GetGatewayEventsPara
 export type GetExploreMetadataParams = components["schemas"]["GetExploreMetadataParams"];
 export type GetRoutesParams = components["schemas"]["GetRoutesParams"];
 export type GetRoutesUsageParams = components["schemas"]["GetRoutesUsageParams"];
+export type GetRoutesHarnessConfigsParams = components["schemas"]["GetRoutesHarnessConfigsParams"];
+export type DeleteRoutesHarnessConfigsParams =
+  components["schemas"]["DeleteRoutesHarnessConfigsParams"];
 export type ListSandboxesParams = components["schemas"]["ListSandboxesParams"];
 export type CreateSandboxParams = components["schemas"]["CreateSandboxParams"];
 export type GetSandboxParams = components["schemas"]["GetSandboxParams"];
@@ -14260,5 +14600,6 @@ export type PushImageParams = components["schemas"]["PushImageParams"];
 export type CleanupImagesParams = components["schemas"]["CleanupImagesParams"];
 export type GetImageParams = components["schemas"]["GetImageParams"];
 export type DeleteImageParams = components["schemas"]["DeleteImageParams"];
+export type GetImageBuildLogsParams = components["schemas"]["GetImageBuildLogsParams"];
 export type ListImageTagsParams = components["schemas"]["ListImageTagsParams"];
 export type DeleteImageTagParams = components["schemas"]["DeleteImageTagParams"];
