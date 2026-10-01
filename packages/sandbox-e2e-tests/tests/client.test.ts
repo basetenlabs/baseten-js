@@ -1,6 +1,6 @@
 import { SandboxApiError } from "@basetenlabs/sandbox";
 import { describe, expect, inject, it } from "vitest";
-import { E2E_LABELS, SHARED_ENVS, e2eEnabled, sandboxClient } from "./harness";
+import { E2E_LABELS, e2eEnabled, sandboxClient } from "./harness";
 
 describe.runIf(e2eEnabled())("SandboxClient", () => {
   const client = sandboxClient();
@@ -12,11 +12,23 @@ describe.runIf(e2eEnabled())("SandboxClient", () => {
     expect(info.status).toBe("DEPLOYED");
     expect(info.url).toMatch(/^https:\/\//);
     expect(info.labels).toMatchObject(E2E_LABELS);
-    // Every env value comes back masked, secret or not.
-    expect(Object.keys(info.envs).sort()).toEqual(Object.keys(SHARED_ENVS).sort());
-    expect(info.envs.E2E_PLAIN?.value).not.toBe(SHARED_ENVS.E2E_PLAIN.value);
-    expect(info.envs.E2E_SECRET?.value).not.toBe(SHARED_ENVS.E2E_SECRET.value);
-    expect(info.envs.E2E_SECRET?.secret).toBe(true);
+    // Only an env set as not secret comes back unmasked, and one left unset
+    // is secret.
+    expect(info.envs).toEqual({
+      E2E_PLAIN: { value: "plain-value", secret: false },
+      E2E_SECRET: { value: "****", secret: true },
+      E2E_DEFAULT: { value: "****", secret: true },
+    });
+  });
+
+  it("gets a sandbox's record with secrets revealed", async () => {
+    // The e2e key is a workspace admin, so secrets are revealed.
+    const info = await client.getInfo({ name: sharedName, showSecrets: true });
+    expect(info.envs).toEqual({
+      E2E_PLAIN: { value: "plain-value", secret: false },
+      E2E_SECRET: { value: "secret-value", secret: true },
+      E2E_DEFAULT: { value: "default-value", secret: true },
+    });
   });
 
   it("gets a sandbox by name and from its record", async () => {
@@ -35,6 +47,20 @@ describe.runIf(e2eEnabled())("SandboxClient", () => {
     expect(names).toContain(sharedName);
   });
 
+  it("returns the existing sandbox when creating one that exists", async () => {
+    const before = await client.getInfo({ name: sharedName });
+    const created = await client.create({
+      name: sharedName,
+      createIfNotExists: true,
+      labels: { other: "1" },
+    });
+    expect(created.name).toBe(sharedName);
+    expect(created.url).toBe(before.url);
+    expect(created.info.createdAt).toEqual(before.createdAt);
+    // The existing configuration is kept, not replaced by the request's.
+    expect(created.info.labels).toEqual(before.labels);
+  });
+
   // Changes only fields no other test on the shared sandbox depends on.
   it("updates a sandbox, replacing its labels", async () => {
     const labels = { ...E2E_LABELS, e2e_extra: "1" };
@@ -44,7 +70,6 @@ describe.runIf(e2eEnabled())("SandboxClient", () => {
         expirationPolicies: [{ type: "TTL_IDLE", afterMs: 3_600_000 }],
         terminatedRetentionMs: 600_000,
       },
-      displayName: "JS e2e updated",
       labels,
     });
     const fetched = await client.getInfo({ name: sharedName });
@@ -53,8 +78,6 @@ describe.runIf(e2eEnabled())("SandboxClient", () => {
         expirationPolicies: [{ type: "TTL_IDLE", afterMs: 3_600_000, action: "DELETE" }],
         terminatedRetentionMs: 600_000,
       });
-      // TODO: Assert displayName once the server returns it. An update with
-      // display_name succeeds, but no response includes it today.
       expect(info.labels).toEqual(labels);
     }
     const replaced = await client.update({ name: sharedName, labels: E2E_LABELS });

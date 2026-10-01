@@ -79,8 +79,10 @@ export const E2E_LABELS = { created_by: "e2e" };
 
 /** Env on the shared sandbox, by name. */
 export const SHARED_ENVS = {
-  E2E_PLAIN: { value: "plain-value" },
+  E2E_PLAIN: { value: "plain-value", secret: false },
   E2E_SECRET: { value: "secret-value", secret: true },
+  // Left to the server's default, which is secret.
+  E2E_DEFAULT: { value: "default-value" },
 };
 
 /** Polls until the sandbox is deployed, failing fast if it cannot be. */

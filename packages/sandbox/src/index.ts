@@ -30,7 +30,6 @@ export type {
   SandboxNetworkProxyRoute,
   SandboxPort,
   SandboxPortProtocol,
-  SandboxState,
   SandboxStatus,
 } from "./info";
 
@@ -50,6 +49,8 @@ export {
   type ImageInfo,
   type ImageListRequest,
   type ImageListTagsRequest,
+  type ImageLogLine,
+  type ImageLogsRequest,
   type ImagePushBuilderRequest,
   type ImagePushDirectoryRequest,
   type ImagePushFilesRequest,

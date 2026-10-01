@@ -17,7 +17,11 @@ describe.runIf(e2eEnabled())("ImageClient", () => {
         // A pullable base, since the default sandbox image name only resolves
         // on sandbox create, not in a build. The builder adds the sandbox API
         // binary and entrypoint itself.
+        // The label makes each run's build context unique. Identical pushes
+        // share one build on the server, which links their images so none
+        // can be deleted before the others, and CI runs this concurrently.
         const builder = ImageBuilder.fromRegistry("debian:bookworm-slim")
+          .label({ "e2e-image": imageName })
           .addFile("/hello.txt", "hello from the image")
           .runCommands("echo built by RUN > /run.txt");
         expect(builder.dockerfile()).toMatch(
@@ -61,6 +65,15 @@ describe.runIf(e2eEnabled())("ImageClient", () => {
           waitForCompletion: true,
         });
         expect(entrypoint.stdout).toMatch(/^\/usr\/local\/bin\/sandbox-api\b/);
+
+        // Not checked for content: some builds have no logs on the server,
+        // even days later, so only the order is asserted.
+        const logs = await client.images.logs({ name: imageName });
+        for (let i = 1; i < logs.length; i++) {
+          expect(logs[i]!.timestamp.getTime()).toBeGreaterThanOrEqual(
+            logs[i - 1]!.timestamp.getTime(),
+          );
+        }
       } catch (err) {
         failure = { error: err };
       }

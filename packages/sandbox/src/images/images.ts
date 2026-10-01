@@ -14,6 +14,11 @@ import { createZip, type ZipEntry, zipEntryPaths } from "./zip";
 const DEFAULT_WAIT_TIMEOUT_MS = 900_000;
 const DEFAULT_POLL_INTERVAL_MS = 3000;
 
+// The largest page and offset the build log endpoint accepts, which together
+// cap a range at the 11,000 most recent lines.
+const LOGS_PAGE_SIZE = 1000;
+const LOGS_MAX_OFFSET = 10_000;
+
 // Statuses a poll for an image rides out, since the image may not be visible
 // yet or the gateway may briefly fail.
 const WAIT_RETRY_STATUSES = new Set([404, 502, 503, 504]);
@@ -32,9 +37,6 @@ export interface ImageInfo {
    * version.
    */
   name: string;
-
-  /** Human-readable name for display. */
-  displayName?: string;
 
   status: ImageStatus;
   createdAt?: Date;
@@ -285,6 +287,28 @@ export interface ImageWaitBuiltRequest extends ImageWaitOptions {
   callOptions?: CallOptions;
 }
 
+/** Request for {@link ImageClient.logs}. */
+export interface ImageLogsRequest {
+  /** Name of the image. */
+  name: string;
+
+  /** Start of the range, inclusive. Defaults to 24 hours before {@link endTime}. */
+  startTime?: Date;
+
+  /** End of the range. Defaults to now. The range must not exceed 7 days. */
+  endTime?: Date;
+  callOptions?: CallOptions;
+}
+
+/** One line of an image's build log, from {@link ImageClient.logs}. */
+export interface ImageLogLine {
+  timestamp: Date;
+
+  /** Numeric OpenTelemetry severity level. */
+  severity: number;
+  text: string;
+}
+
 /** @internal What an {@link ImageClient} uses from the client that made it. */
 export interface ImageClientContext {
   /** The generated management client, sending the given signal on every request. */
@@ -350,6 +374,44 @@ export class ImageClient {
    */
   async waitBuilt(request: ImageWaitBuiltRequest): Promise<ImageInfo> {
     return this.#waitBuilt(request.name, request, request.callOptions?.signal, false);
+  }
+
+  /**
+   * Gets the build log of an image's latest build, including a failed one,
+   * oldest line first. Logs may take a short time to appear. Returns at most
+   * the 11,000 most recent lines in the range; narrow the range to see
+   * earlier ones.
+   */
+  async logs(request: ImageLogsRequest): Promise<ImageLogLine[]> {
+    const signal = request.callOptions?.signal;
+    // Pinned on the first page, so the default range does not move while
+    // paging through it.
+    const endTime = (request.endTime ?? new Date()).toISOString();
+    const lines: ImageLogLine[] = [];
+    for (let offset = 0; offset <= LOGS_MAX_OFFSET; offset += LOGS_PAGE_SIZE) {
+      const page = await callControlPlane(() =>
+        this.#context.api(signal).getImageBuildLogs({
+          image_name: request.name,
+          params: {
+            team_id: this.#context.teamId,
+            start_time: request.startTime?.toISOString(),
+            end_time: endTime,
+            limit: LOGS_PAGE_SIZE,
+            offset,
+          },
+        }),
+      );
+      for (const log of page.logs) {
+        lines.push({
+          timestamp: new Date(log.timestamp),
+          severity: log.severity,
+          text: log.message,
+        });
+      }
+      if (page.logs.length < LOGS_PAGE_SIZE || offset + LOGS_PAGE_SIZE >= page.total_count) break;
+    }
+    // Pages come newest first.
+    return lines.reverse();
   }
 
   /** Gets an image's current record. */
@@ -649,7 +711,6 @@ function compareNames(a: string, b: string): number {
 function imageInfoFromApi(image: ApiImage): ImageInfo {
   return {
     name: image.name,
-    displayName: image.display_name,
     status: image.status,
     createdAt: optionalDate(image.created_at),
     updatedAt: optionalDate(image.updated_at),

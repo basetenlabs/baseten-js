@@ -65,7 +65,7 @@ function apiSandbox(name: string, extra: Record<string, unknown> = {}) {
 }
 
 describe("SandboxClient", () => {
-  it("creates with defaults and returns a usable sandbox", async () => {
+  it("creates with nothing set, leaving defaults to the server", async () => {
     const server = fakeServer(() => apiSandbox("sb-1", { status: "DEPLOYING" }));
     const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
     const created = await client.create();
@@ -78,7 +78,7 @@ describe("SandboxClient", () => {
     expect(request!.method).toBe("POST");
     expect(request!.path).toBe("/v1/sandboxes/instances");
     expect(request!.authorization).toBe("Bearer token-1");
-    expect(request!.body).toEqual({ image: "blaxel/base-image:latest", memory: 4096 });
+    expect(request!.body).toEqual({});
   });
 
   it("creates with every field mapped", async () => {
@@ -91,7 +91,7 @@ describe("SandboxClient", () => {
       region: "us-pdx-1",
       envs: { PLAIN: { value: "a" }, HIDDEN: { value: "b", secret: true } },
       labels: { team: "eng" },
-      displayName: "Sandbox one",
+      createIfNotExists: true,
       externalId: "ext-1",
       lifecycle: {
         expirationPolicies: [
@@ -129,7 +129,7 @@ describe("SandboxClient", () => {
         { name: "HIDDEN", value: "b", secret: true },
       ],
       labels: { team: "eng" },
-      display_name: "Sandbox one",
+      create_if_not_exists: true,
       external_id: "ext-1",
       lifecycle: {
         expiration_policies: [
@@ -201,7 +201,6 @@ describe("SandboxClient", () => {
           { name: "HIDDEN", secret: true },
         ],
         labels: { team: "eng" },
-        display_name: "Sandbox one",
         external_id: "ext-1",
         lifecycle: {
           expiration_policies: [
@@ -238,14 +237,12 @@ describe("SandboxClient", () => {
       name: "sb-1",
       url: "https://sbx-sb-1.b10.run",
       status: "DEPLOYED",
-      state: "RUNNING",
       image: "blaxel/base-image:latest",
       memory: 4096,
       region: "us-pdx-1",
       enabled: true,
       envs: { PLAIN: { value: "a", secret: false }, HIDDEN: { value: "", secret: true } },
       labels: { team: "eng" },
-      displayName: "Sandbox one",
       externalId: "ext-1",
       lifecycle: {
         expirationPolicies: [
@@ -297,6 +294,19 @@ describe("SandboxClient", () => {
     expect(info.ports).toEqual([]);
     expect(info.network).toBeUndefined();
     expect(info.expiresInMs).toBeUndefined();
+  });
+
+  it("gets with show_secrets only when set", async () => {
+    const server = fakeServer(() => apiSandbox("sb-1"));
+    const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
+    await client.getInfo({ name: "sb-1" });
+    await client.getInfo({ name: "sb-1", showSecrets: true });
+    await client.getInfo({ name: "sb-1", showSecrets: false });
+    expect(server.requests.map((request) => request.query.get("show_secrets"))).toEqual([
+      null,
+      "true",
+      "false",
+    ]);
   });
 
   it("fails to map a record with an invalid duration", async () => {
@@ -420,7 +430,6 @@ describe("SandboxClient", () => {
       envs: { PLAIN: { value: "a" } },
       image: "custom:2",
       ports: [{ target: 8080 }],
-      displayName: "Sandbox two",
       externalId: "ext-2",
       labels: { team: "infra" },
     });
@@ -436,7 +445,6 @@ describe("SandboxClient", () => {
       envs: [{ name: "PLAIN", value: "a" }],
       image: "custom:2",
       ports: [{ target: 8080 }],
-      display_name: "Sandbox two",
       external_id: "ext-2",
       labels: { team: "infra" },
     });

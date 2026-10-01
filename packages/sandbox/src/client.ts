@@ -20,11 +20,6 @@ import {
 import { Sandbox, type SandboxOptions } from "./sandbox/sandbox";
 import { Transport } from "./transport";
 
-// The image with the sandbox execution API built in, usable without building
-// or pushing anything.
-const DEFAULT_IMAGE = "blaxel/base-image:latest";
-const DEFAULT_MEMORY_MB = 4096;
-
 /** Options for {@link SandboxClient}. */
 export interface SandboxClientOptions {
   /**
@@ -83,7 +78,14 @@ export interface SandboxCreateRequest {
   /** Unique name of the sandbox. Assigned by the server when unset. */
   name?: string;
 
-  /** Image reference including its tag. Defaults to `blaxel/base-image:latest`. */
+  /**
+   * When true, return the existing live sandbox with this name, or recreate
+   * it if it is failed, terminated, or being deleted. Requires `name`.
+   * Existing configuration is preserved.
+   */
+  createIfNotExists?: boolean;
+
+  /** Image reference including its tag. Defaults to `baseten/base-image:latest`. */
   image?: string;
 
   /** Memory in megabytes, which also sets the CPU allocation. Defaults to 4096. */
@@ -96,9 +98,6 @@ export interface SandboxCreateRequest {
   envs?: Record<string, SandboxEnvValue>;
 
   labels?: Record<string, string>;
-
-  /** Human-readable name for display. */
-  displayName?: string;
 
   /** Caller-owned identifier for external lookups. */
   externalId?: string;
@@ -128,6 +127,13 @@ export class SandboxCreateResult extends Sandbox {
 /** Request for {@link SandboxClient.getInfo}. */
 export interface SandboxGetInfoRequest {
   name: string;
+
+  /**
+   * Reveal environment variable values for workspace administrators.
+   * Defaults to false. Callers without the admin role receive masked values
+   * even when true.
+   */
+  showSecrets?: boolean;
   callOptions?: CallOptions;
 }
 
@@ -180,9 +186,6 @@ export interface SandboxUpdateRequest {
   image?: string;
 
   ports?: SandboxPort[];
-
-  /** Human-readable name for display. */
-  displayName?: string;
 
   /** Caller-owned identifier for external lookups. */
   externalId?: string;
@@ -265,12 +268,12 @@ export class SandboxClient {
         params: { team_id: this.#options.teamId },
         request: {
           name: request.name,
-          image: request.image ?? DEFAULT_IMAGE,
-          memory: request.memory ?? DEFAULT_MEMORY_MB,
+          create_if_not_exists: request.createIfNotExists,
+          image: request.image,
+          memory: request.memory,
           region: request.region,
           envs: request.envs === undefined ? undefined : sandboxEnvsToApi(request.envs),
           labels: request.labels,
-          display_name: request.displayName,
           external_id: request.externalId,
           lifecycle:
             request.lifecycle === undefined ? undefined : sandboxLifecycleToApi(request.lifecycle),
@@ -289,7 +292,7 @@ export class SandboxClient {
     const sandbox = await callControlPlane(() =>
       this.#api(signal).getSandbox({
         sandbox_name: request.name,
-        params: { team_id: this.#options.teamId },
+        params: { team_id: this.#options.teamId, show_secrets: request.showSecrets },
       }),
     );
     return sandboxInfoFromApi(sandbox);
@@ -340,7 +343,6 @@ export class SandboxClient {
           envs: request.envs === undefined ? undefined : sandboxEnvsToApi(request.envs),
           image: request.image,
           ports: request.ports === undefined ? undefined : sandboxPortsToApi(request.ports),
-          display_name: request.displayName,
           external_id: request.externalId,
           labels: request.labels,
         },

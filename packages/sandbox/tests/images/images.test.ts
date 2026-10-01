@@ -118,7 +118,6 @@ describe("ImageClient.push", () => {
       sizeBytes: 42,
       tagCount: 1,
       createdAt: new Date("2026-09-29T00:00:00Z"),
-      displayName: undefined,
       updatedAt: undefined,
       lastDeployedAt: undefined,
     });
@@ -452,6 +451,81 @@ describe("ImageClient", () => {
   it("waitBuilt accepts BUILT immediately", async () => {
     const server = fakeServer(() => apiImage("BUILT"));
     expect((await server.client.images.waitBuilt({ name: "app" })).status).toBe("BUILT");
+    expect(server.requests).toHaveLength(1);
+  });
+});
+
+// A build log page as the server sends it, newest first: entries numbered
+// from first down, each a second apart.
+function logPage(first: number, count: number, total: number) {
+  return {
+    logs: Array.from({ length: count }, (_, i) => ({
+      timestamp: new Date(Date.UTC(2026, 9, 1) + (first - i) * 1000).toISOString(),
+      message: `line ${first - i}`,
+      severity: 9,
+    })),
+    total_count: total,
+  };
+}
+
+describe("ImageClient.logs", () => {
+  it("gets every page, oldest first, with the end time pinned", async () => {
+    const server = fakeServer((request) =>
+      request.url.searchParams.get("offset") === "0"
+        ? logPage(1500, 1000, 1500)
+        : logPage(500, 500, 1500),
+    );
+    const lines = await server.client.images.logs({ name: "app" });
+    expect(lines).toHaveLength(1500);
+    expect(lines[0]).toEqual({
+      timestamp: new Date(Date.UTC(2026, 9, 1) + 1000),
+      severity: 9,
+      text: "line 1",
+    });
+    expect(lines.at(-1)!.text).toBe("line 1500");
+    const queries = server.requests.map((r) => r.url.searchParams);
+    expect(server.requests.map((r) => r.url.pathname)).toEqual([
+      "/v1/sandboxes/images/app/logs",
+      "/v1/sandboxes/images/app/logs",
+    ]);
+    expect(queries.map((q) => q.get("offset"))).toEqual(["0", "1000"]);
+    expect(queries.map((q) => q.get("limit"))).toEqual(["1000", "1000"]);
+    expect(queries[0]!.get("end_time")).not.toBeNull();
+    expect(queries[1]!.get("end_time")).toBe(queries[0]!.get("end_time"));
+    expect(queries[0]!.has("start_time")).toBe(false);
+  });
+
+  it("sends the given range, and stops at a short page", async () => {
+    const server = fakeServer(() => logPage(2, 2, 2));
+    const lines = await server.client.images.logs({
+      name: "app",
+      startTime: new Date("2026-10-01T00:00:00Z"),
+      endTime: new Date("2026-10-01T01:00:00Z"),
+    });
+    expect(lines.map((line) => line.text)).toEqual(["line 1", "line 2"]);
+    expect(server.requests).toHaveLength(1);
+    const query = server.requests[0]!.url.searchParams;
+    expect(query.get("start_time")).toBe("2026-10-01T00:00:00.000Z");
+    expect(query.get("end_time")).toBe("2026-10-01T01:00:00.000Z");
+  });
+
+  it("stops at the 11,000 most recent lines", async () => {
+    const server = fakeServer((request) => {
+      const offset = Number(request.url.searchParams.get("offset"));
+      return logPage(50_000 - offset, 1000, 50_000);
+    });
+    const lines = await server.client.images.logs({ name: "app" });
+    expect(lines).toHaveLength(11_000);
+    expect(server.requests.map((r) => r.url.searchParams.get("offset"))).toEqual(
+      Array.from({ length: 11 }, (_, i) => String(i * 1000)),
+    );
+    expect(lines[0]!.text).toBe("line 39001");
+    expect(lines.at(-1)!.text).toBe("line 50000");
+  });
+
+  it("returns nothing for an empty range", async () => {
+    const server = fakeServer(() => ({ logs: [], total_count: 0 }));
+    expect(await server.client.images.logs({ name: "app" })).toEqual([]);
     expect(server.requests).toHaveLength(1);
   });
 });

@@ -85,7 +85,8 @@ export class ImageUploadError extends Error {
 
 /**
  * An image that did not become ready to use: either its build failed, or it
- * was still processing when the wait ran out of time.
+ * was still processing when the wait ran out of time. {@link ImageClient.logs}
+ * shows the build's output.
  */
 export class ImageBuildError extends Error {
   /** Name of the image. */

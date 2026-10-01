@@ -28,17 +28,15 @@ export type SandboxStatus =
   | "UPLOADING"
   | (string & {});
 
-/**
- * Whether a deployed sandbox is running or idle in standby. Other values may
- * be added, so do not treat this list as exhaustive.
- */
-export type SandboxState = "RUNNING" | "STANDBY" | (string & {});
-
 /** Value of an environment variable in a sandbox. */
 export interface SandboxEnvValue {
   value: string;
 
-  /** Whether the value is a secret. */
+  /**
+   * Whether the value is a secret. Defaults to true. Secret values come back
+   * masked as `"****"`, unless read with
+   * {@link SandboxGetInfoRequest.showSecrets}.
+   */
   secret?: boolean;
 }
 
@@ -152,7 +150,6 @@ export interface SandboxInfo {
   url?: string;
 
   status: SandboxStatus;
-  state?: SandboxState;
 
   /** Image reference, including its tag. */
   image?: string;
@@ -166,12 +163,11 @@ export interface SandboxInfo {
   enabled: boolean;
 
   /**
-   * Environment variables, by name. Values are masked, so passing these back
-   * to an update overwrites the real values with the masks.
+   * Environment variables, by name. Secret values are masked, so passing
+   * these back to an update overwrites their real values with the masks.
    */
   envs: Record<string, SandboxEnvValue>;
   labels: Record<string, string>;
-  displayName?: string;
 
   /** Caller-owned identifier for external lookups. */
   externalId?: string;
@@ -196,14 +192,12 @@ export function sandboxInfoFromApi(sandbox: ApiSandbox): SandboxInfo {
     name: sandbox.name,
     url: sandbox.url,
     status: sandbox.status,
-    state: sandbox.state,
     image: sandbox.image,
     memory: sandbox.memory,
     region: sandbox.region,
     enabled: sandbox.enabled,
     envs: sandboxEnvsFromApi(sandbox.envs),
     labels: { ...sandbox.labels },
-    displayName: sandbox.display_name,
     externalId: sandbox.external_id,
     lifecycle:
       sandbox.lifecycle === undefined ? undefined : sandboxLifecycleFromApi(sandbox.lifecycle),
