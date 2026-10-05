@@ -167,6 +167,8 @@ import type {
   ListLoopsDeploymentsResponse,
   ListLoopsRunsResponse,
   ListLoopsSamplersResponse,
+  ListSandboxLibraryImagesParams,
+  ListSandboxLibraryImagesResponse,
   ListSandboxesParams,
   ListSandboxesResponse,
   ListTrainingJobsResponse,
@@ -2118,6 +2120,20 @@ export class ApiClient {
     return this._doJson<ListSandboxesResponse>({
       method: "GET",
       pathFmt: "/v1/sandboxes/instances",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** List built-in sandbox images */
+  async listSandboxLibraryImages(params?: {
+    params?: ListSandboxLibraryImagesParams;
+  }): Promise<ListSandboxLibraryImagesResponse> {
+    return this._doJson<ListSandboxLibraryImagesResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/library_images",
       pathArgs: [],
       query: params?.params ?? null,
       body: null,

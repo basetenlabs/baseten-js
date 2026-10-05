@@ -12147,7 +12147,6 @@ export type components = {
      *       "name": "baseten-api-review-0916",
      *       "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
      *       "status": "DEPLOYED",
-     *       "state": "RUNNING",
      *       "created_at": "2026-09-16T21:26:58.545765901Z",
      *       "updated_at": "2026-09-16T21:31:13Z",
      *       "created_by": "sandbox-automation",
@@ -12173,12 +12172,6 @@ export type components = {
        * @example DEPLOYED
        */
       status: components["schemas"]["SandboxStatus"];
-      /**
-       * @description Current execution state when available. Control-plane enum values use uppercase; the execution API uses its own lowercase enum values.
-       * @example RUNNING
-       * @enum {string}
-       */
-      readonly state?: "RUNNING" | "STANDBY";
       /**
        * Format: date-time
        * @description Time the sandbox was created.
@@ -12338,7 +12331,6 @@ export type components = {
      *           "name": "baseten-api-review-0916",
      *           "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
      *           "status": "DEPLOYED",
-     *           "state": "RUNNING",
      *           "created_at": "2026-09-16T21:26:58.545765901Z",
      *           "updated_at": "2026-09-16T21:31:13Z",
      *           "created_by": "sandbox-automation",
@@ -12441,7 +12433,6 @@ export type components = {
        *         "name": "baseten-api-review-0916",
        *         "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
        *         "status": "DEPLOYED",
-       *         "state": "RUNNING",
        *         "created_at": "2026-09-16T21:26:58.545765901Z",
        *         "updated_at": "2026-09-16T21:31:13Z",
        *         "created_by": "sandbox-automation",
@@ -12652,6 +12643,107 @@ export type components = {
        * @example b10/base-image:latest
        */
       image?: string;
+    };
+    /** @description Volume attachment suggested by a built-in image. */
+    SandboxLibraryImageVolume: {
+      /**
+       * @description Volume name, or an internal identifier for ephemeral volumes.
+       * @example scratch
+       */
+      name: string;
+      /**
+       * @description Absolute filesystem path where the volume is mounted.
+       * @example /mnt/data
+       */
+      mount_path: string;
+      /**
+       * @description Volume type, persistent when empty.
+       * @example ephemeral
+       */
+      type?: string;
+      /**
+       * @description Storage capacity in megabytes for ephemeral volumes.
+       * @example 10240
+       */
+      size_mb?: number;
+      /**
+       * @description Whether the volume is mounted read-only.
+       * @example false
+       */
+      read_only?: boolean;
+    };
+    /** @description Optional settings suggested when creating a sandbox from this image. */
+    SandboxLibraryImageCreationOptions: {
+      /** @description Kernel selection arguments. */
+      extra_args?: {
+        [key: string]: string;
+      };
+      /** @description Volume attachments. */
+      volumes?: components["schemas"]["SandboxLibraryImageVolume"][];
+    };
+    /** @description Built-in sandbox image usable directly as a sandbox image. */
+    SandboxLibraryImage: {
+      /**
+       * @description Stable identifier of the built-in image.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Human-readable name.
+       * @example Base Image
+       */
+      display_name?: string;
+      /**
+       * @description Short description.
+       * @example A minimal sandbox environment with the sandbox execution API.
+       */
+      description?: string;
+      /** @description Detailed description. */
+      long_description?: string;
+      /**
+       * @description Image reference including its tag, usable as the image of a sandbox.
+       * @example baseten/base-image:latest
+       */
+      image: string;
+      /**
+       * @description Recommended memory allocation in megabytes.
+       * @example 4096
+       */
+      memory?: number;
+      ports?: components["schemas"]["SandboxPorts"];
+      /** @description Categories of the image. */
+      categories?: string[];
+      /** @description Tags of the image. */
+      tags?: string[];
+      /** @description Documentation URL. */
+      url?: string;
+      /** @description Icon URL. */
+      icon?: string;
+      /** @description Light-mode icon URL. */
+      icon_light?: string;
+      /** @description Dark-mode icon URL. */
+      icon_dark?: string;
+      /**
+       * @description Whether the image requires an enterprise plan.
+       * @example false
+       */
+      enterprise?: boolean;
+      /**
+       * @description Whether the image is hidden. Always false in listings.
+       * @example false
+       */
+      hidden?: boolean;
+      /**
+       * @description Whether the image is not yet available. Always false in listings.
+       * @example false
+       */
+      coming_soon?: boolean;
+      creation_options?: components["schemas"]["SandboxLibraryImageCreationOptions"];
+    };
+    /** @description Built-in sandbox images. */
+    ListSandboxLibraryImagesResponse: {
+      /** @description Built-in images. */
+      items: components["schemas"]["SandboxLibraryImage"][];
     };
     /**
      * @description Result of cleaning up unused sandbox images.
@@ -13666,6 +13758,10 @@ export type components = {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
     };
+    ListSandboxLibraryImagesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
     ListImagesParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
@@ -14534,6 +14630,12 @@ export type ImageTag = components["schemas"]["ImageTag"];
 export type Image = components["schemas"]["Image"];
 export type PushImageRequest = components["schemas"]["PushImageRequest"];
 export type PushImageResponse = components["schemas"]["PushImageResponse"];
+export type SandboxLibraryImageVolume = components["schemas"]["SandboxLibraryImageVolume"];
+export type SandboxLibraryImageCreationOptions =
+  components["schemas"]["SandboxLibraryImageCreationOptions"];
+export type SandboxLibraryImage = components["schemas"]["SandboxLibraryImage"];
+export type ListSandboxLibraryImagesResponse =
+  components["schemas"]["ListSandboxLibraryImagesResponse"];
 export type CleanupImagesResponse = components["schemas"]["CleanupImagesResponse"];
 export type GetVolumesParams = components["schemas"]["GetVolumesParams"];
 export type GetVolumesNamespacesParams = components["schemas"]["GetVolumesNamespacesParams"];
@@ -14595,6 +14697,8 @@ export type CreateSandboxParams = components["schemas"]["CreateSandboxParams"];
 export type GetSandboxParams = components["schemas"]["GetSandboxParams"];
 export type UpdateSandboxParams = components["schemas"]["UpdateSandboxParams"];
 export type DeleteSandboxParams = components["schemas"]["DeleteSandboxParams"];
+export type ListSandboxLibraryImagesParams =
+  components["schemas"]["ListSandboxLibraryImagesParams"];
 export type ListImagesParams = components["schemas"]["ListImagesParams"];
 export type PushImageParams = components["schemas"]["PushImageParams"];
 export type CleanupImagesParams = components["schemas"]["CleanupImagesParams"];
