@@ -286,7 +286,8 @@ export class ImageBuilder {
    * the directory itself. It is read when pushed, with files keeping their
    * permissions, a link to a file within the directory stored as a copy of
    * the file, a link to a file outside it failing the push, and a link to a
-   * directory stored as an empty directory.
+   * directory stored as an empty directory. Everything in it is added: no
+   * `.dockerignore` or default ignore rules apply.
    *
    * Needs a runtime with Node's filesystem API.
    */
@@ -321,8 +322,11 @@ export class ImageBuilder {
     });
   }
 
-  /** @internal The build context to zip: the Dockerfile, then each added entry. */
-  async zipEntries(): Promise<ZipEntry[]> {
+  /**
+   * @internal The build context to zip: the Dockerfile, then each added
+   * entry, with local ones checked now and read while zipping.
+   */
+  async zipEntries(signal?: AbortSignal): Promise<ZipEntry[]> {
     const encoder = new TextEncoder();
     const entries: ZipEntry[] = [
       { path: "Dockerfile", data: encoder.encode(this.dockerfile()), mode: 0o644 },
@@ -346,7 +350,7 @@ export class ImageBuilder {
         if (!stat?.isFile()) throw new Error(`local file ${entry.sourcePath} is not a file`);
         entries.push({
           path: entry.name,
-          data: await node.fs.readFile(entry.sourcePath),
+          read: () => node.fs.readFile(entry.sourcePath),
           mode: stat.mode,
         });
       } else {
@@ -354,7 +358,9 @@ export class ImageBuilder {
           throw new Error(`local directory ${entry.sourcePath} is not a directory`);
         }
         entries.push({ path: entry.name, mode: stat.mode });
-        await addDirectoryZipEntries(node, entry.sourcePath, `${entry.name}/`, entries);
+        // No ignore rules: adding a directory is an explicit choice of its
+        // files, as Docker's COPY of a directory takes them all.
+        await addDirectoryZipEntries(node, entry.sourcePath, `${entry.name}/`, entries, { signal });
       }
     }
     return entries;

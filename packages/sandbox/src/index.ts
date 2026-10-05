@@ -41,6 +41,13 @@ export {
   type ImageBuilderFromRegistryOptions,
 } from "./images/builder";
 export {
+  defaultImageIgnoreFile,
+  type ImageIgnoreFileFunc,
+  type ImageIgnoreFileOptions,
+  type ImageIgnoreFileProcessor,
+  type ImageIgnoreFileProcessorOptions,
+} from "./images/ignore";
+export {
   ImageClient,
   type ImageCleanupRequest,
   type ImageCleanupResult,

@@ -10,7 +10,13 @@ import { ImageBuildError, ImageUploadError, SandboxApiError } from "../errors";
 import { optionalDate, type SandboxPort, sandboxPortsFromApi } from "../info";
 import { isTransientResetError, sleep } from "../retry";
 import type { ImageBuilder } from "./builder";
-import { createZip, type ZipEntry, zipEntryInfos } from "./zip";
+import {
+  DOCKERIGNORE_FILE_NAME,
+  type ImageIgnoreFileFunc,
+  type ImageIgnoreFileProcessor,
+  resolveImageIgnoreFile,
+} from "./ignore";
+import { createZip, writeZip, type ZipEntry, zipEntryInfos } from "./zip";
 
 const DEFAULT_WAIT_TIMEOUT_MS = 900_000;
 const DEFAULT_POLL_INTERVAL_MS = 3000;
@@ -194,6 +200,14 @@ export interface ImagePushBuilderRequest extends ImagePushRequestBase {
   /** Builder whose Dockerfile and files make up the build context, which is zipped. */
   builder: ImageBuilder;
 
+  /**
+   * Whether to zip into a temporary file, removed once uploaded, when the
+   * builder has local files or directories. Without them, the build context
+   * is always zipped in memory. Defaults to true. Needs Node's
+   * `fs.openAsBlob`.
+   */
+  tempFile?: boolean;
+
   /** @hidden */
   registryImage?: never;
   /** @hidden */
@@ -202,6 +216,10 @@ export interface ImagePushBuilderRequest extends ImagePushRequestBase {
   zip?: never;
   /** @hidden */
   directory?: never;
+  /** @hidden */
+  ignoreFileProcessor?: never;
+  /** @hidden */
+  defaultIgnoreFile?: never;
   /** @hidden */
   files?: never;
 }
@@ -217,9 +235,15 @@ export interface ImagePushRegistryRequest extends ImagePushRequestBase {
   /** @hidden */
   builder?: never;
   /** @hidden */
+  tempFile?: never;
+  /** @hidden */
   zip?: never;
   /** @hidden */
   directory?: never;
+  /** @hidden */
+  ignoreFileProcessor?: never;
+  /** @hidden */
+  defaultIgnoreFile?: never;
   /** @hidden */
   files?: never;
 }
@@ -232,11 +256,17 @@ export interface ImagePushZipRequest extends ImagePushRequestBase {
   /** @hidden */
   builder?: never;
   /** @hidden */
+  tempFile?: never;
+  /** @hidden */
   registryImage?: never;
   /** @hidden */
   dockerConfig?: never;
   /** @hidden */
   directory?: never;
+  /** @hidden */
+  ignoreFileProcessor?: never;
+  /** @hidden */
+  defaultIgnoreFile?: never;
   /** @hidden */
   files?: never;
 }
@@ -248,12 +278,36 @@ export interface ImagePushZipRequest extends ImagePushRequestBase {
 export interface ImagePushDirectoryRequest extends ImagePushRequestBase {
   /**
    * Local directory holding the build context, with a `Dockerfile` at its
-   * root. Everything in it is zipped and uploaded. Files keep their
-   * permissions, a link to a file within the directory stores a copy of the
-   * file, a link to a file outside it fails the push, a link to a directory
-   * stores an empty directory, and a broken link is left out.
+   * root, which is zipped. Files keep their permissions, a link to a file
+   * within the directory stores a copy of the file, a link to a file outside
+   * it fails the push, a link to a directory stores an empty directory, and a
+   * broken link is left out.
+   *
+   * Paths are left out as a `.dockerignore` at the directory's root says,
+   * read through {@link ignoreFileProcessor}, or else by
+   * {@link defaultIgnoreFile}. The root `Dockerfile` and `.dockerignore` are
+   * always kept, as Docker keeps them.
    */
   directory: string;
+
+  /**
+   * Parses the `.dockerignore` at the root of {@link directory}. Required if
+   * there is one; otherwise the push fails before anything is sent. This
+   * package has no `.dockerignore` parser of its own.
+   */
+  ignoreFileProcessor?: ImageIgnoreFileProcessor;
+
+  /**
+   * Filters {@link directory} when it has no `.dockerignore`. Defaults to
+   * {@link defaultImageIgnoreFile}. Pass `() => false` to push everything.
+   */
+  defaultIgnoreFile?: ImageIgnoreFileFunc;
+
+  /**
+   * Whether to zip into a temporary file, removed once uploaded, instead of
+   * in memory. Defaults to true. Needs Node's `fs.openAsBlob`.
+   */
+  tempFile?: boolean;
 
   /** @hidden */
   builder?: never;
@@ -278,6 +332,8 @@ export interface ImagePushFilesRequest extends ImagePushRequestBase {
   /** @hidden */
   builder?: never;
   /** @hidden */
+  tempFile?: never;
+  /** @hidden */
   registryImage?: never;
   /** @hidden */
   dockerConfig?: never;
@@ -285,6 +341,10 @@ export interface ImagePushFilesRequest extends ImagePushRequestBase {
   zip?: never;
   /** @hidden */
   directory?: never;
+  /** @hidden */
+  ignoreFileProcessor?: never;
+  /** @hidden */
+  defaultIgnoreFile?: never;
 }
 
 /** Request for {@link ImageClient.getInfo}. */
@@ -420,28 +480,36 @@ export class ImageClient {
    * To create a sandbox from it, pass `<name>:latest` as the sandbox's
    * `image`.
    *
-   * A build context is uploaded in one attempt. If the upload fails, the
-   * image is left as the service has it, so push again or delete it.
+   * A build context read from local files, from `directory` or a builder's
+   * local files and directories, is zipped into a temporary file, removed
+   * once uploaded, unless `tempFile` is false; any other is zipped in memory.
+   * It is uploaded in one attempt. If the upload fails, the image is left as
+   * the service has it, so push again or delete it.
    */
   async push(request: ImagePushRequest): Promise<ImageInfo> {
     const signal = request.callOptions?.signal;
     // Zipped before anything is sent, so a bad source leaves nothing behind.
-    const zip = await pushSourceZip(request);
-    const response = await callControlPlane(() =>
-      this.#context.api(signal).pushImage({
-        params: { team_id: this.#context.teamId },
-        request: {
-          name: request.name,
-          image: request.registryImage,
-          docker_config: request.dockerConfig,
-        },
-      }),
-    );
-    if (zip !== undefined) {
-      if (response.upload_url === undefined) {
-        throw new Error(`pushing image ${request.name} returned no upload URL`);
+    const archive = await pushSourceArchive(request, signal);
+    let response;
+    try {
+      response = await callControlPlane(() =>
+        this.#context.api(signal).pushImage({
+          params: { team_id: this.#context.teamId },
+          request: {
+            name: request.name,
+            image: request.registryImage,
+            docker_config: request.dockerConfig,
+          },
+        }),
+      );
+      if (archive !== undefined) {
+        if (response.upload_url === undefined) {
+          throw new Error(`pushing image ${request.name} returned no upload URL`);
+        }
+        await this.#upload(request.name, response.upload_url, archive.zip, signal);
       }
-      await this.#upload(request.name, response.upload_url, zip, signal);
+    } finally {
+      await archive?.remove?.();
     }
     if (request.wait === false) return { name: response.name, status: response.status };
     return this.#waitBuilt(request.name, request, signal);
@@ -596,7 +664,8 @@ export class ImageClient {
 
   async #upload(name: string, url: string, zip: Blob, signal: AbortSignal | undefined) {
     // The URL is signed for storage, so none of the API's headers or
-    // credentials go with it.
+    // credentials go with it. A Blob, in memory or backed by a file, has a
+    // known size, so fetch sends the Content-Length storage requires.
     const response = await this.#context.fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/zip" },
@@ -650,8 +719,17 @@ function isRetryableWaitError(err: unknown): boolean {
   return isTransientResetError(err);
 }
 
+/** A zipped build context, and how to remove its temporary file if it has one. */
+interface PushArchive {
+  zip: Blob;
+  remove?: () => Promise<void>;
+}
+
 /** Checks that a push has exactly one source, and zips it unless it is a registry image. */
-async function pushSourceZip(request: ImagePushRequest): Promise<Blob | undefined> {
+async function pushSourceArchive(
+  request: ImagePushRequest,
+  signal: AbortSignal | undefined,
+): Promise<PushArchive | undefined> {
   const sources = (["builder", "registryImage", "zip", "directory", "files"] as const).filter(
     (key) => request[key] !== undefined,
   );
@@ -663,7 +741,27 @@ async function pushSourceZip(request: ImagePushRequest): Promise<Blob | undefine
   if (request.dockerConfig !== undefined && request.registryImage === undefined) {
     throw new TypeError("dockerConfig applies only to registryImage");
   }
-  if (request.builder !== undefined) return createZip(await request.builder.zipEntries());
+  if (
+    (request.ignoreFileProcessor !== undefined || request.defaultIgnoreFile !== undefined) &&
+    request.directory === undefined
+  ) {
+    throw new TypeError("ignoreFileProcessor and defaultIgnoreFile apply only to directory");
+  }
+  if (
+    request.tempFile !== undefined &&
+    request.directory === undefined &&
+    request.builder === undefined
+  ) {
+    throw new TypeError("tempFile applies only to directory and builder");
+  }
+  const tempFile = request.tempFile ?? true;
+  if (request.builder !== undefined) {
+    const entries = await request.builder.zipEntries(signal);
+    // Only local files are read while zipping, so only they can make a build
+    // context too large for memory.
+    const local = entries.some((entry) => entry.read !== undefined);
+    return zipPushArchive(entries, tempFile && local, signal);
+  }
   if (request.zip !== undefined) {
     const zip = request.zip instanceof Blob ? request.zip : new Blob([request.zip as BlobPart]);
     // A link named Dockerfile would only fail later, in the build.
@@ -671,12 +769,63 @@ async function pushSourceZip(request: ImagePushRequest): Promise<Blob | undefine
     if (!entries.some((entry) => entry.path === "Dockerfile" && entry.regularFile)) {
       throw new Error("the zip has no Dockerfile file at its root");
     }
-    return zip;
+    return { zip };
   }
-  if (request.directory !== undefined)
-    return createZip(await directoryZipEntries(request.directory));
-  if (request.files !== undefined) return createZip(await filesZipEntries(request.files));
+  if (request.directory !== undefined) {
+    const entries = await directoryZipEntries(
+      request.directory,
+      request.ignoreFileProcessor,
+      request.defaultIgnoreFile,
+      signal,
+    );
+    return zipPushArchive(entries, tempFile, signal);
+  }
+  if (request.files !== undefined) {
+    return zipPushArchive(await filesZipEntries(request.files), false, signal);
+  }
   return undefined;
+}
+
+/** Zips entries into a temporary file when tempFile is set, or else in memory. */
+async function zipPushArchive(
+  entries: ZipEntry[],
+  tempFile: boolean,
+  signal: AbortSignal | undefined,
+): Promise<PushArchive> {
+  if (!tempFile) return { zip: await createZip(entries, signal) };
+  const node = nodeFileSystem();
+  const openAsBlob = node?.openAsBlob;
+  if (node === undefined || openAsBlob === undefined) {
+    throw new Error(
+      "zipping to a temporary file needs Node's fs.openAsBlob; set tempFile to false to zip in memory",
+    );
+  }
+  // A directory of its own, since Node can only create a uniquely named
+  // directory, not a file, in one call.
+  const dir = await node.fs.mkdtemp(node.path.join(node.tmpdir(), "baseten-image-"));
+  const remove = () => node.fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
+  try {
+    const path = node.path.join(dir, "image.zip");
+    const handle = await node.fs.open(path, "wx");
+    try {
+      await writeZip(
+        entries,
+        async (chunk) => {
+          for (let written = 0; written < chunk.length;) {
+            written += (await handle.write(chunk, written)).bytesWritten;
+          }
+        },
+        signal,
+      );
+    } finally {
+      await handle.close();
+    }
+    // Read from the file as it is uploaded.
+    return { zip: await openAsBlob(path), remove };
+  } catch (err) {
+    await remove();
+    throw err;
+  }
 }
 
 async function filesZipEntries(
@@ -710,6 +859,14 @@ export interface NodeFsPromises {
   stat(path: string): Promise<{ mode: number; isFile(): boolean; isDirectory(): boolean }>;
   readFile(path: string): Promise<Uint8Array>;
   realpath(path: string): Promise<string>;
+  mkdtemp(prefix: string): Promise<string>;
+  open(path: string, flags: string): Promise<NodeFileHandle>;
+  rm(path: string, options: { recursive: boolean; force: boolean }): Promise<void>;
+}
+
+interface NodeFileHandle {
+  write(data: Uint8Array, offset: number): Promise<{ bytesWritten: number }>;
+  close(): Promise<void>;
 }
 
 interface NodeDirent {
@@ -729,53 +886,94 @@ export interface NodePath {
   sep: string;
 }
 
-/** @internal Node's filesystem and path modules, or undefined on a runtime without them. */
-export function nodeFileSystem(): { fs: NodeFsPromises; path: NodePath } | undefined {
+/** @internal What is used of Node's filesystem, path, and os modules. */
+export interface NodeFileSystem {
+  fs: NodeFsPromises;
+  path: NodePath;
+  tmpdir(): string;
+
+  /** Missing on runtimes that implement only part of Node's fs module. */
+  openAsBlob?: (path: string) => Promise<Blob>;
+}
+
+/** @internal Node's filesystem modules, or undefined on a runtime without them. */
+export function nodeFileSystem(): NodeFileSystem | undefined {
   // Reached through getBuiltinModule so that nothing imports node:fs, which
   // would break bundling for other runtimes.
   const getBuiltinModule =
     typeof process === "undefined" ? undefined : process.getBuiltinModule?.bind(process);
   const fs = getBuiltinModule?.("node:fs/promises") as NodeFsPromises | undefined;
   const path = getBuiltinModule?.("node:path") as NodePath | undefined;
-  return fs === undefined || path === undefined ? undefined : { fs, path };
+  const os = getBuiltinModule?.("node:os") as { tmpdir(): string } | undefined;
+  // openAsBlob is only on node:fs, not node:fs/promises.
+  const fsRoot = getBuiltinModule?.("node:fs") as
+    | { openAsBlob?: (path: string) => Promise<Blob> }
+    | undefined;
+  if (fs === undefined || path === undefined || os === undefined) return undefined;
+  return { fs, path, tmpdir: () => os.tmpdir(), openAsBlob: fsRoot?.openAsBlob?.bind(fsRoot) };
+}
+
+/** @internal How {@link addDirectoryZipEntries} walks a directory. */
+export interface DirectoryWalkOptions {
+  /** Leaves out what it returns true for; keeps everything if unset. */
+  ignore?: ImageIgnoreFileFunc;
+  signal?: AbortSignal;
 }
 
 /**
- * @internal Adds everything under a local directory to entries, each path
- * prefixed. Files keep their modes, a link to a file within the directory
- * stores a copy of the file, a link to a file outside it is an error, a link
- * to a directory stores an empty directory, and a broken link is left out.
+ * @internal Adds everything under a local directory that is not ignored to
+ * entries, each path prefixed, with files read while zipping. Files keep their
+ * modes, a link to a file within the directory stores a copy of the file, a
+ * link to a file outside it is an error, a link to a directory stores an
+ * empty directory, and a broken link is left out. The root `Dockerfile` and
+ * `.dockerignore` are never ignored, as Docker keeps them in a build context.
  */
 export async function addDirectoryZipEntries(
   node: { fs: NodeFsPromises; path: NodePath },
   dir: string,
   prefix: string,
   entries: ZipEntry[],
+  options: DirectoryWalkOptions = {},
 ): Promise<void> {
   // Resolved, so a link's resolved target can be checked against it.
   const root = await node.fs.realpath(dir);
-  await addTreeZipEntries(node, root, dir, prefix, entries);
+  await addTreeZipEntries(node, root, dir, "", prefix, entries, options);
 }
 
+// relDir is dir's path relative to the walked directory, "" for the walked
+// directory itself, or else ending in a slash.
 async function addTreeZipEntries(
   node: { fs: NodeFsPromises; path: NodePath },
   root: string,
   dir: string,
+  relDir: string,
   prefix: string,
   entries: ZipEntry[],
+  options: DirectoryWalkOptions,
 ): Promise<void> {
   const { fs, path } = node;
   const children = await fs.readdir(dir, { withFileTypes: true });
   children.sort((a, b) => compareNames(a.name, b.name));
   for (const child of children) {
+    options.signal?.throwIfAborted();
     const fullPath = path.join(dir, child.name);
-    const archivePath = prefix + child.name;
+    const relPath = relDir + child.name;
+    const alwaysKept =
+      relDir === "" && (child.name === "Dockerfile" || child.name === DOCKERIGNORE_FILE_NAME);
+    if (
+      options.ignore !== undefined &&
+      !alwaysKept &&
+      (await options.ignore({ relPath, isDirectory: child.isDirectory() }))
+    ) {
+      continue;
+    }
+    const archivePath = prefix + relPath;
     if (child.isDirectory()) {
       entries.push({ path: archivePath, mode: (await fs.stat(fullPath)).mode });
-      await addTreeZipEntries(node, root, fullPath, `${archivePath}/`, entries);
+      await addTreeZipEntries(node, root, fullPath, `${relPath}/`, prefix, entries, options);
     } else if (child.isFile()) {
       const { mode } = await fs.stat(fullPath);
-      entries.push({ path: archivePath, data: await fs.readFile(fullPath), mode });
+      entries.push({ path: archivePath, read: () => fs.readFile(fullPath), mode });
     } else if (child.isSymbolicLink()) {
       const target = await fs.stat(fullPath).catch(() => undefined);
       if (target?.isFile()) {
@@ -793,7 +991,7 @@ async function addTreeZipEntries(
             `${fullPath} is a link to ${targetPath}, outside ${root}; only links to files within it can be pushed`,
           );
         }
-        entries.push({ path: archivePath, data: await fs.readFile(fullPath), mode: target.mode });
+        entries.push({ path: archivePath, read: () => fs.readFile(fullPath), mode: target.mode });
       } else if (target?.isDirectory()) {
         // Stored as an empty directory, not followed, so a link cannot pull
         // in the rest of the machine.
@@ -804,7 +1002,12 @@ async function addTreeZipEntries(
   }
 }
 
-async function directoryZipEntries(root: string): Promise<ZipEntry[]> {
+async function directoryZipEntries(
+  root: string,
+  ignoreFileProcessor: ImageIgnoreFileProcessor | undefined,
+  defaultIgnoreFile: ImageIgnoreFileFunc | undefined,
+  signal: AbortSignal | undefined,
+): Promise<ZipEntry[]> {
   const node = nodeFileSystem();
   if (node === undefined) {
     throw new Error(
@@ -817,8 +1020,9 @@ async function directoryZipEntries(root: string): Promise<ZipEntry[]> {
   if (dockerfile === undefined || !dockerfile.isFile()) {
     throw new Error(`directory ${root} has no Dockerfile at its root`);
   }
+  const ignore = await resolveImageIgnoreFile(node, root, ignoreFileProcessor, defaultIgnoreFile);
   const entries: ZipEntry[] = [];
-  await addDirectoryZipEntries(node, root, "", entries);
+  await addDirectoryZipEntries(node, root, "", entries, { ignore, signal });
   return entries;
 }
 

@@ -9,6 +9,11 @@
 // per entry. Only its basic form is used here: deflate or stored entries, UTF-8
 // names, Unix permissions, and no ZIP64, encryption, or data descriptors.
 //
+// Each entry's size and CRC-32 go in its header, before its content, so a file
+// is held in memory whole while it is written, one file at a time. Streaming
+// within a file would need data descriptors and more of the format, for little
+// gain, since a build context is mostly small files.
+//
 // Confidence comes from the tests, not from the code looking right: archives
 // written here are read back by independent zip implementations (a zip library
 // used only in tests, and the system unzip where available), and archives
@@ -19,8 +24,14 @@ export interface ZipEntry {
   /** Path inside the archive, with forward slashes and no leading slash. */
   path: string;
 
-  /** File content, or undefined for a directory. */
+  /** File content. With neither this nor read, the entry is a directory. */
   data?: Uint8Array;
+
+  /**
+   * Reads the file content when the entry is written, for a local file, so a
+   * large build context is never held in memory whole.
+   */
+  read?: () => Promise<Uint8Array>;
 
   /** Unix permission bits, such as 0o644. */
   mode: number;
@@ -58,21 +69,42 @@ const MSDOS_CREATORS = new Set([0, 11, 14]); // MS-DOS, NTFS, VFAT
 const DOS_TIME = 0;
 const DOS_DATE = (1 << 5) | 1;
 
-/** Builds a zip archive, compressing each file unless that makes it larger. */
-export async function createZip(entries: ZipEntry[]): Promise<Blob> {
+/** Builds a zip archive in memory. See {@link writeZip}. */
+export async function createZip(entries: ZipEntry[], signal?: AbortSignal): Promise<Blob> {
+  const parts: Uint8Array[] = [];
+  await writeZip(
+    entries,
+    async (chunk) => {
+      parts.push(chunk);
+    },
+    signal,
+  );
+  return new Blob(parts as BlobPart[]);
+}
+
+/**
+ * Writes a zip archive of entries, in order, to write, compressing each file
+ * unless that makes it larger. Each chunk is written once the previous one
+ * is done.
+ */
+export async function writeZip(
+  entries: ZipEntry[],
+  write: (chunk: Uint8Array) => Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
   if (entries.length > MAX_ENTRIES) {
     throw new Error(`a zip archive holds at most ${MAX_ENTRIES} entries, got ${entries.length}`);
   }
   const encoder = new TextEncoder();
-  const parts: Uint8Array[] = [];
   const centralHeaders: Uint8Array[] = [];
   let offset = 0;
   for (const entry of entries) {
-    const directory = entry.data === undefined;
+    signal?.throwIfAborted();
+    const directory = entry.data === undefined && entry.read === undefined;
     const name = encoder.encode(
       directory && !entry.path.endsWith("/") ? `${entry.path}/` : entry.path,
     );
-    const data = entry.data ?? new Uint8Array();
+    const data = entry.data ?? (await entry.read?.()) ?? new Uint8Array();
     const crc = directory ? 0 : crc32(data);
     let method = METHOD_STORE;
     let stored = data;
@@ -116,10 +148,11 @@ export async function createZip(entries: ZipEntry[]): Promise<Blob> {
     central.setUint32(38, external >>> 0, true);
     central.setUint32(42, offset, true);
 
-    parts.push(new Uint8Array(local.buffer), name, stored);
-    centralHeaders.push(new Uint8Array(central.buffer), name);
     offset += 30 + name.length + stored.length;
     if (offset > MAX_OFFSET) throw new Error("a zip archive can be at most 4GB");
+    await write(concatBytes([new Uint8Array(local.buffer), name]));
+    await write(stored);
+    centralHeaders.push(new Uint8Array(central.buffer), name);
   }
 
   const centralSize = centralHeaders.reduce((size, part) => size + part.length, 0);
@@ -130,7 +163,17 @@ export async function createZip(entries: ZipEntry[]): Promise<Blob> {
   end.setUint16(10, entries.length, true);
   end.setUint32(12, centralSize, true);
   end.setUint32(16, offset, true);
-  return new Blob([...parts, ...centralHeaders, new Uint8Array(end.buffer)] as BlobPart[]);
+  await write(concatBytes([...centralHeaders, new Uint8Array(end.buffer)]));
+}
+
+function concatBytes(parts: Uint8Array[]): Uint8Array {
+  const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
+  let position = 0;
+  for (const part of parts) {
+    result.set(part, position);
+    position += part.length;
+  }
+  return result;
 }
 
 /** An entry of a zip archive, as listed by {@link zipEntryInfos}. */

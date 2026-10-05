@@ -1,14 +1,28 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { createServer, type IncomingHttpHeaders } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { unzipSync, zipSync } from "fflate";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
   ImageBuildError,
+  ImageBuilder,
   ImageUploadError,
   SandboxApiError,
   SandboxClient,
+  type ImageIgnoreFileOptions,
+  type ImageIgnoreFileProcessorOptions,
+  type ImagePushDirectoryRequest,
   type ImagePushRequest,
 } from "../../src/index";
 
@@ -85,8 +99,11 @@ afterAll(() => {
   for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
 });
 
+// Read once, since some tests point the temporary directory elsewhere.
+const TEMP_ROOT = tmpdir();
+
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "sandbox-images-test-"));
+  const dir = mkdtempSync(join(TEMP_ROOT, "sandbox-images-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -334,6 +351,29 @@ describe("ImageClient.push validation", () => {
       /dockerConfig applies only to registryImage/,
     ],
     [
+      "ignoreFileProcessor without directory",
+      {
+        name: "app",
+        files: { Dockerfile: "" },
+        ignoreFileProcessor: () => () => false,
+      } as unknown as ImagePushRequest,
+      /ignoreFileProcessor and defaultIgnoreFile apply only to directory/,
+    ],
+    [
+      "defaultIgnoreFile without directory",
+      {
+        name: "app",
+        files: { Dockerfile: "" },
+        defaultIgnoreFile: () => false,
+      } as unknown as ImagePushRequest,
+      /ignoreFileProcessor and defaultIgnoreFile apply only to directory/,
+    ],
+    [
+      "tempFile without directory or builder",
+      { name: "app", files: { Dockerfile: "" }, tempFile: false } as unknown as ImagePushRequest,
+      /tempFile applies only to directory and builder/,
+    ],
+    [
       "files without a Dockerfile",
       { name: "app", files: { "a.txt": "a" } },
       /files has no Dockerfile/,
@@ -380,6 +420,276 @@ describe("ImageClient.push validation", () => {
       /has no Dockerfile at its root/,
     );
     expect(server.requests).toEqual([]);
+  });
+});
+
+// Creates a directory of files by forward-slashed path.
+function writeTree(files: Record<string, string>): string {
+  const dir = tempDir();
+  for (const [path, content] of Object.entries(files)) {
+    const full = join(dir, ...path.split("/"));
+    mkdirSync(dirname(full), { recursive: true });
+    writeFileSync(full, content);
+  }
+  return dir;
+}
+
+// Pushes without waiting and returns the uploaded archive's files as text.
+async function pushedFiles(
+  request: Omit<ImagePushDirectoryRequest, "name">,
+): Promise<Record<string, string>> {
+  const server = buildServer([]);
+  await server.client.images.push({ name: "app", wait: false, ...request });
+  const decoder = new TextDecoder();
+  return Object.fromEntries(
+    Object.entries(unzipSync(server.requests[1]!.body)).map(([path, data]) => [
+      path,
+      decoder.decode(data),
+    ]),
+  );
+}
+
+describe("ImageClient.push ignore rules", () => {
+  it("leaves out the defaults without a .dockerignore", async () => {
+    const files = await pushedFiles({
+      directory: writeTree({
+        Dockerfile: DOCKERFILE,
+        "main.py": "print()",
+        ".env": "SECRET=1",
+        ".git/config": "x",
+        "web/node_modules/a": "x",
+        "web/.env.local": "nested",
+      }),
+    });
+    expect(Object.keys(files).sort()).toEqual(
+      ["Dockerfile", "main.py", "web/", "web/.env.local"].sort(),
+    );
+  });
+
+  it("uses defaultIgnoreFile instead of the defaults", async () => {
+    const files = await pushedFiles({
+      directory: writeTree({ Dockerfile: DOCKERFILE, ".env": "SECRET=1" }),
+      defaultIgnoreFile: () => false,
+    });
+    expect(files[".env"]).toBe("SECRET=1");
+  });
+
+  it("reads a .dockerignore through ignoreFileProcessor, pruning directories", async () => {
+    const dir = writeTree({
+      Dockerfile: DOCKERFILE,
+      ".dockerignore": "secret.txt\nbuild\n",
+      "secret.txt": "x",
+      "build/out/a.o": "x",
+      // Not left out: a .dockerignore replaces the defaults.
+      ".env": "SECRET=1",
+    });
+    let processorOptions: ImageIgnoreFileProcessorOptions | undefined;
+    const checked: ImageIgnoreFileOptions[] = [];
+    const files = await pushedFiles({
+      directory: dir,
+      ignoreFileProcessor: (options) => {
+        processorOptions = options;
+        // Ignores everything it is asked about, so whatever is kept was
+        // never asked about.
+        return async (ignoreOptions) => {
+          checked.push(ignoreOptions);
+          return ignoreOptions.relPath !== ".env";
+        };
+      },
+    });
+    expect(processorOptions).toEqual({
+      path: join(dir, ".dockerignore"),
+      contents: "secret.txt\nbuild\n",
+    });
+    expect(Object.keys(files).sort()).toEqual([".dockerignore", ".env", "Dockerfile"]);
+    // The root Dockerfile and .dockerignore are never asked about, and an
+    // ignored directory's contents are not either.
+    expect(checked).toEqual([
+      { relPath: ".env", isDirectory: false },
+      { relPath: "build", isDirectory: true },
+      { relPath: "secret.txt", isDirectory: false },
+    ]);
+  });
+
+  it("fails before sending anything when a .dockerignore has no processor", async () => {
+    const server = buildServer([]);
+    await expect(
+      server.client.images.push({
+        name: "app",
+        directory: writeTree({ Dockerfile: DOCKERFILE, ".dockerignore": "x\n" }),
+      }),
+    ).rejects.toThrow(/\.dockerignore exists but ignoreFileProcessor is not set/);
+    expect(server.requests).toEqual([]);
+  });
+
+  it("fails before sending anything when the ignore function throws", async () => {
+    const server = buildServer([]);
+    await expect(
+      server.client.images.push({
+        name: "app",
+        directory: writeTree({ Dockerfile: DOCKERFILE, "a.txt": "a" }),
+        defaultIgnoreFile: () => {
+          throw new Error("bad pattern");
+        },
+      }),
+    ).rejects.toThrow("bad pattern");
+    expect(server.requests).toEqual([]);
+  });
+});
+
+interface Upload {
+  headers: IncomingHttpHeaders;
+  body: Uint8Array;
+
+  /** What was in the temporary directory while the upload was received. */
+  tempEntries: string[];
+}
+
+// Takes uploads on a real local server, so they are what fetch actually
+// sends, and fakes everything else. Temporary files go to a fresh directory,
+// listed during each upload.
+async function uploadServer(uploadStatus = 200) {
+  const scratch = tempDir();
+  vi.stubEnv("TMPDIR", scratch);
+  vi.stubEnv("TEMP", scratch);
+  vi.stubEnv("TMP", scratch);
+  const uploads: Upload[] = [];
+  const server = createServer((request, response) => {
+    const tempEntries = readdirSync(scratch, { recursive: true, encoding: "utf8" });
+    const chunks: Buffer[] = [];
+    request.on("data", (chunk: Buffer) => chunks.push(chunk));
+    request.on("end", () => {
+      uploads.push({
+        headers: request.headers,
+        body: new Uint8Array(Buffer.concat(chunks)),
+        tempEntries,
+      });
+      response.writeHead(uploadStatus).end();
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const uploadUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/zip`;
+  const fetchImpl = async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : input);
+    if (url.href === uploadUrl) return fetch(input, init);
+    if (url.pathname === "/v1/token") {
+      return Response.json({
+        token: "token-1",
+        expires_at: new Date(Date.now() + 300_000).toISOString(),
+        teams: [],
+      });
+    }
+    return Response.json(
+      { name: "app", status: "UPLOADING", upload_url: uploadUrl },
+      { status: 202 },
+    );
+  };
+  const client = new SandboxClient({ apiKey: "test-key", fetch: fetchImpl as typeof fetch });
+  const close = () => {
+    server.closeAllConnections();
+    server.close();
+  };
+  return { client, uploads, scratch, close };
+}
+
+describe("ImageClient.push temporary file", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("zips a directory into a temporary file, uploaded with its length, then removed", async () => {
+    const server = await uploadServer();
+    try {
+      const dir = writeTree({ Dockerfile: DOCKERFILE, "a.txt": "a" });
+      await server.client.images.push({ name: "app", directory: dir, wait: false });
+      const [upload] = server.uploads;
+      expect(upload!.headers["content-length"]).toBe(String(upload!.body.length));
+      expect(upload!.headers["transfer-encoding"]).toBeUndefined();
+      expect(Object.keys(unzipSync(upload!.body)).sort()).toEqual(["Dockerfile", "a.txt"]);
+      expect(upload!.tempEntries).toHaveLength(2);
+      expect(upload!.tempEntries).toContainEqual(expect.stringMatching(/^baseten-image-[^/\\]+$/));
+      expect(upload!.tempEntries).toContainEqual(
+        expect.stringMatching(/^baseten-image-[^/\\]+[/\\]image\.zip$/),
+      );
+      expect(readdirSync(server.scratch)).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("removes the temporary file when the upload fails", async () => {
+    const server = await uploadServer(403);
+    try {
+      const dir = writeTree({ Dockerfile: DOCKERFILE });
+      await expect(
+        server.client.images.push({ name: "app", directory: dir, wait: false }),
+      ).rejects.toBeInstanceOf(ImageUploadError);
+      expect(server.uploads[0]!.tempEntries).toHaveLength(2);
+      expect(readdirSync(server.scratch)).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("zips in memory when tempFile is false", async () => {
+    const server = await uploadServer();
+    try {
+      const dir = writeTree({ Dockerfile: DOCKERFILE });
+      await server.client.images.push({
+        name: "app",
+        directory: dir,
+        tempFile: false,
+        wait: false,
+      });
+      const [upload] = server.uploads;
+      expect(upload!.headers["content-length"]).toBe(String(upload!.body.length));
+      expect(upload!.tempEntries).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("stops on abort while zipping, removing the temporary file", async () => {
+    const server = await uploadServer();
+    try {
+      const controller = new AbortController();
+      const dir = writeTree({ Dockerfile: DOCKERFILE, "z.txt": "z" });
+      await expect(
+        server.client.images.push({
+          name: "app",
+          directory: dir,
+          // Aborts on the last path walked, so the walk finishes and the
+          // abort is seen once zipping into the temporary file has begun.
+          defaultIgnoreFile: ({ relPath }) => {
+            if (relPath === "z.txt") controller.abort(new Error("stop"));
+            return false;
+          },
+          callOptions: { signal: controller.signal },
+        }),
+      ).rejects.toThrow("stop");
+      expect(server.uploads).toEqual([]);
+      expect(readdirSync(server.scratch)).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("spools a builder only when it has local files", async () => {
+    const server = await uploadServer();
+    try {
+      const dir = writeTree({ "tool.sh": "#!/bin/sh\n" });
+      const builder = ImageBuilder.fromRegistry("debian:bookworm-slim");
+      await server.client.images.push({ name: "app", builder, wait: false });
+      await server.client.images.push({
+        name: "app",
+        builder: builder.addLocalFile(join(dir, "tool.sh"), "/usr/local/bin/tool"),
+        wait: false,
+      });
+      expect(server.uploads.map((upload) => upload.tempEntries.length)).toEqual([0, 2]);
+      expect(readdirSync(server.scratch)).toEqual([]);
+    } finally {
+      server.close();
+    }
   });
 });
 

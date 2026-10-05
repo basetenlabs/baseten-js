@@ -259,12 +259,19 @@ describe("ImageBuilder", () => {
       .addFile("/usr/local/bin/run", new Blob(["#!/bin/sh"]), { mode: 0o755 })
       .addLocalFile(join(dir, "tool.sh"), "/usr/local/bin/tool")
       .addLocalDir(join(dir, "conf"), "/etc/conf");
-    // Read when zipped, not when added.
+    const entries = await builder.zipEntries();
+    // Read when zipped, not when added or listed.
     writeFileSync(join(dir, "tool.sh"), "after");
 
-    const entries = await builder.zipEntries();
     const decoder = new TextDecoder();
-    const byPath = new Map(entries.map((entry) => [entry.path, entry]));
+    const byPath = new Map(
+      await Promise.all(
+        entries.map(async (entry) => {
+          const data = entry.data ?? (await entry.read?.());
+          return [entry.path, { data, mode: entry.mode }] as const;
+        }),
+      ),
+    );
     expect([...byPath.keys()]).toEqual([
       "Dockerfile",
       "text.txt",
@@ -301,6 +308,23 @@ describe("ImageBuilder", () => {
     await expect(base().addLocalDir(join(dir, "missing"), "/m").zipEntries()).rejects.toThrow(
       `local directory ${join(dir, "missing")} is not a directory`,
     );
+  });
+
+  it("adds everything in a local directory, with no ignore rules", async () => {
+    const dir = tempDir();
+    mkdirSync(join(dir, ".git"));
+    writeFileSync(join(dir, ".git", "HEAD"), "ref");
+    writeFileSync(join(dir, ".dockerignore"), "*\n");
+    writeFileSync(join(dir, ".env"), "SECRET=1");
+    const entries = await base().addLocalDir(dir, "/app", { contextName: "app" }).zipEntries();
+    expect(entries.map((entry) => entry.path)).toEqual([
+      "Dockerfile",
+      "app",
+      "app/.dockerignore",
+      "app/.env",
+      "app/.git",
+      "app/.git/HEAD",
+    ]);
   });
 
   it("pushes as a zip of its Dockerfile and files", async () => {
