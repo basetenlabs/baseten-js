@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  Sandbox,
   SandboxApiError,
+  SandboxClient,
   SandboxGatewayError,
   SandboxProcessWaitTimeoutError,
 } from "../../src/index";
@@ -27,17 +27,28 @@ function fakeSandbox(route: (request: Recorded, index: number) => Response) {
     requests.push(recorded);
     return route(recorded, requests.length - 1);
   };
-  const sandbox = new Sandbox({
-    name: "sbx",
-    url: "https://sbx.example",
+  const sandbox = new SandboxClient({
+    apiKey: "",
     tokenProvider: async () => "token",
     fetch: fetchImpl as typeof fetch,
-  });
+  }).sandboxFromUrl({ url: "https://sbx.example" });
   return { sandbox, requests };
 }
 
 function jsonBody(request: Recorded): unknown {
   return JSON.parse(new TextDecoder().decode(request.body));
+}
+
+// Runs a call that backs off before retrying, without waiting out the backoff.
+async function skippingBackoff<T>(call: () => Promise<T>): Promise<T> {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const result = call();
+    await vi.runAllTimersAsync();
+    return await result;
+  } finally {
+    vi.useRealTimers();
+  }
 }
 
 function apiProcess(extra: Record<string, unknown> = {}) {
@@ -171,7 +182,7 @@ describe("SandboxProcess", () => {
     const { sandbox, requests } = fakeSandbox((_, index) =>
       index === 0 ? gateway() : Response.json(apiProcess()),
     );
-    const info = await sandbox.process.get({ identifier: "my proc" });
+    const info = await skippingBackoff(() => sandbox.process.get({ identifier: "my proc" }));
     expect(info.pid).toBe("123");
     expect(requests.map((r) => r.path)).toEqual(["/process/my%20proc", "/process/my%20proc"]);
   });
@@ -232,7 +243,7 @@ describe("SandboxProcess", () => {
     const { sandbox, requests } = fakeSandbox((_, index) =>
       index === 0 ? gateway() : Response.json({ message: "ok" }),
     );
-    await sandbox.process.closeStdin({ identifier: "p" });
+    await skippingBackoff(() => sandbox.process.closeStdin({ identifier: "p" }));
     expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual([
       "DELETE /process/p/stdin",
       "DELETE /process/p/stdin",

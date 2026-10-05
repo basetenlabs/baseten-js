@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { Sandbox, SandboxFileSystemCopyError, SandboxGatewayError } from "../../src/index";
+import { describe, expect, it, vi } from "vitest";
+import { SandboxClient, SandboxFileSystemCopyError, SandboxGatewayError } from "../../src/index";
 
 interface Recorded {
   method: string;
@@ -26,13 +26,24 @@ function fakeSandbox(route: (request: Recorded, index: number) => Response | Pro
     requests.push(recorded);
     return route(recorded, requests.length - 1);
   };
-  const sandbox = new Sandbox({
-    name: "sbx",
-    url: "https://sbx.example",
+  const sandbox = new SandboxClient({
+    apiKey: "",
     tokenProvider: async () => "token",
     fetch: fetchImpl as typeof fetch,
-  });
+  }).sandboxFromUrl({ url: "https://sbx.example" });
   return { sandbox, requests };
+}
+
+// Runs a call that backs off before retrying, without waiting out the backoff.
+async function skippingBackoff<T>(call: () => Promise<T>): Promise<T> {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const result = call();
+    await vi.runAllTimersAsync();
+    return await result;
+  } finally {
+    vi.useRealTimers();
+  }
 }
 
 function ok(): Response {
@@ -185,7 +196,7 @@ describe("SandboxFileSystem", () => {
 
   it("writes text, retrying a gateway error", async () => {
     const { sandbox, requests } = fakeSandbox((_, index) => (index === 0 ? gateway() : ok()));
-    await sandbox.fs.write({ path: "/work/a.txt", content: "hello" });
+    await skippingBackoff(() => sandbox.fs.write({ path: "/work/a.txt", content: "hello" }));
     expect(requests).toHaveLength(2);
     expect(requests[1]!.method).toBe("PUT");
     expect(await requests[1]!.request.json()).toEqual({ content: "hello" });
@@ -193,11 +204,13 @@ describe("SandboxFileSystem", () => {
 
   it("writes bytes as a form, rebuilt for each attempt", async () => {
     const { sandbox, requests } = fakeSandbox((_, index) => (index === 0 ? gateway() : ok()));
-    await sandbox.fs.writeBytes({
-      path: "/work/run.sh",
-      content: new Uint8Array([35, 33]),
-      permissions: "0755",
-    });
+    await skippingBackoff(() =>
+      sandbox.fs.writeBytes({
+        path: "/work/run.sh",
+        content: new Uint8Array([35, 33]),
+        permissions: "0755",
+      }),
+    );
     expect(requests).toHaveLength(2);
     for (const recorded of requests) {
       expect(recorded.method).toBe("PUT");
@@ -293,7 +306,7 @@ describe("SandboxFileSystem", () => {
       }),
     );
     const content = pattern(12 * MB + 17);
-    await sandbox.fs.writeBytes({ path: "/work/big.bin", content });
+    await skippingBackoff(() => sandbox.fs.writeBytes({ path: "/work/big.bin", content }));
     expect(partRequests(requests)).toHaveLength(4);
     expect(sameBytes(joinParts(await partContents(requests)), content)).toBe(true);
     expect((await requests.at(-1)!.request.json()).parts).toHaveLength(3);
@@ -589,7 +602,9 @@ describe("SandboxFileSystem", () => {
         ? gateway()
         : Response.json({ name: "work", path: "/work", files: [], subdirectories: [] }),
     );
-    await sandbox.fs.writeTree({ path: "/work", files: { "a.txt": "a", "d/b.txt": "b" } });
+    await skippingBackoff(() =>
+      sandbox.fs.writeTree({ path: "/work", files: { "a.txt": "a", "d/b.txt": "b" } }),
+    );
     expect(requests).toHaveLength(2);
     expect(requests[1]!.path).toBe("/filesystem/tree/%2Fwork");
     expect(await requests[1]!.request.json()).toEqual({ files: { "a.txt": "a", "d/b.txt": "b" } });

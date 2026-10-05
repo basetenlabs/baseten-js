@@ -192,6 +192,19 @@ describe.runIf(e2eEnabled())("SandboxProcess", () => {
     }
   });
 
+  it("replaces output that is not valid UTF-8", async () => {
+    const command = "printf 'a\\377b'";
+    const process = await sandbox.process.exec({ command, waitForCompletion: true });
+    expect(process.stdout).toBe("a�b");
+    const logs = await sandbox.process.logs({ identifier: process.pid });
+    expect(logs.stdout).toBe("a�b");
+    let streamed = "";
+    for await (const event of sandbox.process.execStream({ command })) {
+      if (event.type === "output") streamed += event.text;
+    }
+    expect(streamed).toBe("a�b");
+  });
+
   it("times out a wait without stopping the process", async () => {
     const name = uniqueName();
     await sandbox.process.exec({ command: "sleep 300", name });

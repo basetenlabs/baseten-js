@@ -118,8 +118,8 @@ export class SandboxCreateResult extends Sandbox {
   readonly info: SandboxInfo;
 
   /** @internal Returned by {@link SandboxClient.create}. */
-  constructor(options: SandboxOptions, tokens: TokenSource, info: SandboxInfo) {
-    super(options, tokens);
+  constructor(options: SandboxOptions, info: SandboxInfo) {
+    super(options);
     this.info = info;
   }
 }
@@ -144,6 +144,12 @@ export interface SandboxGetInfoRequest {
 export type SandboxGetRequest =
   | { name: string; callOptions?: CallOptions }
   | { info: SandboxInfo; callOptions?: CallOptions };
+
+/** Options for {@link SandboxClient.sandboxFromUrl}. */
+export interface SandboxFromUrlOptions {
+  /** Base URL of the sandbox's execution API, as reported in `SandboxInfo.url`. */
+  url: string;
+}
 
 /** Request for {@link SandboxClient.list}. */
 export interface SandboxListRequest {
@@ -283,7 +289,7 @@ export class SandboxClient {
       }),
     );
     const info = sandboxInfoFromApi(sandbox);
-    return new SandboxCreateResult(this.#sandboxOptions(info), this.#tokens, info);
+    return new SandboxCreateResult(this.#sandboxOptionsFromInfo(info), info);
   }
 
   /** Gets a sandbox's current record. */
@@ -307,7 +313,15 @@ export class SandboxClient {
       "info" in request
         ? request.info
         : await this.getInfo({ name: request.name, callOptions: request.callOptions });
-    return new Sandbox(this.#sandboxOptions(info), this.#tokens);
+    return new Sandbox(this.#sandboxOptionsFromInfo(info));
+  }
+
+  /**
+   * Gets a {@link Sandbox} for a sandbox's execution API URL, making no call.
+   * Its {@link Sandbox.name} is empty.
+   */
+  sandboxFromUrl(options: SandboxFromUrlOptions): Sandbox {
+    return new Sandbox(this.#sandboxOptions("", options.url));
   }
 
   /** Lists sandboxes, fetching further pages as iteration reaches them. */
@@ -421,24 +435,18 @@ export class SandboxClient {
     this.#authenticate();
   }
 
-  #sandboxOptions(info: SandboxInfo): SandboxOptions {
+  #sandboxOptionsFromInfo(info: SandboxInfo): SandboxOptions {
     if (info.url === undefined) {
       throw new Error(`sandbox ${info.name} has no URL yet`);
     }
-    const tokens = this.#tokens;
-    const hasAuth = this.#options.apiKey !== "" || this.#options.tokenProvider !== undefined;
+    return this.#sandboxOptions(info.name, info.url);
+  }
+
+  #sandboxOptions(name: string, url: string): SandboxOptions {
     return {
-      name: info.name,
-      url: info.url,
-      // A token source with auth always returns a token. A revoked token is
-      // dropped from the client's cache before the next is fetched.
-      tokenProvider: hasAuth
-        ? async ({ revokedToken }) => {
-            if (revokedToken !== undefined) await tokens.invalidate(revokedToken);
-            return (await tokens.token(undefined, revokedToken))!;
-          }
-        : undefined,
-      fetch: this.#transport.fetch,
+      name,
+      url,
+      fetchWithAuth: this.#fetchWithAuth,
       headers: this.#options.headers,
       retries: this.#options.retries,
     };

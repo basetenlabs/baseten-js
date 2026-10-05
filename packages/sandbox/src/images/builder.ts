@@ -284,7 +284,8 @@ export class ImageBuilder {
    * "<destination>"]`, where name is its name in the context. As with any
    * `COPY` of a directory, its contents are copied into the destination, not
    * the directory itself. It is read when pushed, with files keeping their
-   * permissions, a link to a file stored as the file, and a link to a
+   * permissions, a link to a file within the directory stored as a copy of
+   * the file, a link to a file outside it failing the push, and a link to a
    * directory stored as an empty directory.
    *
    * Needs a runtime with Node's filesystem API.

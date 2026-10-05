@@ -5,6 +5,7 @@ export {
   type SandboxClientOptions,
   type SandboxCreateRequest,
   type SandboxDeleteRequest,
+  type SandboxFromUrlOptions,
   type SandboxGetInfoRequest,
   type SandboxGetRequest,
   type SandboxListRequest,
@@ -47,6 +48,9 @@ export {
   type ImageDeleteTagRequest,
   type ImageGetInfoRequest,
   type ImageInfo,
+  type ImageLibraryInfo,
+  type ImageLibraryVolume,
+  type ImageListLibraryRequest,
   type ImageListRequest,
   type ImageListTagsRequest,
   type ImageLogLine,
@@ -110,4 +114,4 @@ export {
   type SandboxProcessWaitRequest,
   type SandboxProcessWriteStdinRequest,
 } from "./sandbox/process";
-export { Sandbox, type SandboxOptions } from "./sandbox/sandbox";
+export { Sandbox } from "./sandbox/sandbox";

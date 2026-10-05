@@ -93,6 +93,13 @@ describe.runIf(e2eEnabled())("ImageClient", () => {
     },
     15 * 60_000,
   );
+
+  it("lists library images", async () => {
+    const images = await sandboxClient().images.listLibrary();
+    for (const image of images) expect(image.image).not.toBe("");
+    const base = images.find((image) => image.name === "base-image");
+    expect(base?.image).toBe("baseten/base-image:latest");
+  });
 });
 
 async function deleteSandboxAndWait(client: SandboxClient, name: string): Promise<void> {

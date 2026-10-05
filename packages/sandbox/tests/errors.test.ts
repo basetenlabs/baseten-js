@@ -23,12 +23,11 @@ function controlClient(status: number, body: unknown): SandboxClient {
 }
 
 function sandbox(status: number, body: unknown): Sandbox {
-  return new Sandbox({
-    name: "sb-1",
-    url: "https://sbx-sb-1.b10.run",
+  return new SandboxClient({
+    apiKey: "",
     fetch: respondWith(status, body),
     retries: { gatewayMaxRetries: 0 },
-  });
+  }).sandboxFromUrl({ url: "https://sbx-sb-1.b10.run" });
 }
 
 async function caught(promise: Promise<unknown>): Promise<unknown> {

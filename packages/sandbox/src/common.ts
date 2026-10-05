@@ -74,6 +74,19 @@ export function parseDuration(value: string, what: string): number {
   return sign * total;
 }
 
+/**
+ * @internal Parses an exec plane timestamp, which has no declared format, so
+ * that an unknown format fails clearly rather than becoming an invalid date.
+ * `what` names the value in errors.
+ */
+export function parseTimestamp(value: string, what: string): Date {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${what} is not a valid timestamp: ${JSON.stringify(value)}`);
+  }
+  return date;
+}
+
 /** @internal Runs at most a fixed number of tasks at once, the rest in order of arrival. */
 export class Limiter {
   #available: number;

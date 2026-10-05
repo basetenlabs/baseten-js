@@ -4,7 +4,7 @@ import type {
   GetFilesystemResponse,
   MultipartPartInfo,
 } from "@basetenlabs/client/sandboxapi";
-import { type CallOptions, Limiter } from "../common";
+import { type CallOptions, Limiter, parseTimestamp } from "../common";
 import { SandboxFileSystemCopyError } from "../errors";
 import {
   callSandbox,
@@ -20,6 +20,10 @@ const COPY_POLL_INTERVAL_MS = 100;
 
 const MULTIPART_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const MULTIPART_PART_BYTES = 5 * 1024 * 1024;
+
+// Bounds the abort of a failed multipart upload, which no caller's signal
+// reaches, so a stalled abort cannot hang the write it cleans up after.
+const MULTIPART_ABORT_TIMEOUT_MS = 10_000;
 
 // Most upload parts in flight at once per sandbox, across all of its uploads.
 // Many at once on one HTTP/2 connection can trip the server's rapid reset
@@ -524,10 +528,12 @@ export class SandboxFileSystem {
         this.#context.api(signal).postFilesystemMultipartComplete({ uploadId, request: { parts } }),
       );
     } catch (err) {
-      // Sent without the signal, which may be what ended the upload. Its own
-      // failure is dropped in favor of the error that ended the upload.
+      // Sent without the caller's signal, which may be what ended the upload.
+      // Its own failure is dropped in favor of the error that ended the upload.
       await callSandbox(() =>
-        this.#context.api(undefined).deleteFilesystemMultipartAbort({ uploadId }),
+        this.#context
+          .api(AbortSignal.timeout(MULTIPART_ABORT_TIMEOUT_MS))
+          .deleteFilesystemMultipartAbort({ uploadId }),
       ).catch(() => {});
       throw err;
     }
@@ -601,7 +607,7 @@ function fileInfoFromApi(file: ApiFile): SandboxFileSystemFileInfo {
     permissions: file.permissions,
     owner: file.owner,
     group: file.group,
-    lastModified: new Date(file.lastModified),
+    lastModified: parseTimestamp(file.lastModified, "file lastModified"),
   };
 }
 

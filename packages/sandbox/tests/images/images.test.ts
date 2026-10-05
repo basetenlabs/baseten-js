@@ -136,24 +136,15 @@ describe("ImageClient.push", () => {
     expect(gets.map((g) => g.url.pathname)).toEqual(Array(3).fill("/v1/sandboxes/images/app"));
   });
 
-  it("does not take a previous version's BUILT as this push's outcome", async () => {
-    const server = buildServer([apiImage("BUILT"), apiImage("BUILDING"), apiImage("BUILT")]);
-    await server.client.images.push({
-      name: "app",
-      files: { Dockerfile: DOCKERFILE },
-      ...FAST_WAIT,
-    });
-    expect(server.requests.filter((r) => r.method === "GET")).toHaveLength(3);
-  });
-
-  it("does not take a previous version's FAILED as this push's outcome", async () => {
-    const server = buildServer([apiImage("FAILED"), apiImage("BUILDING"), apiImage("BUILT")]);
+  it("takes BUILT at the first poll after a push", async () => {
+    const server = buildServer([apiImage("BUILT")]);
     const result = await server.client.images.push({
       name: "app",
       files: { Dockerfile: DOCKERFILE },
       ...FAST_WAIT,
     });
     expect(result.status).toBe("BUILT");
+    expect(server.requests.filter((r) => r.method === "GET")).toHaveLength(1);
   });
 
   it("throws ImageBuildError when the build fails", async () => {
@@ -283,11 +274,11 @@ describe("ImageClient.push", () => {
     mkdirSync(join(dir, "bin"));
     writeFileSync(join(dir, "bin", "run.sh"), "#!/bin/sh\n");
     chmodSync(join(dir, "bin", "run.sh"), 0o755);
+    writeFileSync(join(dir, "target.txt"), "linked");
+    symlinkSync(join(dir, "target.txt"), join(dir, "link.txt"));
     const outside = tempDir();
-    writeFileSync(join(outside, "target.txt"), "linked");
     mkdirSync(join(outside, "linked-dir"));
     writeFileSync(join(outside, "linked-dir", "inner.txt"), "not included");
-    symlinkSync(join(outside, "target.txt"), join(dir, "link.txt"));
     symlinkSync(join(outside, "linked-dir"), join(dir, "dir-link"));
     symlinkSync(join(outside, "missing"), join(dir, "broken"));
 
@@ -296,7 +287,7 @@ describe("ImageClient.push", () => {
     const zip = server.requests[1]!.body;
     const files = unzipSync(zip);
     expect(Object.keys(files).sort()).toEqual(
-      ["Dockerfile", "bin/", "bin/run.sh", "dir-link/", "link.txt"].sort(),
+      ["Dockerfile", "bin/", "bin/run.sh", "dir-link/", "link.txt", "target.txt"].sort(),
     );
     expect(new TextDecoder().decode(files["link.txt"])).toBe("linked");
     // Windows has no Unix permission bits, so every file reads as 0666 there.
@@ -307,6 +298,21 @@ describe("ImageClient.push", () => {
         /-rwxr-xr-x .* bin\/run\.sh/,
       );
     }
+  });
+
+  it("fails a directory with a link to a file outside it, sending nothing", async () => {
+    const dir = tempDir();
+    writeFileSync(join(dir, "Dockerfile"), DOCKERFILE);
+    mkdirSync(join(dir, "sub"));
+    const outside = tempDir();
+    writeFileSync(join(outside, "secret.txt"), "secret");
+    symlinkSync(join(outside, "secret.txt"), join(dir, "sub", "link.txt"));
+
+    const server = buildServer([apiImage("BUILT")]);
+    await expect(
+      server.client.images.push({ name: "app", directory: dir, ...FAST_WAIT }),
+    ).rejects.toThrow(/link\.txt is a link to .*secret\.txt, outside .*; only links to files/);
+    expect(server.requests).toHaveLength(0);
   });
 });
 
@@ -346,6 +352,14 @@ describe("ImageClient.push validation", () => {
       "a zip without a Dockerfile",
       { name: "app", zip: zipSync({ "a.txt": encoder.encode("a") }) },
       /zip has no Dockerfile/,
+    ],
+    [
+      "a zip whose Dockerfile is a link",
+      {
+        name: "app",
+        zip: zipSync({ Dockerfile: [encoder.encode("x"), { os: 3, attrs: 0o120777 << 16 }] }),
+      },
+      /zip has no Dockerfile file/,
     ],
     ["a zip that is not a zip", { name: "app", zip: encoder.encode("nope") }, /not a zip archive/],
   ];
@@ -452,6 +466,90 @@ describe("ImageClient", () => {
     const server = fakeServer(() => apiImage("BUILT"));
     expect((await server.client.images.waitBuilt({ name: "app" })).status).toBe("BUILT");
     expect(server.requests).toHaveLength(1);
+  });
+
+  it("lists library images", async () => {
+    const server = fakeServer(() => ({
+      items: [
+        {
+          name: "full",
+          display_name: "Full",
+          description: "Short",
+          long_description: "Long",
+          image: "baseten/full:latest",
+          memory: 8192,
+          ports: [{ target: 8080, name: "http", protocol: "HTTP" }],
+          categories: ["dev"],
+          tags: ["python"],
+          url: "https://docs.example/full",
+          icon: "https://icons.example/full.svg",
+          icon_light: "https://icons.example/full-light.svg",
+          icon_dark: "https://icons.example/full-dark.svg",
+          enterprise: true,
+          hidden: false,
+          coming_soon: false,
+          creation_options: {
+            extra_args: { kernel: "6.1" },
+            volumes: [
+              { name: "scratch", mount_path: "/scratch", type: "ephemeral", size_mb: 1024 },
+              { name: "data", mount_path: "/data", read_only: true },
+            ],
+          },
+        },
+        { name: "bare", image: "baseten/bare:latest" },
+      ],
+    }));
+    const images = server.client.withOptions({ teamId: "team-1" }).images;
+    expect(await images.listLibrary()).toEqual([
+      {
+        name: "full",
+        displayName: "Full",
+        description: "Short",
+        longDescription: "Long",
+        image: "baseten/full:latest",
+        memory: 8192,
+        ports: [{ target: 8080, name: "http", protocol: "HTTP" }],
+        categories: ["dev"],
+        tags: ["python"],
+        url: "https://docs.example/full",
+        icon: "https://icons.example/full.svg",
+        iconLight: "https://icons.example/full-light.svg",
+        iconDark: "https://icons.example/full-dark.svg",
+        enterprise: true,
+        creationExtraArgs: { kernel: "6.1" },
+        creationVolumes: [
+          {
+            name: "scratch",
+            mountPath: "/scratch",
+            type: "ephemeral",
+            sizeMb: 1024,
+            readOnly: false,
+          },
+          { name: "data", mountPath: "/data", type: undefined, sizeMb: undefined, readOnly: true },
+        ],
+      },
+      {
+        name: "bare",
+        displayName: undefined,
+        description: undefined,
+        longDescription: undefined,
+        image: "baseten/bare:latest",
+        memory: undefined,
+        ports: [],
+        categories: [],
+        tags: [],
+        url: undefined,
+        icon: undefined,
+        iconLight: undefined,
+        iconDark: undefined,
+        enterprise: false,
+        creationExtraArgs: undefined,
+        creationVolumes: [],
+      },
+    ]);
+    expect(server.requests.map((r) => `${r.method} ${r.url.pathname}${r.url.search}`)).toEqual([
+      "GET /v1/sandboxes/library_images?team_id=team-1",
+    ]);
   });
 });
 

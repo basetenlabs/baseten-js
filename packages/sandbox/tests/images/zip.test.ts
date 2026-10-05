@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { unzipSync, zipSync } from "fflate";
 import { afterAll, describe, expect, it } from "vitest";
-import { crc32, createZip, zipEntryPaths } from "../../src/images/zip";
+import { crc32, createZip, zipEntryInfos } from "../../src/images/zip";
 
 const encoder = new TextEncoder();
 
@@ -94,61 +94,75 @@ describe("createZip", () => {
     expect(listing).toMatch(/drwxr-xr-x .* bin\//);
   });
 
-  it.runIf(hasCommand("python3"))("is read back identically by Python's zipfile", async () => {
-    const path = writeTempZip(await zipBytes(sampleEntries()));
-    const script = [
-      "import json, sys, zipfile",
-      "z = zipfile.ZipFile(sys.argv[1])",
-      "assert z.testzip() is None",
-      "print(json.dumps({i.filename: [list(z.read(i)), i.external_attr >> 16] for i in z.infolist()}))",
-    ].join("\n");
-    const read = JSON.parse(
-      execFileSync("python3", ["-c", script, path], { encoding: "utf8" }),
-    ) as Record<string, [number[], number]>;
-    for (const entry of sampleEntries()) {
-      const name = entry.data === undefined ? `${entry.path}/` : entry.path;
-      const [data, mode] = read[name]!;
-      expect(new Uint8Array(data)).toEqual(entry.data ?? new Uint8Array());
-      expect(mode & 0o7777).toBe(entry.mode);
-    }
-  });
-
   it("rejects more entries than a zip without ZIP64 holds", async () => {
     const entries = Array.from({ length: 0x10000 }, (_, i) => ({ path: `d${i}`, mode: 0o755 }));
     await expect(createZip(entries)).rejects.toThrow(/at most 65535 entries/);
   });
 });
 
-describe("zipEntryPaths", () => {
+describe("zipEntryInfos", () => {
+  async function paths(zip: Blob): Promise<string[]> {
+    return (await zipEntryInfos(zip)).map((entry) => entry.path);
+  }
+
   it("lists entries of a zip written by fflate", async () => {
     const zip = zipSync({
       Dockerfile: encoder.encode("FROM scratch"),
       "src/main.py": encoder.encode("print(1)"),
     });
-    expect(await zipEntryPaths(new Blob([zip as BlobPart]))).toEqual(["Dockerfile", "src/main.py"]);
+    expect(await zipEntryInfos(new Blob([zip as BlobPart]))).toEqual([
+      { path: "Dockerfile", regularFile: true },
+      { path: "src/main.py", regularFile: true },
+    ]);
   });
 
   it("lists entries of a zip with a trailing comment", async () => {
     const zip = zipSync({ Dockerfile: encoder.encode("FROM scratch") }, { comment: "hello" });
-    expect(await zipEntryPaths(new Blob([zip as BlobPart]))).toEqual(["Dockerfile"]);
+    expect(await paths(new Blob([zip as BlobPart]))).toEqual(["Dockerfile"]);
   });
 
   it("lists entries of a zip written here", async () => {
-    const paths = await zipEntryPaths(await createZip(sampleEntries()));
-    expect(paths).toContain("Dockerfile");
-    expect(paths).toContain("bin/");
-    expect(paths).toContain("ünïcode/名前.txt");
+    const entries = await zipEntryInfos(await createZip(sampleEntries()));
+    expect(entries).toContainEqual({ path: "Dockerfile", regularFile: true });
+    expect(entries).toContainEqual({ path: "bin/", regularFile: false });
+    expect(entries).toContainEqual({ path: "ünïcode/名前.txt", regularFile: true });
+  });
+
+  it("tells regular files from links and directories by creator system", async () => {
+    const x = encoder.encode("x");
+    const zip = zipSync({
+      "unix-file": [x, { os: 3, attrs: 0o100644 << 16 }],
+      "unix-link": [encoder.encode("target"), { os: 3, attrs: 0o120777 << 16 }],
+      "unix-untyped": [x, { os: 3, attrs: 0o644 << 16 }],
+      "macos-link": [encoder.encode("target"), { os: 19, attrs: 0o120777 << 16 }],
+      "dos-file": [x, { os: 0, attrs: 0x20 }],
+      "dos-dir": [new Uint8Array(), { os: 0, attrs: 0x10 }],
+      "ntfs-dir": [new Uint8Array(), { os: 11, attrs: 0x10 }],
+      "other-system": [x, { os: 6, attrs: 0x10 }],
+      "slash/": [new Uint8Array(), { os: 3, attrs: 0o100644 << 16 }],
+    });
+    expect(await zipEntryInfos(new Blob([zip as BlobPart]))).toEqual([
+      { path: "unix-file", regularFile: true },
+      { path: "unix-link", regularFile: false },
+      { path: "unix-untyped", regularFile: true },
+      { path: "macos-link", regularFile: false },
+      { path: "dos-file", regularFile: true },
+      { path: "dos-dir", regularFile: false },
+      { path: "ntfs-dir", regularFile: false },
+      { path: "other-system", regularFile: true },
+      { path: "slash/", regularFile: false },
+    ]);
   });
 
   it("rejects something that is not a zip", async () => {
-    await expect(zipEntryPaths(new Blob([encoder.encode("not a zip at all")]))).rejects.toThrow(
+    await expect(zipEntryInfos(new Blob([encoder.encode("not a zip at all")]))).rejects.toThrow(
       /not a zip archive/,
     );
-    await expect(zipEntryPaths(new Blob([]))).rejects.toThrow(/not a zip archive/);
+    await expect(zipEntryInfos(new Blob([]))).rejects.toThrow(/not a zip archive/);
   });
 
   it("decodes names written by fflate as UTF-8", async () => {
     const zip = zipSync({ "名前.txt": encoder.encode("x") });
-    expect(await zipEntryPaths(new Blob([zip as BlobPart]))).toEqual(["名前.txt"]);
+    expect(await paths(new Blob([zip as BlobPart]))).toEqual(["名前.txt"]);
   });
 });

@@ -11,8 +11,8 @@
 //
 // Confidence comes from the tests, not from the code looking right: archives
 // written here are read back by independent zip implementations (a zip library
-// used only in tests, and the system unzip and Python's zipfile where
-// available), and archives written by those are read here.
+// used only in tests, and the system unzip where available), and archives
+// written by that library are read here.
 
 /** One file or directory to put in a zip archive. */
 export interface ZipEntry {
@@ -46,6 +46,12 @@ const METHOD_DEFLATE = 8;
 const UNIX_FILE_TYPE = 0o100000;
 const UNIX_DIRECTORY_TYPE = 0o040000;
 const MSDOS_DIRECTORY_ATTRIBUTE = 0x10;
+const UNIX_TYPE_MASK = 0o170000;
+
+// Systems an archive's entries can be made on, from the high byte of
+// "version made by", which decides how its external attributes read.
+const UNIX_CREATORS = new Set([3, 19]); // Unix, macOS
+const MSDOS_CREATORS = new Set([0, 11, 14]); // MS-DOS, NTFS, VFAT
 
 // Every entry gets the earliest DOS timestamp, 1980-01-01 00:00, so the same
 // content always makes the same archive.
@@ -127,11 +133,19 @@ export async function createZip(entries: ZipEntry[]): Promise<Blob> {
   return new Blob([...parts, ...centralHeaders, new Uint8Array(end.buffer)] as BlobPart[]);
 }
 
+/** An entry of a zip archive, as listed by {@link zipEntryInfos}. */
+export interface ZipEntryInfo {
+  path: string;
+
+  /** Whether the entry is a regular file, not a directory or a link. */
+  regularFile: boolean;
+}
+
 /**
- * Lists the entry paths of a zip archive, reading only its central directory
- * at the end, not the file contents.
+ * Lists the entries of a zip archive, reading only its central directory at
+ * the end, not the file contents.
  */
-export async function zipEntryPaths(zip: Blob): Promise<string[]> {
+export async function zipEntryInfos(zip: Blob): Promise<ZipEntryInfo[]> {
   const tailStart = Math.max(0, zip.size - END_OF_CENTRAL_DIRECTORY_SIZE - MAX_COMMENT_SIZE);
   const tail = new DataView(await zip.slice(tailStart).arrayBuffer());
   let end = -1;
@@ -156,7 +170,7 @@ export async function zipEntryPaths(zip: Blob): Promise<string[]> {
     await zip.slice(centralOffset, centralOffset + centralSize).arrayBuffer(),
   );
   const decoder = new TextDecoder();
-  const paths: string[] = [];
+  const infos: ZipEntryInfo[] = [];
   let position = 0;
   for (let i = 0; i < count; i++) {
     if (
@@ -169,10 +183,21 @@ export async function zipEntryPaths(zip: Blob): Promise<string[]> {
     const extraLength = central.getUint16(position + 30, true);
     const commentLength = central.getUint16(position + 32, true);
     const nameStart = central.byteOffset + position + 46;
-    paths.push(decoder.decode(new Uint8Array(central.buffer, nameStart, nameLength)));
+    const path = decoder.decode(new Uint8Array(central.buffer, nameStart, nameLength));
+    const creator = central.getUint16(position + 4, true) >> 8;
+    const external = central.getUint32(position + 38, true);
+    let regularFile = !path.endsWith("/");
+    if (UNIX_CREATORS.has(creator)) {
+      // No type bits counts as a regular file, as most readers treat it.
+      const type = (external >>> 16) & UNIX_TYPE_MASK;
+      regularFile &&= type === 0 || type === UNIX_FILE_TYPE;
+    } else if (MSDOS_CREATORS.has(creator)) {
+      regularFile &&= (external & MSDOS_DIRECTORY_ATTRIBUTE) === 0;
+    }
+    infos.push({ path, regularFile });
     position += 46 + nameLength + extraLength + commentLength;
   }
-  return paths;
+  return infos;
 }
 
 async function deflateRaw(data: Uint8Array): Promise<Uint8Array> {

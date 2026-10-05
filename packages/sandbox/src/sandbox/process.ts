@@ -1,5 +1,5 @@
 import type { ProcessRequest, ProcessResponse } from "@basetenlabs/client/sandboxapi";
-import type { CallOptions } from "../common";
+import { type CallOptions, parseTimestamp } from "../common";
 import { SandboxApiError, SandboxProcessWaitTimeoutError } from "../errors";
 import { isTransientResetError, sleep } from "../retry";
 import { callSandbox, callSandboxIdempotent, responseLines, type SandboxContext } from "./context";
@@ -443,10 +443,12 @@ function processInfoFromApi(process: ProcessResponse): SandboxProcessInfo {
     stderr: process.stderr,
     logs: process.logs,
     workingDir: process.workingDir,
-    startedAt: new Date(process.startedAt),
+    startedAt: parseTimestamp(process.startedAt, "process startedAt"),
     // A running process has null here, though the spec requires a string, so
     // both null and "" count as unset.
-    completedAt: process.completedAt ? new Date(process.completedAt) : undefined,
+    completedAt: process.completedAt
+      ? parseTimestamp(process.completedAt, "process completedAt")
+      : undefined,
     keepAlive: process.keepAlive,
     maxRestarts: process.maxRestarts,
     restartCount: process.restartCount,

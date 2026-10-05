@@ -1,4 +1,5 @@
 import { ManagementClient } from "@basetenlabs/client";
+import { sleep } from "./retry";
 
 /**
  * Returns the bearer token to send on a request. Called for every request.
@@ -28,6 +29,16 @@ const TOKEN_EXPIRY_LEEWAY_MS = 60_000;
 // getting rejected point at something a new token cannot fix.
 const TOKEN_INVALIDATION_MAX_RETRIES = 2;
 
+// Revocation rejects every token issued before a cutoff, the time of the
+// revoking event rounded up to the next whole second. A token minted right
+// after the event can fall before the cutoff and be rejected too, so after
+// the first resend, each one waits this long to be minted past it.
+const TOKEN_REVOKED_RETRY_DELAY_MS = 1000;
+
+// Bounds one token exchange, which no caller's signal reaches, so a stalled
+// exchange cannot stay cached for every later caller to wait on.
+const TOKEN_MINT_TIMEOUT_MS = 30_000;
+
 /**
  * Where each request's bearer token comes from: a caller's token provider,
  * or a token minted from an API key, cached until shortly before it expires.
@@ -53,15 +64,25 @@ export class TokenSource {
       }
       this.provider = options.tokenProvider;
     } else if (options.apiKey !== "") {
-      const api = new ManagementClient({
-        apiKey: options.apiKey,
-        baseUrlOverride: options.managementBaseUrlOverride,
-        fetch: options.fetch,
-        headers: options.headers,
-      }).api;
       this.mint = async () => {
-        const minted = await api.postToken({ request: { scopes: ["sandboxes"] } });
-        return { token: minted.token, expiresAtMs: Date.parse(minted.expires_at) };
+        const controller = new AbortController();
+        const timer = setTimeout(() => {
+          controller.abort(
+            new Error(`sandbox token exchange timed out after ${TOKEN_MINT_TIMEOUT_MS / 1000}s`),
+          );
+        }, TOKEN_MINT_TIMEOUT_MS);
+        const api = new ManagementClient({
+          apiKey: options.apiKey,
+          baseUrlOverride: options.managementBaseUrlOverride,
+          fetch: (input, init) => options.fetch(input, { ...init, signal: controller.signal }),
+          headers: options.headers,
+        }).api;
+        try {
+          const minted = await api.postToken({ request: { scopes: ["sandboxes"] } });
+          return { token: minted.token, expiresAtMs: Date.parse(minted.expires_at) };
+        } finally {
+          clearTimeout(timer);
+        }
       };
     }
   }
@@ -138,6 +159,7 @@ export function authenticatedFetch(base: typeof fetch, tokens: TokenSource): typ
       await tokens.invalidate(token);
       await response.body?.cancel();
       revokedToken = token;
+      if (retry > 0) await sleep(TOKEN_REVOKED_RETRY_DELAY_MS, signal);
     }
   };
 }

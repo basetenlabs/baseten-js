@@ -1,67 +1,42 @@
 import { SandboxClient as SandboxApiClientOwner } from "@basetenlabs/client";
 import type { ApiClient as SandboxApiClient } from "@basetenlabs/client/sandboxapi";
-import { authenticatedFetch, type SandboxTokenProvider, TokenSource } from "../auth";
 import type { SandboxRetryOptions } from "../common";
 import { resolveRetryOptions } from "../retry";
-import { Transport } from "../transport";
 import { type SandboxContext, sandboxRequester } from "./context";
 import { SandboxFileSystem } from "./fs";
 import { SandboxProcess } from "./process";
 
-/** Options for {@link Sandbox}. */
+/** @internal What a {@link SandboxClient} builds a {@link Sandbox} from. */
 export interface SandboxOptions {
-  /** Name of the sandbox. */
+  /** Empty for a sandbox from {@link SandboxClient.sandboxFromUrl}. */
   name: string;
-
-  /** Base URL of the sandbox's execution API, as reported in `SandboxInfo.url`. */
   url: string;
 
-  /**
-   * Returns the bearer token for each request. When unset, no Authorization
-   * is sent.
-   */
-  tokenProvider?: SandboxTokenProvider;
-
-  /** Custom fetch implementation. Defaults to globalThis.fetch. */
-  fetch?: typeof fetch;
-
-  /** Additional headers to send on every request. */
-  headers?: Record<string, string>;
-
-  /** Same as {@link SandboxClientOptions.nodeUndici}. */
-  nodeUndici?: boolean;
-
-  /** Retry budgets for transient failures. */
-  retries?: SandboxRetryOptions;
+  /** The client's fetch, which authenticates each request. */
+  fetchWithAuth: typeof fetch;
+  headers: Record<string, string> | undefined;
+  retries: SandboxRetryOptions | undefined;
 }
 
 /**
  * One sandbox, reached directly at its own URL.
  *
- * Get one from {@link SandboxClient.create} or {@link SandboxClient.get}, or
- * construct one directly when the URL and a token are already known.
+ * Get one from {@link SandboxClient.create}, {@link SandboxClient.get}, or
+ * {@link SandboxClient.sandboxFromUrl}.
  */
 export class Sandbox {
-  readonly #options: SandboxOptions;
+  readonly #name: string;
+  readonly #url: string;
   readonly #context: SandboxContext;
   #fs?: SandboxFileSystem;
   #process?: SandboxProcess;
 
-  /**
-   * @param tokens Internal: the token source of the client this sandbox came
-   *   from, so a token revoked here is dropped from the client's cache too.
-   */
-  constructor(options: SandboxOptions, tokens?: TokenSource) {
-    this.#options = { ...options };
-    const transport = new Transport({ fetch: options.fetch, nodeUndici: options.nodeUndici });
-    tokens ??= new TokenSource({
-      apiKey: "",
-      tokenProvider: options.tokenProvider,
-      fetch: transport.fetch,
-    });
-    const fetchWithAuth = authenticatedFetch(transport.fetch, tokens);
+  /** @internal Built by {@link SandboxClient}. */
+  constructor(options: SandboxOptions) {
+    this.#name = options.name;
+    this.#url = options.url;
+    const { fetchWithAuth, headers } = options;
     const baseUrl = options.url.replace(/\/+$/, "");
-    const headers = options.headers;
     // An empty token leaves Authorization to fetchWithAuth.
     const newApi = (fetchForCall: typeof fetch) =>
       new SandboxApiClientOwner({ token: "", baseUrl, fetch: fetchForCall, headers }).api;
@@ -76,19 +51,17 @@ export class Sandbox {
     };
   }
 
-  /** The options this sandbox was constructed with. */
-  get options(): SandboxOptions {
-    return this.#options;
-  }
-
-  /** Name of the sandbox. */
+  /**
+   * Name of the sandbox. Empty for a sandbox from
+   * {@link SandboxClient.sandboxFromUrl}.
+   */
   get name(): string {
-    return this.#options.name;
+    return this.#name;
   }
 
   /** Base URL of the sandbox's execution API. */
   get url(): string {
-    return this.#options.url;
+    return this.#url;
   }
 
   /**

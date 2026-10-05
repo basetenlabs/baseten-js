@@ -14,7 +14,10 @@ interface MintServer {
 function mintServer(
   options: {
     lifetimeMs?: number;
-    respond?: (mint: number) => Promise<Response | undefined> | Response | undefined;
+    respond?: (
+      mint: number,
+      request: Request,
+    ) => Promise<Response | undefined> | Response | undefined;
   } = {},
 ): MintServer {
   const requests: Request[] = [];
@@ -23,7 +26,7 @@ function mintServer(
     const request = new Request(input, init);
     requests.push(request);
     const mint = ++mints;
-    const override = await options.respond?.(mint);
+    const override = await options.respond?.(mint, request);
     if (override !== undefined) return override;
     return Response.json({
       token: `token-${mint}`,
@@ -90,6 +93,26 @@ describe("TokenSource", () => {
     });
     const tokens = new TokenSource({ apiKey: "test-key", fetch: server.fetch });
     await expect(tokens.token()).rejects.toThrow();
+    expect(await tokens.token()).toBe("token-2");
+  });
+
+  it("times out a stalled mint and mints again", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(NOW);
+    const server = mintServer({
+      respond: (mint, request) =>
+        mint === 1
+          ? new Promise((_, reject) => {
+              request.signal.addEventListener("abort", () => reject(request.signal.reason));
+            })
+          : undefined,
+    });
+    const tokens = new TokenSource({ apiKey: "test-key", fetch: server.fetch });
+    const stalled = expect(tokens.token()).rejects.toThrow(
+      "sandbox token exchange timed out after 30s",
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    await stalled;
     expect(await tokens.token()).toBe("token-2");
   });
 
@@ -247,12 +270,21 @@ describe("authenticatedFetch", () => {
     expect(contexts).toEqual([{ revokedToken: undefined }, { revokedToken: "provided-1" }]);
   });
 
-  it("returns the revocation once the retries run out", async () => {
-    const server = revokingServer(revoked(), revoked(), revoked(), revoked());
-    const tokens = new TokenSource({ apiKey: "test-key", fetch: server.fetch });
-    const response = await authenticatedFetch(server.fetch, tokens)("https://example.com/x");
-    expect(response.status).toBe(401);
-    expect(server.tokensSent).toEqual(["Bearer token-1", "Bearer token-2", "Bearer token-3"]);
+  it("waits a second before the second resend, then returns the revocation", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const server = revokingServer(revoked(), revoked(), revoked(), revoked());
+      const tokens = new TokenSource({ apiKey: "test-key", fetch: server.fetch });
+      const pending = authenticatedFetch(server.fetch, tokens)("https://example.com/x");
+      await vi.advanceTimersByTimeAsync(999);
+      expect(server.tokensSent).toEqual(["Bearer token-1", "Bearer token-2"]);
+      await vi.advanceTimersByTimeAsync(1);
+      const response = await pending;
+      expect(response.status).toBe(401);
+      expect(server.tokensSent).toEqual(["Bearer token-1", "Bearer token-2", "Bearer token-3"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not retry other 401s", async () => {

@@ -342,11 +342,30 @@ describe("SandboxClient", () => {
   });
 
   it("gives sandboxes the client's cached token", async () => {
-    const server = fakeServer(() => apiSandbox("sb-1"));
+    const server = fakeServer((request) =>
+      request.path.startsWith("/filesystem/")
+        ? { path: "/tmp/x", content: "hello" }
+        : apiSandbox("sb-1"),
+    );
     const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
     const sandbox = await client.get({ name: "sb-1" });
-    expect(await sandbox.options.tokenProvider!({})).toBe("token-1");
+    await sandbox.fs.read({ path: "/tmp/x" });
+    expect(server.requests.map((r) => r.authorization)).toEqual([
+      "Bearer token-1",
+      "Bearer token-1",
+    ]);
     expect(server.mints()).toBe(1);
+  });
+
+  it("builds a sandbox from a URL without a call", async () => {
+    const server = fakeServer(() => ({ path: "/tmp/x", content: "hello" }));
+    const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
+    const sandbox = client.sandboxFromUrl({ url: "https://sbx-sb-1.b10.run/" });
+    expect(sandbox.name).toBe("");
+    expect(sandbox.url).toBe("https://sbx-sb-1.b10.run/");
+    expect(server.requests).toHaveLength(0);
+    expect(await sandbox.fs.read({ path: "/tmp/x" })).toBe("hello");
+    expect(server.requests.map((r) => r.authorization)).toEqual(["Bearer token-1"]);
   });
 
   it("drops the client's token when a sandbox finds it revoked", async () => {

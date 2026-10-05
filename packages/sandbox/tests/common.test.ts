@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDuration, Limiter, parseDuration } from "../src/common";
+import { formatDuration, Limiter, parseDuration, parseTimestamp } from "../src/common";
 
 // A task that runs until finish is called, noting when it started.
 function heldTask(name: string, started: string[]) {
@@ -158,6 +158,22 @@ describe("parseDuration", () => {
   it("names the value in errors", () => {
     expect(() => parseDuration("soon", "lifecycle terminated retention")).toThrow(
       'lifecycle terminated retention is not a valid duration: "soon"',
+    );
+  });
+});
+
+describe("parseTimestamp", () => {
+  // Each format the exec plane has been seen to send.
+  it.each(["2026-09-30T10:00:00Z", "Wed, 30 Sep 2026 10:00:00 GMT", "2026-09-30 10:00:00+00:00"])(
+    "parses %s",
+    (value) => {
+      expect(parseTimestamp(value, "startedAt")).toEqual(new Date("2026-09-30T10:00:00Z"));
+    },
+  );
+
+  it("names the value in errors", () => {
+    expect(() => parseTimestamp("yesterday", "process startedAt")).toThrow(
+      'process startedAt is not a valid timestamp: "yesterday"',
     );
   });
 });

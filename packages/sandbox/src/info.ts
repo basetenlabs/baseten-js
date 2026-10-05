@@ -291,7 +291,7 @@ function expirationPolicyFromApi(policy: ApiSandboxExpirationPolicy): SandboxExp
   };
 }
 
-function sandboxPortsFromApi(ports: ApiSandboxPort[] | undefined): SandboxPort[] {
+export function sandboxPortsFromApi(ports: ApiSandboxPort[] | undefined): SandboxPort[] {
   return (ports ?? []).map(({ target, name, protocol }) => ({ target, name, protocol }));
 }
 

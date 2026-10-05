@@ -2,14 +2,15 @@ import type {
   ApiClient as ManagementApiClient,
   Image as ApiImage,
   ImageTag as ApiImageTag,
+  SandboxLibraryImage as ApiLibraryImage,
 } from "@basetenlabs/client/managementapi";
 import { callControlPlane, paginate } from "../client";
 import type { CallOptions } from "../common";
 import { ImageBuildError, ImageUploadError, SandboxApiError } from "../errors";
-import { optionalDate } from "../info";
+import { optionalDate, type SandboxPort, sandboxPortsFromApi } from "../info";
 import { isTransientResetError, sleep } from "../retry";
 import type { ImageBuilder } from "./builder";
-import { createZip, type ZipEntry, zipEntryPaths } from "./zip";
+import { createZip, type ZipEntry, zipEntryInfos } from "./zip";
 
 const DEFAULT_WAIT_TIMEOUT_MS = 900_000;
 const DEFAULT_POLL_INTERVAL_MS = 3000;
@@ -68,6 +69,80 @@ export interface ImageCleanupResult {
 
   /** Human-readable description of the result. */
   message: string;
+}
+
+/**
+ * A built-in image available to every team, usable as a sandbox's image
+ * without building or pushing it. From {@link ImageClient.listLibrary}.
+ */
+export interface ImageLibraryInfo {
+  /** Stable identifier of the image. */
+  name: string;
+
+  /** Human-readable name. */
+  displayName?: string;
+
+  /** Short description. */
+  description?: string;
+
+  /** Detailed description. */
+  longDescription?: string;
+
+  /** Image reference including its tag, to pass as {@link SandboxCreateRequest.image}. */
+  image: string;
+
+  /** Recommended memory allocation in megabytes. */
+  memory?: number;
+
+  /** Ports the image exposes. */
+  ports: SandboxPort[];
+  categories: string[];
+  tags: string[];
+
+  /** Documentation URL. */
+  url?: string;
+
+  /** Icon URL. */
+  icon?: string;
+
+  /** Light-mode icon URL. */
+  iconLight?: string;
+
+  /** Dark-mode icon URL. */
+  iconDark?: string;
+
+  /** Whether the image requires an enterprise plan. */
+  enterprise: boolean;
+
+  /**
+   * Kernel selection arguments suggested when creating a sandbox from this
+   * image. Creating a sandbox cannot pass these yet.
+   */
+  creationExtraArgs?: Record<string, string>;
+
+  /**
+   * Volume attachments suggested when creating a sandbox from this image.
+   * Creating a sandbox cannot pass these yet.
+   */
+  creationVolumes: ImageLibraryVolume[];
+}
+
+/** A volume attachment a built-in image suggests, in {@link ImageLibraryInfo}. */
+export interface ImageLibraryVolume {
+  /** Volume name, or an internal identifier for an ephemeral volume. */
+  name: string;
+
+  /** Absolute path the volume is mounted at. */
+  mountPath: string;
+
+  /** Volume type, persistent when empty or unset. */
+  type?: string;
+
+  /** Storage capacity in megabytes of an ephemeral volume. */
+  sizeMb?: number;
+
+  /** Whether the volume is mounted read-only. */
+  readOnly: boolean;
 }
 
 /** How long and how often to check while waiting for an image. */
@@ -174,7 +249,9 @@ export interface ImagePushDirectoryRequest extends ImagePushRequestBase {
   /**
    * Local directory holding the build context, with a `Dockerfile` at its
    * root. Everything in it is zipped and uploaded. Files keep their
-   * permissions, and a symbolic link to a file is stored as that file.
+   * permissions, a link to a file within the directory stores a copy of the
+   * file, a link to a file outside it fails the push, a link to a directory
+   * stores an empty directory, and a broken link is left out.
    */
   directory: string;
 
@@ -229,7 +306,7 @@ export type ImageSort =
 
 /** Request for {@link ImageClient.list}. */
 export interface ImageListRequest {
-  /** Only images whose names start with this, case-sensitively. Sorts by name ascending. */
+  /** Only images whose names start with this, case-sensitively. */
   namePrefix?: string;
 
   /** Defaults to `createdAt:desc`. */
@@ -278,6 +355,11 @@ export interface ImageDeleteTagRequest {
 
 /** Request for {@link ImageClient.cleanup}. */
 export interface ImageCleanupRequest {
+  callOptions?: CallOptions;
+}
+
+/** Request for {@link ImageClient.listLibrary}. */
+export interface ImageListLibraryRequest {
   callOptions?: CallOptions;
 }
 
@@ -362,7 +444,7 @@ export class ImageClient {
       await this.#upload(request.name, response.upload_url, zip, signal);
     }
     if (request.wait === false) return { name: response.name, status: response.status };
-    return this.#waitBuilt(request.name, request, signal, true);
+    return this.#waitBuilt(request.name, request, signal);
   }
 
   /**
@@ -373,7 +455,7 @@ export class ImageClient {
    * left on to avoid that.
    */
   async waitBuilt(request: ImageWaitBuiltRequest): Promise<ImageInfo> {
-    return this.#waitBuilt(request.name, request, request.callOptions?.signal, false);
+    return this.#waitBuilt(request.name, request, request.callOptions?.signal);
   }
 
   /**
@@ -501,6 +583,17 @@ export class ImageClient {
     return { deleted: result.deleted, message: result.message };
   }
 
+  /** Lists the built-in images available to every team. */
+  async listLibrary(request: ImageListLibraryRequest = {}): Promise<ImageLibraryInfo[]> {
+    const signal = request.callOptions?.signal;
+    const result = await callControlPlane(() =>
+      this.#context
+        .api(signal)
+        .listSandboxLibraryImages({ params: { team_id: this.#context.teamId } }),
+    );
+    return result.items.map(imageLibraryInfoFromApi);
+  }
+
   async #upload(name: string, url: string, zip: Blob, signal: AbortSignal | undefined) {
     // The URL is signed for storage, so none of the API's headers or
     // credentials go with it.
@@ -514,19 +607,16 @@ export class ImageClient {
     if (!response.ok) throw new ImageUploadError(name, response.status, body);
   }
 
-  // With requireProgress, BUILT and FAILED count only once the image has been
-  // seen processing, since the status is per repository and can still show
-  // the previous version's outcome right after a push.
+  // A push resets the image's status, so after one, BUILT or FAILED is that
+  // push's outcome.
   async #waitBuilt(
     name: string,
     options: ImageWaitOptions,
     signal: AbortSignal | undefined,
-    requireProgress: boolean,
   ): Promise<ImageInfo> {
     const timeout = AbortSignal.timeout(options.timeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS);
     const waitSignal = signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
     const intervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-    let progressed = !requireProgress;
     let lastStatus = "unknown";
     try {
       for (;;) {
@@ -538,15 +628,9 @@ export class ImageClient {
             }),
           );
           lastStatus = image.status;
-          if (image.status === "BUILT" || image.status === "FAILED") {
-            if (progressed) {
-              if (image.status === "FAILED") throw new ImageBuildError(name, image.status, false);
-              return imageInfoFromApi(image);
-            }
-          } else {
-            // UPLOADING, BUILDING, or a status added later, all still processing.
-            progressed = true;
-          }
+          if (image.status === "FAILED") throw new ImageBuildError(name, image.status, false);
+          if (image.status === "BUILT") return imageInfoFromApi(image);
+          // UPLOADING, BUILDING, or a status added later, all still processing.
         } catch (err) {
           if (err instanceof ImageBuildError || waitSignal.aborted || !isRetryableWaitError(err)) {
             throw err;
@@ -582,8 +666,10 @@ async function pushSourceZip(request: ImagePushRequest): Promise<Blob | undefine
   if (request.builder !== undefined) return createZip(await request.builder.zipEntries());
   if (request.zip !== undefined) {
     const zip = request.zip instanceof Blob ? request.zip : new Blob([request.zip as BlobPart]);
-    if (!(await zipEntryPaths(zip)).includes("Dockerfile")) {
-      throw new Error("the zip has no Dockerfile at its root");
+    // A link named Dockerfile would only fail later, in the build.
+    const entries = await zipEntryInfos(zip);
+    if (!entries.some((entry) => entry.path === "Dockerfile" && entry.regularFile)) {
+      throw new Error("the zip has no Dockerfile file at its root");
     }
     return zip;
   }
@@ -623,6 +709,7 @@ export interface NodeFsPromises {
   readdir(path: string, options: { withFileTypes: true }): Promise<NodeDirent[]>;
   stat(path: string): Promise<{ mode: number; isFile(): boolean; isDirectory(): boolean }>;
   readFile(path: string): Promise<Uint8Array>;
+  realpath(path: string): Promise<string>;
 }
 
 interface NodeDirent {
@@ -637,6 +724,9 @@ export interface NodePath {
   join(...paths: string[]): string;
   resolve(...paths: string[]): string;
   basename(path: string): string;
+  relative(from: string, to: string): string;
+  isAbsolute(path: string): boolean;
+  sep: string;
 }
 
 /** @internal Node's filesystem and path modules, or undefined on a runtime without them. */
@@ -652,11 +742,24 @@ export function nodeFileSystem(): { fs: NodeFsPromises; path: NodePath } | undef
 
 /**
  * @internal Adds everything under a local directory to entries, each path
- * prefixed. Files keep their modes, a link to a file stores the file, a link
+ * prefixed. Files keep their modes, a link to a file within the directory
+ * stores a copy of the file, a link to a file outside it is an error, a link
  * to a directory stores an empty directory, and a broken link is left out.
  */
 export async function addDirectoryZipEntries(
   node: { fs: NodeFsPromises; path: NodePath },
+  dir: string,
+  prefix: string,
+  entries: ZipEntry[],
+): Promise<void> {
+  // Resolved, so a link's resolved target can be checked against it.
+  const root = await node.fs.realpath(dir);
+  await addTreeZipEntries(node, root, dir, prefix, entries);
+}
+
+async function addTreeZipEntries(
+  node: { fs: NodeFsPromises; path: NodePath },
+  root: string,
   dir: string,
   prefix: string,
   entries: ZipEntry[],
@@ -669,15 +772,31 @@ export async function addDirectoryZipEntries(
     const archivePath = prefix + child.name;
     if (child.isDirectory()) {
       entries.push({ path: archivePath, mode: (await fs.stat(fullPath)).mode });
-      await addDirectoryZipEntries(node, fullPath, `${archivePath}/`, entries);
+      await addTreeZipEntries(node, root, fullPath, `${archivePath}/`, entries);
     } else if (child.isFile()) {
       const { mode } = await fs.stat(fullPath);
       entries.push({ path: archivePath, data: await fs.readFile(fullPath), mode });
     } else if (child.isSymbolicLink()) {
       const target = await fs.stat(fullPath).catch(() => undefined);
       if (target?.isFile()) {
+        // Stored as a copy of the file, but only for a file within the
+        // directory, so a link cannot pull in a file from elsewhere on the
+        // machine.
+        const targetPath = await fs.realpath(fullPath);
+        const relative = path.relative(root, targetPath);
+        if (
+          relative === ".." ||
+          relative.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(relative)
+        ) {
+          throw new Error(
+            `${fullPath} is a link to ${targetPath}, outside ${root}; only links to files within it can be pushed`,
+          );
+        }
         entries.push({ path: archivePath, data: await fs.readFile(fullPath), mode: target.mode });
       } else if (target?.isDirectory()) {
+        // Stored as an empty directory, not followed, so a link cannot pull
+        // in the rest of the machine.
         entries.push({ path: archivePath, mode: target.mode });
       }
     }
@@ -726,5 +845,33 @@ function imageTagInfoFromApi(tag: ApiImageTag): ImageTagInfo {
     createdAt: optionalDate(tag.created_at),
     updatedAt: optionalDate(tag.updated_at),
     sizeBytes: tag.size,
+  };
+}
+
+// hidden and coming_soon are left out, since listings always have them false.
+function imageLibraryInfoFromApi(image: ApiLibraryImage): ImageLibraryInfo {
+  return {
+    name: image.name,
+    displayName: image.display_name,
+    description: image.description,
+    longDescription: image.long_description,
+    image: image.image,
+    memory: image.memory,
+    ports: sandboxPortsFromApi(image.ports),
+    categories: image.categories ?? [],
+    tags: image.tags ?? [],
+    url: image.url,
+    icon: image.icon,
+    iconLight: image.icon_light,
+    iconDark: image.icon_dark,
+    enterprise: image.enterprise ?? false,
+    creationExtraArgs: image.creation_options?.extra_args,
+    creationVolumes: (image.creation_options?.volumes ?? []).map((volume) => ({
+      name: volume.name,
+      mountPath: volume.mount_path,
+      type: volume.type,
+      sizeMb: volume.size_mb,
+      readOnly: volume.read_only ?? false,
+    })),
   };
 }
