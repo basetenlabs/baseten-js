@@ -1,0 +1,45 @@
+{
+  "name": "@basetenlabs/sandbox",
+  "version": "0.3.0",
+  "description": "Baseten Sandbox JS/TS SDK",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/basetenlabs/baseten-js",
+    "directory": "packages/sandbox"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "oxlint --ignore-pattern dist && oxfmt --check . \"!dist/**\" && tsc --noEmit",
+    "format": "oxfmt --write . \"!dist/**\"",
+    "test": "vitest run",
+    "generate-docs": "typedoc"
+  },
+  "dependencies": {
+    "@basetenlabs/client": "workspace:*"
+  },
+  "devDependencies": {
+    "fflate": "^0.8.3",
+    "typedoc": "^0.28.20",
+    "undici": "^8.11.2",
+    "undici-7": "npm:undici@7.19.0",
+    "undici-8": "npm:undici@^8.11.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
