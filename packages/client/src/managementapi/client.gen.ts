@@ -33,6 +33,7 @@ import type {
   CreateLoopsSamplerRequest,
   CreateLoopsSamplerResponse,
   CreateLoopsSessionResponse,
+  CreateLoopsTrainerRequest,
   CreateModelDeploymentRequest,
   CreateModelRequest,
   CreateRouteConnectionRequest,
@@ -2857,7 +2858,7 @@ export class ApiClient {
 
   /** Creates a Loops trainer */
   async postLoopsTrainers(params: {
-    request: CreateLoopsRunRequest;
+    request: CreateLoopsTrainerRequest;
   }): Promise<CreateLoopsRunResponse> {
     return this._doJson<CreateLoopsRunResponse>({
       method: "POST",
@@ -3383,7 +3384,7 @@ export class ApiClient {
   /** Creates a Loops trainer */
   async postTeamsLoopsTrainers(params: {
     team_id: string;
-    request: CreateLoopsRunRequest;
+    request: CreateLoopsTrainerRequest;
   }): Promise<CreateLoopsRunResponse> {
     return this._doJson<CreateLoopsRunResponse>({
       method: "POST",

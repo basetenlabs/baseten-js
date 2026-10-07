@@ -7260,7 +7260,10 @@ export type components = {
        */
       runs: components["schemas"]["LoopsRun"][];
     };
-    /** CreateLoopsRunRequestV1 */
+    /**
+     * CreateLoopsRunRequestV1
+     * @description Request to create a Loops run together with its paired sampler.
+     */
     CreateLoopsRunRequest: {
       /**
        * Session Id
@@ -7323,6 +7326,11 @@ export type components = {
        * @description Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.
        */
       reuse_from_session_id?: string | null;
+      /**
+       * Sampler Num Replicas
+       * @description Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.
+       */
+      sampler_num_replicas?: number | null;
     };
     /** CreateLoopsRunResponseV1 */
     CreateLoopsRunResponse: {
@@ -7353,6 +7361,70 @@ export type components = {
     GetLoopsRunResponse: {
       /** @description The Loops run with its associated sampler. */
       run: components["schemas"]["LoopsRun"];
+    };
+    /** CreateLoopsTrainerRequestV1 */
+    CreateLoopsTrainerRequest: {
+      /**
+       * Session Id
+       * @description ID of the Loops session this run belongs to.
+       */
+      session_id: string;
+      /**
+       * Base Model
+       * @description Base model ID (e.g. 'Qwen/Qwen3-8B').
+       */
+      base_model: string;
+      /**
+       * Name
+       * @description Optional display name for the run. Defaults to the base model name when omitted.
+       */
+      name?: string | null;
+      /**
+       * Max Seq Len
+       * @description Maximum prompt length (in tokens) the run must handle. Set this to the longest training example you plan to send. Defaults to the maximum supported by the model configuration.
+       */
+      max_seq_len?: number | null;
+      /**
+       * Lora Rank
+       * @description LoRA rank.
+       */
+      lora_rank?: number;
+      /**
+       * Seed
+       * @description Random seed for reproducibility.
+       */
+      seed?: number | null;
+      /**
+       * Scale Down Delay Seconds
+       * @description Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 900 (15 minutes).
+       */
+      scale_down_delay_seconds?: number;
+      /**
+       * @description Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.
+       * @example spot
+       */
+      availability_model?: components["schemas"]["V1AvailabilityModel"];
+      /**
+       * Replicas
+       * @description Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.
+       */
+      replicas?: number;
+      /**
+       * Path
+       * @description Optional bt:// URI of an existing checkpoint to load weights from on startup. Form: bt://loops:<run_id>/weights/<checkpoint_name>.
+       * @example bt://loops:k4q95w5/weights/step-100
+       */
+      path?: string | null;
+      /**
+       * Reuse From Run Id
+       * @description Optional ID of a prior Loops run whose trainer and/or sampler should be reused for this run instead of provisioning fresh. The prior run must use the same base model and belong to the same team.
+       */
+      reuse_from_run_id?: string | null;
+      /**
+       * Reuse From Session Id
+       * @description Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.
+       */
+      reuse_from_session_id?: string | null;
     };
     /**
      * ListLoopsSamplersResponseV1
@@ -7403,6 +7475,11 @@ export type components = {
        * @description Optional ID of a prior Loops session to reuse a trainer and/or sampler from. Deprecated.
        */
       reuse_from_session_id?: string | null;
+      /**
+       * Num Replicas
+       * @description Number of replicas the sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a paired sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged, and when a run ends, its sampler is scaled down.
+       */
+      num_replicas?: number | null;
     };
     /** CreateLoopsSamplerResponseV1 */
     CreateLoopsSamplerResponse: {
@@ -14780,6 +14857,7 @@ export type CreateLoopsRunRequest = components["schemas"]["CreateLoopsRunRequest
 export type CreateLoopsRunResponse = components["schemas"]["CreateLoopsRunResponse"];
 export type DeactivateLoopsRunResponse = components["schemas"]["DeactivateLoopsRunResponse"];
 export type GetLoopsRunResponse = components["schemas"]["GetLoopsRunResponse"];
+export type CreateLoopsTrainerRequest = components["schemas"]["CreateLoopsTrainerRequest"];
 export type ListLoopsSamplersResponse = components["schemas"]["ListLoopsSamplersResponse"];
 export type CreateLoopsSamplerRequest = components["schemas"]["CreateLoopsSamplerRequest"];
 export type CreateLoopsSamplerResponse = components["schemas"]["CreateLoopsSamplerResponse"];

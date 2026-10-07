@@ -416,7 +416,10 @@ export type components = {
       callback?: string;
     };
     ProcessLogs: {
-      /** @example logs output */
+      /**
+       * @description Concatenation of the returned stdout followed by the returned stderr. Output from the two streams is not interleaved.
+       * @example logs output
+       */
       logs: string;
       /** @example stderr output */
       stderr: string;

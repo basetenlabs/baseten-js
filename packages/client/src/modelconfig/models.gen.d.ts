@@ -250,7 +250,7 @@ export interface BaseImage {
    */
   image?: string;
   /**
-   * A path to the Python executable on the image.
+   * A path to the Python executable on the image. Truss uses `python3` from the image's PATH when this is empty.
    */
   python_executable_path?: string;
   /**
@@ -771,7 +771,9 @@ export interface ModelTRTLLMRuntimeConfiguration {
   request_default_max_tokens?: number | null;
   served_model_name?: string | null;
   total_token_limit?: number;
-  webserver_default_route?: ("/v1/embeddings" | "/rerank" | "/predict" | "/predict_tokens") | null;
+  webserver_default_route?:
+    | ("/v1/embeddings" | "/v1/systemone" | "/rerank" | "/predict" | "/predict_tokens")
+    | null;
   [k: string]: unknown;
 }
 export interface ModelTRTLLMLoraConfiguration {
@@ -791,7 +793,9 @@ export interface ModelTRTLLMRuntimeConfiguration1 {
   request_default_max_tokens?: number | null;
   served_model_name?: string | null;
   total_token_limit?: number;
-  webserver_default_route?: ("/v1/embeddings" | "/rerank" | "/predict" | "/predict_tokens") | null;
+  webserver_default_route?:
+    | ("/v1/embeddings" | "/v1/systemone" | "/rerank" | "/predict" | "/predict_tokens")
+    | null;
   [k: string]: unknown;
 }
 export interface VersionsOverrides {
