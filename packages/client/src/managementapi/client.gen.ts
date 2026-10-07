@@ -14,7 +14,7 @@ import type {
   ChainTombstone,
   Chains,
   CleanupImagesParams,
-  CleanupImagesResponse,
+  CleanupSandboxImagesResponse,
   CreateApiKeyForGroupRequest,
   CreateApiKeyForGroupResponse,
   CreateApiKeyRequest,
@@ -35,6 +35,7 @@ import type {
   CreateLoopsSessionResponse,
   CreateModelDeploymentRequest,
   CreateModelRequest,
+  CreateRouteConnectionRequest,
   CreateRouteRequest,
   CreateSandboxParams,
   CreateSandboxRequest,
@@ -51,7 +52,6 @@ import type {
   DeactivateResponse,
   DeleteImageParams,
   DeleteImageTagParams,
-  DeleteRoutesHarnessConfigsParams,
   DeleteSandboxParams,
   DeleteVolumeRequest,
   DeleteVolumeResponse,
@@ -120,9 +120,12 @@ import type {
   GetModelsEnvironmentsLogsParams,
   GetModelsEnvironmentsMetricsParams,
   GetModelsParams,
-  GetRoutesHarnessConfigsParams,
+  GetRoutesConnectionsParams,
   GetRoutesParams,
   GetRoutesUsageParams,
+  GetSandboxConfigurationResponse,
+  GetSandboxLogsParams,
+  GetSandboxMetricsParams,
   GetSandboxParams,
   GetTeamsLoopsRunsParams,
   GetTeamsLoopsSamplersParams,
@@ -147,8 +150,6 @@ import type {
   GetVolumesVersionsParams,
   Group,
   GroupsResponse,
-  Image,
-  ImageBuildLogsResponse,
   InstanceTypePrices,
   InstanceTypes,
   KeysForGroupResponse,
@@ -160,14 +161,13 @@ import type {
   LibraryListings,
   ListAuditLogsResponse,
   ListImageTagsParams,
-  ListImageTagsResponse,
   ListImagesParams,
-  ListImagesResponse,
   ListLoopsCheckpointsResponse,
   ListLoopsDeploymentsResponse,
   ListLoopsRunsResponse,
   ListLoopsSamplersResponse,
-  ListSandboxLibraryImagesParams,
+  ListSandboxImageTagsResponse,
+  ListSandboxImagesResponse,
   ListSandboxLibraryImagesResponse,
   ListSandboxesParams,
   ListSandboxesResponse,
@@ -200,8 +200,8 @@ import type {
   PromoteToChainEnvironmentRequest,
   PromoteToEnvironmentRequest,
   PushImageParams,
-  PushImageRequest,
-  PushImageResponse,
+  PushSandboxImageRequest,
+  PushSandboxImageResponse,
   RecreateTrainingJobResponse,
   Regions,
   RegisterApiKeyRequest,
@@ -211,20 +211,24 @@ import type {
   RestoreVolumeVersionResponse,
   RetryDeploymentResponse,
   Route,
-  RouteHarnessConfig,
-  RouteHarnessConfigTombstone,
-  RouteHarnessConfigsResponse,
-  RouteSpendLimit,
+  RouteConnection,
+  RouteConnectionTombstone,
+  RouteConnectionsResponse,
+  RouteTeamSettings,
   RouteTombstone,
+  RouteUserSettings,
   RoutesResponse,
   RoutesUsageResponse,
   Sandbox,
+  SandboxImage,
+  SandboxImageBuildLogsResponse,
+  SandboxLogs,
+  SandboxMetrics,
   SearchTrainingJobsRequest,
   SearchTrainingJobsResponse,
   Secret,
   SecretTombstone,
   Secrets,
-  SetRouteHarnessConfigRequest,
   SignSshCertificateRequest,
   SignSshCertificateResponse,
   SignalPromotionResponse,
@@ -256,9 +260,10 @@ import type {
   UpdateLibraryListingVersionRequest,
   UpdateModelRequest,
   UpdateRequestBackpressureSettings,
-  UpdateRouteHarnessConfigRequest,
+  UpdateRouteConnectionRequest,
   UpdateRouteRequest,
-  UpdateRouteSpendLimitRequest,
+  UpdateRouteTeamSettingsRequest,
+  UpdateRouteUserSettingsRequest,
   UpdateSandboxParams,
   UpdateSandboxRequest,
   UpdateTrainingJobRequest,
@@ -320,8 +325,10 @@ export class ApiClient {
   }
 
   /** Clean up unused images */
-  async cleanupImages(params?: { params?: CleanupImagesParams }): Promise<CleanupImagesResponse> {
-    return this._doJson<CleanupImagesResponse>({
+  async cleanupImages(params?: {
+    params?: CleanupImagesParams;
+  }): Promise<CleanupSandboxImagesResponse> {
+    return this._doJson<CleanupSandboxImagesResponse>({
       method: "POST",
       pathFmt: "/v1/sandboxes/cleanup_images",
       pathArgs: [],
@@ -399,8 +406,11 @@ export class ApiClient {
   }
 
   /** Delete a sandbox image */
-  async deleteImage(params: { image_name: string; params?: DeleteImageParams }): Promise<Image> {
-    return this._doJson<Image>({
+  async deleteImage(params: {
+    image_name: string;
+    params?: DeleteImageParams;
+  }): Promise<SandboxImage> {
+    return this._doJson<SandboxImage>({
       method: "DELETE",
       pathFmt: "/v1/sandboxes/images/{}",
       pathArgs: [params.image_name],
@@ -415,8 +425,8 @@ export class ApiClient {
     image_name: string;
     tag_name: string;
     params?: DeleteImageTagParams;
-  }): Promise<Image> {
-    return this._doJson<Image>({
+  }): Promise<SandboxImage> {
+    return this._doJson<SandboxImage>({
       method: "DELETE",
       pathFmt: "/v1/sandboxes/images/{}/tags/{}",
       pathArgs: [params.image_name, params.tag_name],
@@ -525,16 +535,15 @@ export class ApiClient {
     });
   }
 
-  /** Clears default models for a coding harness */
-  async deleteRoutesHarnessConfigs(params: {
-    harness: string;
-    params: DeleteRoutesHarnessConfigsParams;
-  }): Promise<RouteHarnessConfigTombstone> {
-    return this._doJson<RouteHarnessConfigTombstone>({
+  /** Deletes a connection */
+  async deleteRoutesConnections(params: {
+    connection_id: string;
+  }): Promise<RouteConnectionTombstone> {
+    return this._doJson<RouteConnectionTombstone>({
       method: "DELETE",
-      pathFmt: "/v1/routes/harness-configs/{}",
-      pathArgs: [params.harness],
-      query: params.params ?? null,
+      pathFmt: "/v1/routes/connections/{}",
+      pathArgs: [params.connection_id],
+      query: null,
       body: null,
       errorCodes: null,
     });
@@ -973,8 +982,8 @@ export class ApiClient {
   }
 
   /** Get a sandbox image */
-  async getImage(params: { image_name: string; params?: GetImageParams }): Promise<Image> {
-    return this._doJson<Image>({
+  async getImage(params: { image_name: string; params?: GetImageParams }): Promise<SandboxImage> {
+    return this._doJson<SandboxImage>({
       method: "GET",
       pathFmt: "/v1/sandboxes/images/{}",
       pathArgs: [params.image_name],
@@ -988,8 +997,8 @@ export class ApiClient {
   async getImageBuildLogs(params: {
     image_name: string;
     params?: GetImageBuildLogsParams;
-  }): Promise<ImageBuildLogsResponse> {
-    return this._doJson<ImageBuildLogsResponse>({
+  }): Promise<SandboxImageBuildLogsResponse> {
+    return this._doJson<SandboxImageBuildLogsResponse>({
       method: "GET",
       pathFmt: "/v1/sandboxes/images/{}/logs",
       pathArgs: [params.image_name],
@@ -1573,15 +1582,15 @@ export class ApiClient {
     });
   }
 
-  /** Lists default models for coding harnesses */
-  async getRoutesHarnessConfigs(params: {
-    params: GetRoutesHarnessConfigsParams;
-  }): Promise<RouteHarnessConfigsResponse> {
-    return this._doJson<RouteHarnessConfigsResponse>({
+  /** Lists connections */
+  async getRoutesConnections(params?: {
+    params?: GetRoutesConnectionsParams;
+  }): Promise<RouteConnectionsResponse> {
+    return this._doJson<RouteConnectionsResponse>({
       method: "GET",
-      pathFmt: "/v1/routes/harness-configs",
+      pathFmt: "/v1/routes/connections",
       pathArgs: [],
-      query: params.params ?? null,
+      query: params?.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -1599,11 +1608,23 @@ export class ApiClient {
     });
   }
 
-  /** Gets a user's spend limits */
-  async getRoutesSpendLimits(params: { user_id: string }): Promise<RouteSpendLimit> {
-    return this._doJson<RouteSpendLimit>({
+  /** Gets a team's route settings */
+  async getRoutesSettingsTeams(params: { team_id: string }): Promise<RouteTeamSettings> {
+    return this._doJson<RouteTeamSettings>({
       method: "GET",
-      pathFmt: "/v1/routes/spend_limits/{}",
+      pathFmt: "/v1/routes/settings/teams/{}",
+      pathArgs: [params.team_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a user's route settings */
+  async getRoutesSettingsUsers(params: { user_id: string }): Promise<RouteUserSettings> {
+    return this._doJson<RouteUserSettings>({
+      method: "GET",
+      pathFmt: "/v1/routes/settings/users/{}",
       pathArgs: [params.user_id],
       query: null,
       body: null,
@@ -1628,6 +1649,48 @@ export class ApiClient {
     return this._doJson<Sandbox>({
       method: "GET",
       pathFmt: "/v1/sandboxes/instances/{}",
+      pathArgs: [params.sandbox_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Get sandbox configuration */
+  async getSandboxConfiguration(): Promise<GetSandboxConfigurationResponse> {
+    return this._doJson<GetSandboxConfigurationResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/configuration",
+      pathArgs: [],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Get sandbox logs */
+  async getSandboxLogs(params: {
+    sandbox_name: string;
+    params: GetSandboxLogsParams;
+  }): Promise<SandboxLogs> {
+    return this._doJson<SandboxLogs>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/instances/{}/logs",
+      pathArgs: [params.sandbox_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Get sandbox metrics */
+  async getSandboxMetrics(params: {
+    sandbox_name: string;
+    params: GetSandboxMetricsParams;
+  }): Promise<SandboxMetrics> {
+    return this._doJson<SandboxMetrics>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/instances/{}/metrics",
       pathArgs: [params.sandbox_name],
       query: params.params ?? null,
       body: null,
@@ -2089,8 +2152,8 @@ export class ApiClient {
   }
 
   /** List sandbox images */
-  async listImages(params?: { params?: ListImagesParams }): Promise<ListImagesResponse> {
-    return this._doJson<ListImagesResponse>({
+  async listImages(params?: { params?: ListImagesParams }): Promise<ListSandboxImagesResponse> {
+    return this._doJson<ListSandboxImagesResponse>({
       method: "GET",
       pathFmt: "/v1/sandboxes/images",
       pathArgs: [],
@@ -2104,8 +2167,8 @@ export class ApiClient {
   async listImageTags(params: {
     image_name: string;
     params?: ListImageTagsParams;
-  }): Promise<ListImageTagsResponse> {
-    return this._doJson<ListImageTagsResponse>({
+  }): Promise<ListSandboxImageTagsResponse> {
+    return this._doJson<ListSandboxImageTagsResponse>({
       method: "GET",
       pathFmt: "/v1/sandboxes/images/{}/tags",
       pathArgs: [params.image_name],
@@ -2128,14 +2191,12 @@ export class ApiClient {
   }
 
   /** List built-in sandbox images */
-  async listSandboxLibraryImages(params?: {
-    params?: ListSandboxLibraryImagesParams;
-  }): Promise<ListSandboxLibraryImagesResponse> {
+  async listSandboxLibraryImages(): Promise<ListSandboxLibraryImagesResponse> {
     return this._doJson<ListSandboxLibraryImagesResponse>({
       method: "GET",
       pathFmt: "/v1/sandboxes/library_images",
       pathArgs: [],
-      query: params?.params ?? null,
+      query: null,
       body: null,
       errorCodes: null,
     });
@@ -2369,7 +2430,7 @@ export class ApiClient {
     });
   }
 
-  /** Updates a route's display name or description */
+  /** Updates a route */
   async patchRoutes(params: { route_id: string; request: UpdateRouteRequest }): Promise<Route> {
     return this._doJson<Route>({
       method: "PATCH",
@@ -2381,28 +2442,44 @@ export class ApiClient {
     });
   }
 
-  /** Updates default models for a coding harness */
-  async patchRoutesHarnessConfigs(params: {
-    request: UpdateRouteHarnessConfigRequest;
-  }): Promise<RouteHarnessConfig> {
-    return this._doJson<RouteHarnessConfig>({
+  /** Updates a connection */
+  async patchRoutesConnections(params: {
+    connection_id: string;
+    request: UpdateRouteConnectionRequest;
+  }): Promise<RouteConnection> {
+    return this._doJson<RouteConnection>({
       method: "PATCH",
-      pathFmt: "/v1/routes/harness-configs",
-      pathArgs: [],
+      pathFmt: "/v1/routes/connections/{}",
+      pathArgs: [params.connection_id],
       query: null,
       body: params.request,
       errorCodes: null,
     });
   }
 
-  /** Updates a user's spend limits */
-  async patchRoutesSpendLimits(params: {
-    user_id: string;
-    request: UpdateRouteSpendLimitRequest;
-  }): Promise<RouteSpendLimit> {
-    return this._doJson<RouteSpendLimit>({
+  /** Updates a team's route settings */
+  async patchRoutesSettingsTeams(params: {
+    team_id: string;
+    request: UpdateRouteTeamSettingsRequest;
+  }): Promise<RouteTeamSettings> {
+    return this._doJson<RouteTeamSettings>({
       method: "PATCH",
-      pathFmt: "/v1/routes/spend_limits/{}",
+      pathFmt: "/v1/routes/settings/teams/{}",
+      pathArgs: [params.team_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a user's route settings */
+  async patchRoutesSettingsUsers(params: {
+    user_id: string;
+    request: UpdateRouteUserSettingsRequest;
+  }): Promise<RouteUserSettings> {
+    return this._doJson<RouteUserSettings>({
+      method: "PATCH",
+      pathFmt: "/v1/routes/settings/users/{}",
       pathArgs: [params.user_id],
       query: null,
       body: params.request,
@@ -3205,6 +3282,20 @@ export class ApiClient {
     });
   }
 
+  /** Creates a connection */
+  async postRoutesConnections(params: {
+    request: CreateRouteConnectionRequest;
+  }): Promise<RouteConnection> {
+    return this._doJson<RouteConnection>({
+      method: "POST",
+      pathFmt: "/v1/routes/connections",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
   /** Upserts a secret */
   async postSecrets(params: { request: UpsertSecretRequest }): Promise<Secret> {
     return this._doJson<Secret>({
@@ -3541,29 +3632,15 @@ export class ApiClient {
   /** Push a sandbox image */
   async pushImage(params: {
     params?: PushImageParams;
-    request: PushImageRequest;
-  }): Promise<PushImageResponse> {
-    return this._doJson<PushImageResponse>({
+    request: PushSandboxImageRequest;
+  }): Promise<PushSandboxImageResponse> {
+    return this._doJson<PushSandboxImageResponse>({
       method: "POST",
       pathFmt: "/v1/sandboxes/images",
       pathArgs: [],
       query: params.params ?? null,
       body: params.request,
       successCodes: [202],
-      errorCodes: null,
-    });
-  }
-
-  /** Sets default models for a coding harness */
-  async putRoutesHarnessConfigs(params: {
-    request: SetRouteHarnessConfigRequest;
-  }): Promise<RouteHarnessConfig> {
-    return this._doJson<RouteHarnessConfig>({
-      method: "PUT",
-      pathFmt: "/v1/routes/harness-configs",
-      pathArgs: [],
-      query: null,
-      body: params.request,
       errorCodes: null,
     });
   }

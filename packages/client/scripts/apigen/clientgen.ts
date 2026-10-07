@@ -32,6 +32,11 @@ interface Operation {
   jsonResponses: { code: number; ref: string }[];
   /** Non-JSON 2xx content types, e.g. text/plain or application/octet-stream. */
   rawAccepts: string[];
+  /**
+   * Whether a success response declares headers, which an operation without a
+   * body can only return as the raw response.
+   */
+  responseHeaders: boolean;
   successCodes: number[];
   errorCodes: Map<number, string> | null;
   summary: string;
@@ -119,6 +124,7 @@ function extractOperations(spec: Record<string, unknown>): Operation[] {
         reqBodyRef: bodySchemaRef(spec, opData),
         jsonResponses: jsonResponseRefs(spec, opData, successCodes),
         rawAccepts: rawResponseAccepts(spec, opData, successCodes),
+        responseHeaders: hasResponseHeaders(spec, opData, successCodes),
         successCodes,
         errorCodes: errorCodeMap(spec, opData),
         summary: (opData.summary as string) ?? "",
@@ -185,6 +191,21 @@ function rawResponseAccepts(
     }
   }
   return [...accepts].sort();
+}
+
+/** Whether any success response declares headers. */
+function hasResponseHeaders(
+  spec: Record<string, unknown>,
+  op: Record<string, unknown>,
+  successCodes: number[],
+): boolean {
+  const responses = (op.responses ?? {}) as Record<string, Record<string, unknown>>;
+  return successCodes.some((code) => {
+    const respNode = responses[String(code)];
+    if (!respNode) return false;
+    const headers = (resolveRef(spec, respNode)?.headers ?? {}) as Record<string, unknown>;
+    return Object.keys(headers).length > 0;
+  });
 }
 
 function bodyContentType(spec: Record<string, unknown>, op: Record<string, unknown>): string {
@@ -291,7 +312,9 @@ function pathFmt(path: string): string {
 
 function renderClient(ops: Operation[]): string {
   const hasTypedResp = ops.some((op) => op.jsonResponses.length > 0);
-  const hasNoResp = ops.some((op) => op.jsonResponses.length === 0 && op.rawAccepts.length === 0);
+  const hasNoResp = ops.some(
+    (op) => op.jsonResponses.length === 0 && op.rawAccepts.length === 0 && !op.responseHeaders,
+  );
 
   const errorRefs = [...new Set(ops.flatMap((op) => [...(op.errorCodes?.values() ?? [])]))].sort();
 
@@ -383,8 +406,10 @@ export class ApiClient {
 
   for (const op of ops) {
     // An operation with no JSON success body returns the response directly,
-    // since there is nothing to deserialize into.
-    const rawOnly = op.jsonResponses.length === 0 && op.rawAccepts.length > 0;
+    // since there is nothing to deserialize into. One with no body at all does
+    // too when it declares headers, since they are its result.
+    const rawOnly =
+      op.jsonResponses.length === 0 && (op.rawAccepts.length > 0 || op.responseHeaders);
     src += `\n${renderMethod(op, rawOnly)}`;
     // A content-negotiated operation also gets a sibling returning the raw
     // response, since Accept changes the body's type entirely.
@@ -577,7 +602,7 @@ function renderMethod(op: Operation, raw = false): string {
   }
   if (needsAcceptParam) {
     parts.push("accept: params.accept");
-  } else if (raw) {
+  } else if (raw && contentTypes.length > 0) {
     parts.push(`accept: "${contentTypes[0]}"`);
   }
   // Defaulted in _do, so only emitted when it is not exactly [200].

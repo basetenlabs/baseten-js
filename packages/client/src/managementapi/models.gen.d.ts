@@ -345,21 +345,6 @@ export type components = {
       | "TRAINING_JOB"
       | "CHAINLET";
     /**
-     * RouteHarness
-     * @enum {string}
-     */
-    RouteHarness: "claude-code" | "opencode" | "codex";
-    /**
-     * RouteHarnessModelSource
-     * @enum {string}
-     */
-    RouteHarnessModelSource: "team" | "baseten";
-    /**
-     * RouteHarnessRole
-     * @enum {string}
-     */
-    RouteHarnessRole: "primary" | "background";
-    /**
      * GatewayProvider
      * @enum {string}
      */
@@ -9100,7 +9085,7 @@ export type components = {
        * @description Whether the listing is trending
        */
       trending?: boolean | null;
-      /** @description Model-level metadata for the listing. When provided, replaces the stored metadata. Unknown fields are rejected. */
+      /** @description Model-level metadata for the listing. When provided, replaces the stored metadata. */
       metadata?: components["schemas"]["LibraryListingMetadata"] | null;
     };
     /** BenchmarkSnapshotV1 */
@@ -10055,6 +10040,19 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** RouteRefV1 */
+    RouteRef: {
+      /**
+       * Id
+       * @description Stable route identifier.
+       */
+      id: string;
+      /**
+       * Slug
+       * @description Name of the route to send in the inference request's model field.
+       */
+      slug: string;
+    };
     /** RouteTargetAnthropicV1 */
     RouteTargetAnthropic: {
       /**
@@ -10085,6 +10083,33 @@ export type components = {
        * @description Name of the target Model API.
        */
       model: string;
+    };
+    /** RouteTargetClassifierModelBasedV1 */
+    RouteTargetClassifierModelBased: {
+      /**
+       * @description Target kind for a classifier-model-based route. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "CLASSIFIER_MODEL_BASED";
+      /**
+       * Classifier Model Id
+       * @description ID of the Baseten model that picks a route for each request.
+       * @example abcd123
+       */
+      classifier_model_id: string;
+      /**
+       * Classifier Environment Name
+       * @description Environment of the classifier model. Null for production.
+       * @example production
+       */
+      classifier_environment_name: string | null;
+      /** @description Route used when the classifier picks none. */
+      default_route: components["schemas"]["RouteRef"];
+      /**
+       * Allowed Routes
+       * @description Routes the classifier may pick, in creation order.
+       */
+      allowed_routes: components["schemas"]["RouteRef"][];
     };
     /** RouteTargetOpenAIV1 */
     RouteTargetOpenAI: {
@@ -10162,8 +10187,9 @@ export type components = {
         | components["schemas"]["RouteTargetBasetenModelAPI"]
         | components["schemas"]["RouteTargetAnthropic"]
         | components["schemas"]["RouteTargetOpenAI"]
-        | components["schemas"]["RouteTargetXAI"];
-      /** @description Resolved model metadata; null when the route has no linked metadata row. */
+        | components["schemas"]["RouteTargetXAI"]
+        | components["schemas"]["RouteTargetClassifierModelBased"];
+      /** @description Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked. */
       metadata: components["schemas"]["ExploreMetadata"] | null;
       /**
        * Invoke Url
@@ -10187,11 +10213,113 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** RouteTargetConfigAnthropicV1 */
+    RouteTargetConfigAnthropic: {
+      /**
+       * @description Target kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "ANTHROPIC";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetConfigBasetenModelAPIV1 */
+    RouteTargetConfigBasetenModelAPI: {
+      /**
+       * @description Target kind for a Baseten Model API. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "BASETEN_MODEL_API";
+      /**
+       * Model
+       * @description Name of the target Model API.
+       */
+      model: string;
+    };
+    /** RouteTargetConfigClassifierModelBasedV1 */
+    RouteTargetConfigClassifierModelBased: {
+      /**
+       * @description Target kind for a classifier-model-based route. Not intended for general use: classifiers are deployed by Baseten's post-training team. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "CLASSIFIER_MODEL_BASED";
+      /**
+       * Classifier Model Id
+       * @description ID of the Baseten model that picks a route for each request. Only classifiers deployed by Baseten's post-training team are supported.
+       * @example abcd123
+       */
+      classifier_model_id: string;
+      /**
+       * Classifier Environment Name
+       * @description Environment of the classifier model. Omit for production, which is returned as null.
+       * @example production
+       */
+      classifier_environment_name?: string | null;
+      /**
+       * Allowed Route Ids
+       * @description IDs of the routes the classifier may pick. All must belong to the route's team and must not be routers themselves.
+       * @example [
+       *       "abc1234",
+       *       "def5678"
+       *     ]
+       */
+      allowed_route_ids: string[];
+      /**
+       * Default Route Id
+       * @description ID of the allowed route used when the classifier picks none.
+       * @example abc1234
+       */
+      default_route_id: string;
+    };
+    /** RouteTargetConfigOpenAIV1 */
+    RouteTargetConfigOpenAI: {
+      /**
+       * @description Target kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "OPENAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetConfigXAIV1 */
+    RouteTargetConfigXAI: {
+      /**
+       * @description Target kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "XAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
     /** CreateRouteRequestV1 */
     CreateRouteRequest: {
       /**
        * Team Id
-       * @description Identifier of the team that owns the route. When omitted, uses your organization's default team.
+       * @description Identifier of the team that owns the route.
        * @example abc1234
        */
       team_id?: string | null;
@@ -10210,10 +10338,11 @@ export type components = {
        *     }
        */
       target:
-        | components["schemas"]["RouteTargetBasetenModelAPI"]
-        | components["schemas"]["RouteTargetAnthropic"]
-        | components["schemas"]["RouteTargetOpenAI"]
-        | components["schemas"]["RouteTargetXAI"];
+        | components["schemas"]["RouteTargetConfigBasetenModelAPI"]
+        | components["schemas"]["RouteTargetConfigAnthropic"]
+        | components["schemas"]["RouteTargetConfigOpenAI"]
+        | components["schemas"]["RouteTargetConfigXAI"]
+        | components["schemas"]["RouteTargetConfigClassifierModelBased"];
       /**
        * Description
        * @description Short description of the route. Omit for no description; null is not accepted.
@@ -10308,8 +10437,52 @@ export type components = {
      * @enum {string}
      */
     RouteUsageDimension: "USER" | "MODEL" | "PROVIDER";
-    /** RouteSpendLimitV1 */
-    RouteSpendLimit: {
+    /** RouteEffectiveSpendLimitV1 */
+    RouteEffectiveSpendLimit: {
+      /**
+       * Monthly Limit Usd
+       * @description Spend limit in USD enforced for the current UTC calendar month: the user's own limit, else the team default. Null when no limit applies.
+       * @example 200
+       */
+      monthly_limit_usd: string | null;
+      /** @description Where the limit comes from: `user` when it is set on the user, `team` when it is the team default. Null when no limit applies. */
+      source: components["schemas"]["RouteSettingSource"] | null;
+    };
+    /**
+     * RouteSettingSourceV1
+     * @enum {string}
+     */
+    RouteSettingSource: "user" | "team";
+    /** RouteSpendLimitSettingV1 */
+    RouteSpendLimitSetting: {
+      /**
+       * User Monthly Limit Usd
+       * @description Standing spend limit in USD for each UTC calendar month set on the user. Null when the user has no limit of their own.
+       * @example 200
+       */
+      user_monthly_limit_usd: string | null;
+      /** @description Per-member limit of the team the user's active Code key belongs to. This limit applies when the user has no limit of their own. Null when there is none. */
+      team_default: components["schemas"]["RouteSpendLimitTeamDefault"] | null;
+      /** @description The effective limit enforced for the current month. */
+      effective: components["schemas"]["RouteEffectiveSpendLimit"];
+    };
+    /** RouteSpendLimitTeamDefaultV1 */
+    RouteSpendLimitTeamDefault: {
+      /**
+       * Team Id
+       * @description ID of the team the user's active Code key belongs to.
+       * @example abc1234
+       */
+      team_id: string;
+      /**
+       * Per Member Monthly Limit Usd
+       * @description The team's per-member spend limit in USD for each UTC calendar month.
+       * @example 100
+       */
+      per_member_monthly_limit_usd: string;
+    };
+    /** RouteUserSettingsV1 */
+    RouteUserSettings: {
       /**
        * User Id
        * @description ID of the user.
@@ -10322,206 +10495,344 @@ export type components = {
        * @example dev@example.com
        */
       email: string | null;
+      /** @description Spend limit for Baseten Code. Applies to requests with Routes keys the user created; personal API keys are not limited. */
+      spend_limit: components["schemas"]["RouteSpendLimitSetting"];
+    };
+    /** UpdateRouteSpendLimitSettingV1 */
+    UpdateRouteSpendLimitSetting: {
       /**
-       * Monthly Limit Usd
-       * @description Standing spend limit in USD for each UTC calendar month, returned as an exact decimal string. Null when the user has no standing limit.
+       * User Monthly Limit Usd
+       * @description Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.
        * @example 200
        */
-      monthly_limit_usd: string | null;
+      user_monthly_limit_usd?: string | null;
     };
-    /** UpdateRouteSpendLimitRequestV1 */
-    UpdateRouteSpendLimitRequest: {
-      /**
-       * Monthly Limit Usd
-       * @description Standing spend limit in USD for each UTC calendar month, as a non-negative decimal string with at most 9 decimal places. Send null to remove the limit; omit to leave it unchanged.
-       * @example 200
-       */
-      monthly_limit_usd?: string | null;
+    /** UpdateRouteUserSettingsRequestV1 */
+    UpdateRouteUserSettingsRequest: {
+      /** @description Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged. */
+      spend_limit?: components["schemas"]["UpdateRouteSpendLimitSetting"] | null;
     };
-    /** RouteHarnessConfigV1 */
-    RouteHarnessConfig: {
-      /**
-       * Models
-       * @description Route for each model role, keyed by role.
-       */
-      models: {
-        [key: string]: components["schemas"]["RouteHarnessModel"];
-      };
+    /** BackgroundHarnessDefaultsV1 */
+    BackgroundHarnessDefaults: {
+      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
+      primary: components["schemas"]["RouteHarnessModel"] | null;
+      /** @description Route for background tasks, such as session titles. Null when the team has no route to use. */
+      background: components["schemas"]["RouteHarnessModel"] | null;
+    };
+    /** PrimaryHarnessDefaultsV1 */
+    PrimaryHarnessDefaults: {
+      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
+      primary: components["schemas"]["RouteHarnessModel"] | null;
+    };
+    /** RouteHarnessDefaultsV1 */
+    RouteHarnessDefaults: {
+      /** @description Default models for Claude Code. */
+      claude_code: components["schemas"]["BackgroundHarnessDefaults"];
+      /** @description Default models for OpenCode. */
+      opencode: components["schemas"]["BackgroundHarnessDefaults"];
+      /** @description Default models for Codex. */
+      codex: components["schemas"]["PrimaryHarnessDefaults"];
+      /** @description Default models for Pi. */
+      pi: components["schemas"]["PrimaryHarnessDefaults"];
     };
     /** RouteHarnessModelV1 */
     RouteHarnessModel: {
-      /** @description Who chose this role's route: `team` if a team admin set it, or `baseten` if it is Baseten's default, chosen from the team's Model API routes. */
-      source: components["schemas"]["RouteHarnessModelSource"];
+      /** @description Where this role's route comes from. `team` covers both a route a team admin set and the default chosen from the team's Model API routes. */
+      source: components["schemas"]["RouteSettingSource"];
       /** @description Route to use for this role. */
       route: components["schemas"]["Route"];
     };
-    /** RouteHarnessConfigsResponseV1 */
-    RouteHarnessConfigsResponse: {
+    /** RouteTeamSpendLimitSettingV1 */
+    RouteTeamSpendLimitSetting: {
       /**
-       * Harness Configs
-       * @description Default models for each harness, keyed by harness. A harness is omitted when none of its roles has a route.
+       * Per Member Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
+       * @example 200
        */
-      harness_configs: {
-        [key: string]: components["schemas"]["RouteHarnessConfig"];
-      };
+      per_member_monthly_limit_usd: string | null;
+    };
+    /** RouteTeamSettingsV1 */
+    RouteTeamSettings: {
+      /**
+       * Team Id
+       * @description ID of the team.
+       * @example abc1234
+       */
+      team_id: string;
+      /** @description Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes. */
+      harness_defaults: components["schemas"]["RouteHarnessDefaults"];
+      /** @description Spend limits for Baseten Code for members whose active Code key belongs to this team. */
+      spend_limit: components["schemas"]["RouteTeamSpendLimitSetting"];
     };
     /** UpdateBackgroundHarnessModelsV1 */
     UpdateBackgroundHarnessModels: {
       /**
        * Primary
-       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
        * @example abc1234
        */
       primary?: string | null;
       /**
        * Background
-       * @description Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use Baseten's default.
+       * @description Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.
        * @example def5678
        */
       background?: string | null;
-    };
-    /** UpdateClaudeCodeHarnessConfigV1 */
-    UpdateClaudeCodeHarnessConfig: {
-      /**
-       * Team Id
-       * @description Identifier of the team whose default models to set. Every route must belong to this team.
-       */
-      team_id: string;
-      /**
-       * @description Claude Code, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      harness: "claude-code";
-      /** @description Route IDs for the model roles to change. Roles left out are unchanged. */
-      models: components["schemas"]["UpdateBackgroundHarnessModels"];
-    };
-    /** UpdateCodexHarnessConfigV1 */
-    UpdateCodexHarnessConfig: {
-      /**
-       * Team Id
-       * @description Identifier of the team whose default models to set. Every route must belong to this team.
-       */
-      team_id: string;
-      /**
-       * @description Codex, which supports only the `primary` role. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      harness: "codex";
-      /** @description Route IDs for the model roles to change. Roles left out are unchanged. */
-      models: components["schemas"]["UpdatePrimaryHarnessModels"];
-    };
-    /** UpdateOpenCodeHarnessConfigV1 */
-    UpdateOpenCodeHarnessConfig: {
-      /**
-       * Team Id
-       * @description Identifier of the team whose default models to set. Every route must belong to this team.
-       */
-      team_id: string;
-      /**
-       * @description OpenCode, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      harness: "opencode";
-      /** @description Route IDs for the model roles to change. Roles left out are unchanged. */
-      models: components["schemas"]["UpdateBackgroundHarnessModels"];
     };
     /** UpdatePrimaryHarnessModelsV1 */
     UpdatePrimaryHarnessModels: {
       /**
        * Primary
-       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
        * @example abc1234
        */
       primary?: string | null;
     };
-    /** UpdateRouteHarnessConfigRequestV1 */
-    UpdateRouteHarnessConfigRequest:
-      | components["schemas"]["UpdateClaudeCodeHarnessConfig"]
-      | components["schemas"]["UpdateOpenCodeHarnessConfig"]
-      | components["schemas"]["UpdateCodexHarnessConfig"];
-    /** BackgroundHarnessModelsV1 */
-    BackgroundHarnessModels: {
+    /** UpdateRouteHarnessDefaultsV1 */
+    UpdateRouteHarnessDefaults: {
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      claude_code?: components["schemas"]["UpdateBackgroundHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      opencode?: components["schemas"]["UpdateBackgroundHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      codex?: components["schemas"]["UpdatePrimaryHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      pi?: components["schemas"]["UpdatePrimaryHarnessModels"] | null;
+    };
+    /** UpdateRouteTeamSpendLimitSettingV1 */
+    UpdateRouteTeamSpendLimitSetting: {
       /**
-       * Primary
-       * @description Route ID for the primary model, which new sessions use. Omit to use Baseten's default.
+       * Per Member Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
+       * @example 200
+       */
+      per_member_monthly_limit_usd?: string | null;
+    };
+    /** UpdateRouteTeamSettingsRequestV1 */
+    UpdateRouteTeamSettingsRequest: {
+      /** @description Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default. */
+      harness_defaults?: components["schemas"]["UpdateRouteHarnessDefaults"] | null;
+      /** @description Spend limit fields to change. Pass null to remove the team's per-member limit; omit to leave it unchanged. */
+      spend_limit?: components["schemas"]["UpdateRouteTeamSpendLimitSetting"] | null;
+    };
+    /** RouteConnectionAnthropicV1 */
+    RouteConnectionAnthropic: {
+      /**
+       * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "ANTHROPIC";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+    };
+    /** RouteConnectionOpenAIV1 */
+    RouteConnectionOpenAI: {
+      /**
+       * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "OPENAI";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+    };
+    /** RouteConnectionV1 */
+    RouteConnection: {
+      /**
+       * Id
+       * @description Stable connection identifier.
+       */
+      id: string;
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the connection.
+       */
+      team_id: string;
+      /**
+       * Config
+       * @description Provider the connection authenticates with, and the team secret holding its API key.
+       */
+      config:
+        | components["schemas"]["RouteConnectionAnthropic"]
+        | components["schemas"]["RouteConnectionOpenAI"]
+        | components["schemas"]["RouteConnectionXAI"];
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time, ISO 8601.
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description Last update time, ISO 8601.
+       */
+      updated_at: string;
+    };
+    /** RouteConnectionXAIV1 */
+    RouteConnectionXAI: {
+      /**
+       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "XAI";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+    };
+    /** RouteConnectionsResponseV1 */
+    RouteConnectionsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["RouteConnection"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** RouteConnectionConfigAnthropicV1 */
+    RouteConnectionConfigAnthropic: {
+      /**
+       * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "ANTHROPIC";
+      /**
+       * Secret Id
+       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       */
+      secret_id: string;
+    };
+    /** RouteConnectionConfigOpenAIV1 */
+    RouteConnectionConfigOpenAI: {
+      /**
+       * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "OPENAI";
+      /**
+       * Secret Id
+       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       */
+      secret_id: string;
+    };
+    /** RouteConnectionConfigXAIV1 */
+    RouteConnectionConfigXAI: {
+      /**
+       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "XAI";
+      /**
+       * Secret Id
+       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       */
+      secret_id: string;
+    };
+    /** CreateRouteConnectionRequestV1 */
+    CreateRouteConnectionRequest: {
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the connection.
        * @example abc1234
        */
-      primary?: string | null;
+      team_id?: string | null;
       /**
-       * Background
-       * @description Route ID for background tasks, such as session titles. Omit to use Baseten's default.
-       * @example def5678
+       * Config
+       * @description Provider the connection authenticates with, and the team secret holding its API key.
+       * @example {
+       *       "provider": "ANTHROPIC",
+       *       "secret_id": "abc1234"
+       *     }
        */
-      background?: string | null;
+      config:
+        | components["schemas"]["RouteConnectionConfigAnthropic"]
+        | components["schemas"]["RouteConnectionConfigOpenAI"]
+        | components["schemas"]["RouteConnectionConfigXAI"];
     };
-    /** PrimaryHarnessModelsV1 */
-    PrimaryHarnessModels: {
+    /** RouteConnectionTombstoneV1 */
+    RouteConnectionTombstone: {
       /**
-       * Primary
-       * @description Route ID for the primary model, which new sessions use. Omit to use Baseten's default.
-       * @example abc1234
+       * Id
+       * @description Stable identifier of the deleted connection.
        */
-      primary?: string | null;
+      id: string;
     };
-    /** SetClaudeCodeHarnessConfigV1 */
-    SetClaudeCodeHarnessConfig: {
+    /** UpdateRouteConnectionConfigAnthropicV1 */
+    UpdateRouteConnectionConfigAnthropic: {
       /**
-       * Team Id
-       * @description Identifier of the team whose default models to set. Every route must belong to this team.
-       */
-      team_id: string;
-      /**
-       * @description Claude Code, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
+       * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      harness: "claude-code";
-      /** @description Route ID for each model role. Roles left out use Baseten's defaults. */
-      models: components["schemas"]["BackgroundHarnessModels"];
-    };
-    /** SetCodexHarnessConfigV1 */
-    SetCodexHarnessConfig: {
+      provider: "ANTHROPIC";
       /**
-       * Team Id
-       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       * Secret Id
+       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
        */
-      team_id: string;
+      secret_id?: string | null;
+    };
+    /** UpdateRouteConnectionConfigOpenAIV1 */
+    UpdateRouteConnectionConfigOpenAI: {
       /**
-       * @description Codex, which supports only the `primary` role. (enum property replaced by openapi-typescript)
+       * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      harness: "codex";
-      /** @description Route ID for each model role. Roles left out use Baseten's defaults. */
-      models: components["schemas"]["PrimaryHarnessModels"];
-    };
-    /** SetOpenCodeHarnessConfigV1 */
-    SetOpenCodeHarnessConfig: {
+      provider: "OPENAI";
       /**
-       * Team Id
-       * @description Identifier of the team whose default models to set. Every route must belong to this team.
+       * Secret Id
+       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
        */
-      team_id: string;
+      secret_id?: string | null;
+    };
+    /** UpdateRouteConnectionConfigXAIV1 */
+    UpdateRouteConnectionConfigXAI: {
       /**
-       * @description OpenCode, which supports the `primary` and `background` roles. (enum property replaced by openapi-typescript)
+       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      harness: "opencode";
-      /** @description Route ID for each model role. Roles left out use Baseten's defaults. */
-      models: components["schemas"]["BackgroundHarnessModels"];
-    };
-    /** SetRouteHarnessConfigRequestV1 */
-    SetRouteHarnessConfigRequest:
-      | components["schemas"]["SetClaudeCodeHarnessConfig"]
-      | components["schemas"]["SetOpenCodeHarnessConfig"]
-      | components["schemas"]["SetCodexHarnessConfig"];
-    /** RouteHarnessConfigTombstoneV1 */
-    RouteHarnessConfigTombstone: {
-      /** @description Harness whose default models were cleared. */
-      harness: components["schemas"]["RouteHarness"];
+      provider: "XAI";
       /**
-       * Team Id
-       * @description Identifier of the team whose default models were cleared.
+       * Secret Id
+       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
        */
-      team_id: string;
+      secret_id?: string | null;
+    };
+    /** UpdateRouteConnectionRequestV1 */
+    UpdateRouteConnectionRequest: {
+      /**
+       * Config
+       * @description Connection fields to change. The provider must match the connection and is immutable.
+       * @example {
+       *       "provider": "ANTHROPIC",
+       *       "secret_id": "abc1234"
+       *     }
+       */
+      config:
+        | components["schemas"]["UpdateRouteConnectionConfigAnthropic"]
+        | components["schemas"]["UpdateRouteConnectionConfigOpenAI"]
+        | components["schemas"]["UpdateRouteConnectionConfigXAI"];
     };
     /** RouteTombstoneV1 */
     RouteTombstone: {
@@ -10550,6 +10861,19 @@ export type components = {
        * @example Assistant
        */
       display_name?: string | null;
+      /**
+       * Target
+       * @description Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER_MODEL_BASED configuration of a router route is mutable.
+       */
+      target?:
+        | (
+            | components["schemas"]["RouteTargetConfigBasetenModelAPI"]
+            | components["schemas"]["RouteTargetConfigAnthropic"]
+            | components["schemas"]["RouteTargetConfigOpenAI"]
+            | components["schemas"]["RouteTargetConfigXAI"]
+            | components["schemas"]["RouteTargetConfigClassifierModelBased"]
+          )
+        | null;
     };
     /**
      * EndpointTargetV1
@@ -11096,15 +11420,91 @@ export type components = {
        */
       ok: boolean;
     };
-    ImageBuildLog: {
+    GetSandboxConfigurationResponse: {
+      /** @description Available Carbon-compatible regions, sorted by name. Empty when none are available. */
+      regions: components["schemas"]["SandboxRegion"][];
+    };
+    SandboxRegion: {
+      /**
+       * @description Public region identifier to use when creating a sandbox.
+       * @example us-was-1
+       */
+      name: string;
+      /**
+       * @description Country code.
+       * @example us
+       */
+      country: string;
+      /**
+       * @description Continent code.
+       * @example na
+       */
+      continent: string;
+      /**
+       * @description Region location.
+       * @example Washington
+       */
+      location: string;
+      /**
+       * @description Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration.
+       * @enum {string}
+       */
+      info_generation: "CARBON";
+    };
+    SandboxLogs: {
+      sandbox_name: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      logs: components["schemas"]["SandboxLogEntry"][];
+      /** @description Opaque cursor for the next page; null when there are no more entries. */
+      next_cursor: string | null;
+    };
+    SandboxLogEntry: {
+      /** Format: date-time */
+      timestamp: string;
+      message: string;
+      /** @description Numeric log severity. */
+      severity: number;
+      /** @description Associated trace identifier, or an empty string when unavailable. */
+      trace_id: string;
+      /** @description Action or command when present on the log entry. */
+      action?: string;
+    };
+    SandboxMetrics: {
+      sandbox_name: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      interval_seconds: number;
+      data: components["schemas"]["SandboxMetricsPoint"][];
+    };
+    SandboxMetricsPoint: {
+      /**
+       * Format: date-time
+       * @description Start of this interval.
+       */
+      timestamp: string;
+      /** @description Request count. Zero without traffic; null for intervals entirely before creation. */
+      requests: number | null;
+      /** @description Peak CPU usage in this interval, where 100 is one full CPU core. Null without a sample. */
+      cpu_percent: number | null;
+      /** @description Memory usage in bytes, averaged per series then maximum across series. Null without a sample. */
+      memory_bytes: number | null;
+      /** @description Fraction of requests returning 4xx or 5xx. Null when there are no requests. */
+      error_rate: number | null;
+    };
+    SandboxImageBuildLog: {
       /** Format: date-time */
       timestamp: string;
       message: string;
       /** @description Numeric OpenTelemetry severity level. */
       severity: number;
     };
-    ImageBuildLogsResponse: {
-      logs: components["schemas"]["ImageBuildLog"][];
+    SandboxImageBuildLogsResponse: {
+      logs: components["schemas"]["SandboxImageBuildLog"][];
       /**
        * Format: int64
        * @description Number of matching log entries in the requested time range.
@@ -11160,7 +11560,7 @@ export type components = {
        * @description Duration to keep the sandbox record after termination for log access (e.g., '1h', '24h', '7d'). Defaults to 5m. Subject to maximum quota limits.
        * @example 24h
        */
-      terminated_retention?: string;
+      terminated_retention?: components["schemas"]["SandboxDuration"];
     };
     /** @description Expiration policy. The type determines whether value is a duration or an absolute timestamp. */
     SandboxExpirationPolicy:
@@ -11168,7 +11568,7 @@ export type components = {
       | components["schemas"]["SandboxTTLMaxAgeExpirationPolicy"]
       | components["schemas"]["SandboxDateExpirationPolicy"];
     /**
-     * @description Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w.
+     * @description Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w, where d is 24h and w is 7 × 24h. Days and weeks cannot be combined with other units, so 1d12h is rejected; use 36h instead. Values are returned exactly as sent, without normalization.
      * @example 24h
      */
     SandboxDuration: string;
@@ -11498,7 +11898,6 @@ export type components = {
     /**
      * @description Writable sandbox configuration. Fields are serialized at the root of the request or resource.
      * @example {
-     *       "enabled": true,
      *       "lifecycle": {
      *         "expiration_policies": [
      *           {
@@ -11584,12 +11983,6 @@ export type components = {
      *     }
      */
     SandboxConfiguration: {
-      /**
-       * @description When false, the sandbox is disabled and will not accept connections
-       * @default true
-       * @example true
-       */
-      enabled: boolean;
       /**
        * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
        * @example {
@@ -11925,9 +12318,8 @@ export type components = {
       labels?: components["schemas"]["SandboxMetadataLabels"];
     };
     /**
-     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, and network configuration are immutable after creation. Supplying memory or network returns 400, including unchanged, empty, or null values.
+     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, network, region, image, and ports are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
      * @example {
-     *       "enabled": true,
      *       "lifecycle": {
      *         "expiration_policies": [
      *           {
@@ -11948,7 +12340,6 @@ export type components = {
      *         ],
      *         "terminated_retention": "24h"
      *       },
-     *       "region": "us-pdx-1",
      *       "envs": [
      *         {
      *           "name": "NODE_ENV",
@@ -11961,14 +12352,6 @@ export type components = {
      *           "value": "3000"
      *         }
      *       ],
-     *       "image": "baseten/base-image:latest",
-     *       "ports": [
-     *         {
-     *           "name": "http",
-     *           "protocol": "HTTP",
-     *           "target": 3000
-     *         }
-     *       ],
      *       "external_id": "api-review-20260916-001",
      *       "labels": {
      *         "env": "development",
@@ -11979,11 +12362,6 @@ export type components = {
      *     }
      */
     UpdateSandboxRequest: {
-      /**
-       * @description When false, the sandbox is disabled and will not accept connections
-       * @example true
-       */
-      enabled?: boolean;
       /**
        * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
        * @example {
@@ -12009,11 +12387,6 @@ export type components = {
        */
       lifecycle?: components["schemas"]["SandboxLifecycle"];
       /**
-       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
-       * @example us-pdx-1
-       */
-      region?: string;
-      /**
        * @description Environment variables injected into the sandbox.
        * @example [
        *       {
@@ -12029,22 +12402,6 @@ export type components = {
        *     ]
        */
       envs?: components["schemas"]["SandboxEnv"][];
-      /**
-       * @description Image reference including its tag. Built-in image references are returned in the canonical baseten/ namespace. Use baseten/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
-       * @example baseten/base-image:latest
-       */
-      image?: string;
-      /**
-       * @description Set of ports for a resource
-       * @example [
-       *       {
-       *         "name": "http",
-       *         "protocol": "HTTP",
-       *         "target": 3000
-       *       }
-       *     ]
-       */
-      ports?: components["schemas"]["SandboxPorts"];
       /**
        * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
        * @example api-review-20260916-001
@@ -12064,7 +12421,6 @@ export type components = {
     /**
      * @description Sandbox resource with configuration and server-managed fields at the root. No metadata, spec, or runtime wrapper.
      * @example {
-     *       "enabled": true,
      *       "lifecycle": {
      *         "expiration_policies": [
      *           {
@@ -12248,7 +12604,6 @@ export type components = {
      * @example {
      *       "items": [
      *         {
-     *           "enabled": true,
      *           "lifecycle": {
      *             "expiration_policies": [
      *               {
@@ -12350,7 +12705,6 @@ export type components = {
        * @description Resources on this page.
        * @example [
        *       {
-       *         "enabled": true,
        *         "lifecycle": {
        *           "expiration_policies": [
        *             {
@@ -12453,14 +12807,14 @@ export type components = {
       pagination: components["schemas"]["SandboxApiPagination"];
     };
     /** @description One page of image repository summaries. Fetch tags through the separate tag listing endpoint. */
-    ListImagesResponse: {
+    ListSandboxImagesResponse: {
       /** @description Image repositories on this page. */
-      items: components["schemas"]["Image"][];
+      items: components["schemas"]["SandboxImageSummary"][];
       pagination: components["schemas"]["SandboxApiPagination"];
     };
     /** @description One page of image tags. */
-    ListImageTagsResponse: {
-      items: components["schemas"]["ImageTag"][];
+    ListSandboxImageTagsResponse: {
+      items: components["schemas"]["SandboxImageTag"][];
       pagination: components["schemas"]["SandboxApiPagination"];
     };
     /**
@@ -12468,7 +12822,7 @@ export type components = {
      * @example BUILT
      * @enum {string}
      */
-    ImageStatus: "UPLOADING" | "BUILDING" | "BUILT" | "FAILED";
+    SandboxImageStatus: "UPLOADING" | "BUILDING" | "BUILT" | "FAILED";
     /**
      * @description A tag identifying a version of a sandbox image.
      * @example {
@@ -12478,7 +12832,7 @@ export type components = {
      *       "size": 134217728
      *     }
      */
-    ImageTag: {
+    SandboxImageTag: {
       /**
        * @description Image tag name.
        * @example latest
@@ -12504,7 +12858,7 @@ export type components = {
       readonly size?: number;
     };
     /**
-     * @description Sandbox image repository. List and get operations return a summary without embedded tags.
+     * @description Sandbox image repository summary. Fetch tags through GET /sandboxes/images/{image_name}/tags.
      * @example {
      *       "name": "base-image",
      *       "status": "BUILT",
@@ -12512,23 +12866,10 @@ export type components = {
      *       "updated_at": "2026-09-16T21:25:00Z",
      *       "last_deployed_at": "2026-09-16T21:26:58.545765901Z",
      *       "size": 260046848,
-     *       "tags": [
-     *         {
-     *           "name": "latest",
-     *           "created_at": "2026-09-16T21:20:00Z",
-     *           "updated_at": "2026-09-16T21:25:00Z",
-     *           "size": 134217728
-     *         },
-     *         {
-     *           "name": "20260915212000",
-     *           "created_at": "2026-09-15T21:20:00Z",
-     *           "updated_at": "2026-09-15T21:25:00Z",
-     *           "size": 125829120
-     *         }
-     *       ]
+     *       "tag_count": 2
      *     }
      */
-    Image: {
+    SandboxImageSummary: {
       /**
        * @description Stable repository name supplied when pushing the image.
        * @example base-image
@@ -12538,7 +12879,7 @@ export type components = {
        * @description Image processing status. Only BUILT images are ready to use.
        * @example BUILT
        */
-      status: components["schemas"]["ImageStatus"];
+      status: components["schemas"]["SandboxImageStatus"];
       /**
        * Format: date-time
        * @description Time the image was created.
@@ -12569,24 +12910,26 @@ export type components = {
        * @example 2
        */
       readonly tag_count?: number;
+    };
+    /**
+     * @description Sandbox image repository. Get operations return a summary with an empty tags array.
+     * @example {
+     *       "name": "base-image",
+     *       "status": "BUILT",
+     *       "created_at": "2026-09-15T21:20:00Z",
+     *       "updated_at": "2026-09-16T21:25:00Z",
+     *       "last_deployed_at": "2026-09-16T21:26:58.545765901Z",
+     *       "size": 260046848,
+     *       "tag_count": 2,
+     *       "tags": []
+     *     }
+     */
+    SandboxImage: components["schemas"]["SandboxImageSummary"] & {
       /**
-       * @description Empty for list and get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.
-       * @example [
-       *       {
-       *         "name": "latest",
-       *         "created_at": "2026-09-16T21:20:00Z",
-       *         "updated_at": "2026-09-16T21:25:00Z",
-       *         "size": 134217728
-       *       },
-       *       {
-       *         "name": "20260915212000",
-       *         "created_at": "2026-09-15T21:20:00Z",
-       *         "updated_at": "2026-09-15T21:25:00Z",
-       *         "size": 125829120
-       *       }
-       *     ]
+       * @description Empty for get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.
+       * @example []
        */
-      tags: components["schemas"]["ImageTag"][];
+      tags: components["schemas"]["SandboxImageTag"][];
     };
     /**
      * @description Push a sandbox image from a source archive or an existing registry image.
@@ -12596,7 +12939,7 @@ export type components = {
      *       "docker_config": "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"YjEwLXJldmlldzpkZW1vLW5vdC1hLXZhbGlkLXJlZ2lzdHJ5LXRva2Vu\"}}}"
      *     }
      */
-    PushImageRequest: {
+    PushSandboxImageRequest: {
       /**
        * @description Target image repository name. Reusing a name pushes a new version to the existing repository.
        * @example base-image
@@ -12621,7 +12964,7 @@ export type components = {
      *       "image": "b10/base-image:latest"
      *     }
      */
-    PushImageResponse: {
+    PushSandboxImageResponse: {
       /**
        * @description Target image repository name.
        * @example base-image
@@ -12631,7 +12974,7 @@ export type components = {
        * @description Image processing status. Only BUILT images are ready to use.
        * @example BUILDING
        */
-      status: components["schemas"]["ImageStatus"];
+      status: components["schemas"]["SandboxImageStatus"];
       /**
        * Format: uri
        * @description Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. The uploaded ZIP archive must not exceed 5 GB. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.
@@ -12752,7 +13095,7 @@ export type components = {
      *       "message": "Removed 3 unused image versions. Image versions used by active sandboxes were retained."
      *     }
      */
-    CleanupImagesResponse: {
+    CleanupSandboxImagesResponse: {
       /**
        * @description Number of image versions removed.
        * @example 3
@@ -13643,7 +13986,7 @@ export type components = {
       limit?: number;
       /**
        * Team Id
-       * @description Filter by owning team ID. Preserved by the cursor; if repeated, must match the original filter.
+       * @description Identifier of the team whose routes to list.
        */
       team_id?: string | null;
       /**
@@ -13694,19 +14037,43 @@ export type components = {
        */
       providers?: components["schemas"]["RouteProvider"][];
     };
-    GetRoutesHarnessConfigsParams: {
+    GetRoutesConnectionsParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
       /**
        * Team Id
-       * @description Identifier of the team whose default models to list.
+       * @description Identifier of the team whose connections to list.
        */
-      team_id: string;
+      team_id?: string | null;
     };
-    DeleteRoutesHarnessConfigsParams: {
-      /**
-       * Team Id
-       * @description Identifier of the team whose default models to clear.
-       */
-      team_id: string;
+    GetSandboxMetricsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      /** @enum {integer} */
+      interval_seconds: 10 | 30 | 60 | 300 | 900 | 3600;
+    };
+    GetSandboxLogsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      limit?: number;
+      /** @description Opaque next_cursor from the previous page. Omit for the first page. */
+      cursor?: string;
     };
     ListSandboxesParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -13755,10 +14122,6 @@ export type components = {
       team_id?: string;
     };
     DeleteSandboxParams: {
-      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
-      team_id?: string;
-    };
-    ListSandboxLibraryImagesParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
     };
@@ -13992,7 +14355,7 @@ export type components = {
     user_defined_listing_id: string;
     version_tag: string;
     user_id: string;
-    harness: string;
+    connection_id: string;
     route_id: string;
     endpoint_id: string;
     group_id: string;
@@ -14003,7 +14366,7 @@ export type components = {
     /** @description Immutable sandbox name returned by creation. */
     SandboxName: string;
     /** @description Image repository name. */
-    ImageName: string;
+    SandboxImageName: string;
     /** @description Image tag name. */
     TagName: string;
     /** @description Opaque cursor from the previous page; omit for the first page. */
@@ -14042,9 +14405,6 @@ export type ApiKeyCategory = components["schemas"]["APIKeyCategory"];
 export type BucketWidth = components["schemas"]["BucketWidth"];
 export type LibraryListingModality = components["schemas"]["LibraryListingModality"];
 export type ResourceKind = components["schemas"]["ResourceKind"];
-export type RouteHarness = components["schemas"]["RouteHarness"];
-export type RouteHarnessModelSource = components["schemas"]["RouteHarnessModelSource"];
-export type RouteHarnessRole = components["schemas"]["RouteHarnessRole"];
 export type GatewayProvider = components["schemas"]["GatewayProvider"];
 export type PaginationResponse = components["schemas"]["PaginationResponse"];
 export type VolumeTag = components["schemas"]["VolumeTag"];
@@ -14536,37 +14896,67 @@ export type ExploreCostValues = components["schemas"]["ExploreCostValues"];
 export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAPIFormats"];
 export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
 export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
+export type RouteRef = components["schemas"]["RouteRef"];
 export type RouteTargetAnthropic = components["schemas"]["RouteTargetAnthropic"];
 export type RouteTargetBasetenModelApi = components["schemas"]["RouteTargetBasetenModelAPI"];
+export type RouteTargetClassifierModelBased =
+  components["schemas"]["RouteTargetClassifierModelBased"];
 export type RouteTargetOpenAi = components["schemas"]["RouteTargetOpenAI"];
 export type RouteTargetXai = components["schemas"]["RouteTargetXAI"];
 export type Route = components["schemas"]["Route"];
 export type RoutesResponse = components["schemas"]["RoutesResponse"];
+export type RouteTargetConfigAnthropic = components["schemas"]["RouteTargetConfigAnthropic"];
+export type RouteTargetConfigBasetenModelApi =
+  components["schemas"]["RouteTargetConfigBasetenModelAPI"];
+export type RouteTargetConfigClassifierModelBased =
+  components["schemas"]["RouteTargetConfigClassifierModelBased"];
+export type RouteTargetConfigOpenAi = components["schemas"]["RouteTargetConfigOpenAI"];
+export type RouteTargetConfigXai = components["schemas"]["RouteTargetConfigXAI"];
 export type CreateRouteRequest = components["schemas"]["CreateRouteRequest"];
 export type RouteProvider = components["schemas"]["RouteProvider"];
 export type RoutesUsageBucket = components["schemas"]["RoutesUsageBucket"];
 export type RoutesUsageResult = components["schemas"]["RoutesUsageResult"];
 export type RoutesUsageResponse = components["schemas"]["RoutesUsageResponse"];
 export type RouteUsageDimension = components["schemas"]["RouteUsageDimension"];
-export type RouteSpendLimit = components["schemas"]["RouteSpendLimit"];
-export type UpdateRouteSpendLimitRequest = components["schemas"]["UpdateRouteSpendLimitRequest"];
-export type RouteHarnessConfig = components["schemas"]["RouteHarnessConfig"];
+export type RouteEffectiveSpendLimit = components["schemas"]["RouteEffectiveSpendLimit"];
+export type RouteSettingSource = components["schemas"]["RouteSettingSource"];
+export type RouteSpendLimitSetting = components["schemas"]["RouteSpendLimitSetting"];
+export type RouteSpendLimitTeamDefault = components["schemas"]["RouteSpendLimitTeamDefault"];
+export type RouteUserSettings = components["schemas"]["RouteUserSettings"];
+export type UpdateRouteSpendLimitSetting = components["schemas"]["UpdateRouteSpendLimitSetting"];
+export type UpdateRouteUserSettingsRequest =
+  components["schemas"]["UpdateRouteUserSettingsRequest"];
+export type BackgroundHarnessDefaults = components["schemas"]["BackgroundHarnessDefaults"];
+export type PrimaryHarnessDefaults = components["schemas"]["PrimaryHarnessDefaults"];
+export type RouteHarnessDefaults = components["schemas"]["RouteHarnessDefaults"];
 export type RouteHarnessModel = components["schemas"]["RouteHarnessModel"];
-export type RouteHarnessConfigsResponse = components["schemas"]["RouteHarnessConfigsResponse"];
+export type RouteTeamSpendLimitSetting = components["schemas"]["RouteTeamSpendLimitSetting"];
+export type RouteTeamSettings = components["schemas"]["RouteTeamSettings"];
 export type UpdateBackgroundHarnessModels = components["schemas"]["UpdateBackgroundHarnessModels"];
-export type UpdateClaudeCodeHarnessConfig = components["schemas"]["UpdateClaudeCodeHarnessConfig"];
-export type UpdateCodexHarnessConfig = components["schemas"]["UpdateCodexHarnessConfig"];
-export type UpdateOpenCodeHarnessConfig = components["schemas"]["UpdateOpenCodeHarnessConfig"];
 export type UpdatePrimaryHarnessModels = components["schemas"]["UpdatePrimaryHarnessModels"];
-export type UpdateRouteHarnessConfigRequest =
-  components["schemas"]["UpdateRouteHarnessConfigRequest"];
-export type BackgroundHarnessModels = components["schemas"]["BackgroundHarnessModels"];
-export type PrimaryHarnessModels = components["schemas"]["PrimaryHarnessModels"];
-export type SetClaudeCodeHarnessConfig = components["schemas"]["SetClaudeCodeHarnessConfig"];
-export type SetCodexHarnessConfig = components["schemas"]["SetCodexHarnessConfig"];
-export type SetOpenCodeHarnessConfig = components["schemas"]["SetOpenCodeHarnessConfig"];
-export type SetRouteHarnessConfigRequest = components["schemas"]["SetRouteHarnessConfigRequest"];
-export type RouteHarnessConfigTombstone = components["schemas"]["RouteHarnessConfigTombstone"];
+export type UpdateRouteHarnessDefaults = components["schemas"]["UpdateRouteHarnessDefaults"];
+export type UpdateRouteTeamSpendLimitSetting =
+  components["schemas"]["UpdateRouteTeamSpendLimitSetting"];
+export type UpdateRouteTeamSettingsRequest =
+  components["schemas"]["UpdateRouteTeamSettingsRequest"];
+export type RouteConnectionAnthropic = components["schemas"]["RouteConnectionAnthropic"];
+export type RouteConnectionOpenAi = components["schemas"]["RouteConnectionOpenAI"];
+export type RouteConnection = components["schemas"]["RouteConnection"];
+export type RouteConnectionXai = components["schemas"]["RouteConnectionXAI"];
+export type RouteConnectionsResponse = components["schemas"]["RouteConnectionsResponse"];
+export type RouteConnectionConfigAnthropic =
+  components["schemas"]["RouteConnectionConfigAnthropic"];
+export type RouteConnectionConfigOpenAi = components["schemas"]["RouteConnectionConfigOpenAI"];
+export type RouteConnectionConfigXai = components["schemas"]["RouteConnectionConfigXAI"];
+export type CreateRouteConnectionRequest = components["schemas"]["CreateRouteConnectionRequest"];
+export type RouteConnectionTombstone = components["schemas"]["RouteConnectionTombstone"];
+export type UpdateRouteConnectionConfigAnthropic =
+  components["schemas"]["UpdateRouteConnectionConfigAnthropic"];
+export type UpdateRouteConnectionConfigOpenAi =
+  components["schemas"]["UpdateRouteConnectionConfigOpenAI"];
+export type UpdateRouteConnectionConfigXai =
+  components["schemas"]["UpdateRouteConnectionConfigXAI"];
+export type UpdateRouteConnectionRequest = components["schemas"]["UpdateRouteConnectionRequest"];
 export type RouteTombstone = components["schemas"]["RouteTombstone"];
 export type UpdateRouteRequest = components["schemas"]["UpdateRouteRequest"];
 export type EndpointTarget = components["schemas"]["EndpointTarget"];
@@ -14599,8 +14989,15 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
-export type ImageBuildLog = components["schemas"]["ImageBuildLog"];
-export type ImageBuildLogsResponse = components["schemas"]["ImageBuildLogsResponse"];
+export type GetSandboxConfigurationResponse =
+  components["schemas"]["GetSandboxConfigurationResponse"];
+export type SandboxRegion = components["schemas"]["SandboxRegion"];
+export type SandboxLogs = components["schemas"]["SandboxLogs"];
+export type SandboxLogEntry = components["schemas"]["SandboxLogEntry"];
+export type SandboxMetrics = components["schemas"]["SandboxMetrics"];
+export type SandboxMetricsPoint = components["schemas"]["SandboxMetricsPoint"];
+export type SandboxImageBuildLog = components["schemas"]["SandboxImageBuildLog"];
+export type SandboxImageBuildLogsResponse = components["schemas"]["SandboxImageBuildLogsResponse"];
 export type SandboxLifecycle = components["schemas"]["SandboxLifecycle"];
 export type SandboxExpirationPolicy = components["schemas"]["SandboxExpirationPolicy"];
 export type SandboxDuration = components["schemas"]["SandboxDuration"];
@@ -14623,20 +15020,21 @@ export type Sandbox = components["schemas"]["Sandbox"];
 export type SandboxStatus = components["schemas"]["SandboxStatus"];
 export type SandboxApiPagination = components["schemas"]["SandboxApiPagination"];
 export type ListSandboxesResponse = components["schemas"]["ListSandboxesResponse"];
-export type ListImagesResponse = components["schemas"]["ListImagesResponse"];
-export type ListImageTagsResponse = components["schemas"]["ListImageTagsResponse"];
-export type ImageStatus = components["schemas"]["ImageStatus"];
-export type ImageTag = components["schemas"]["ImageTag"];
-export type Image = components["schemas"]["Image"];
-export type PushImageRequest = components["schemas"]["PushImageRequest"];
-export type PushImageResponse = components["schemas"]["PushImageResponse"];
+export type ListSandboxImagesResponse = components["schemas"]["ListSandboxImagesResponse"];
+export type ListSandboxImageTagsResponse = components["schemas"]["ListSandboxImageTagsResponse"];
+export type SandboxImageStatus = components["schemas"]["SandboxImageStatus"];
+export type SandboxImageTag = components["schemas"]["SandboxImageTag"];
+export type SandboxImageSummary = components["schemas"]["SandboxImageSummary"];
+export type SandboxImage = components["schemas"]["SandboxImage"];
+export type PushSandboxImageRequest = components["schemas"]["PushSandboxImageRequest"];
+export type PushSandboxImageResponse = components["schemas"]["PushSandboxImageResponse"];
 export type SandboxLibraryImageVolume = components["schemas"]["SandboxLibraryImageVolume"];
 export type SandboxLibraryImageCreationOptions =
   components["schemas"]["SandboxLibraryImageCreationOptions"];
 export type SandboxLibraryImage = components["schemas"]["SandboxLibraryImage"];
 export type ListSandboxLibraryImagesResponse =
   components["schemas"]["ListSandboxLibraryImagesResponse"];
-export type CleanupImagesResponse = components["schemas"]["CleanupImagesResponse"];
+export type CleanupSandboxImagesResponse = components["schemas"]["CleanupSandboxImagesResponse"];
 export type GetVolumesParams = components["schemas"]["GetVolumesParams"];
 export type GetVolumesNamespacesParams = components["schemas"]["GetVolumesNamespacesParams"];
 export type GetVolumesSyncsParams = components["schemas"]["GetVolumesSyncsParams"];
@@ -14689,16 +15087,14 @@ export type GetGatewayEventsParams = components["schemas"]["GetGatewayEventsPara
 export type GetExploreMetadataParams = components["schemas"]["GetExploreMetadataParams"];
 export type GetRoutesParams = components["schemas"]["GetRoutesParams"];
 export type GetRoutesUsageParams = components["schemas"]["GetRoutesUsageParams"];
-export type GetRoutesHarnessConfigsParams = components["schemas"]["GetRoutesHarnessConfigsParams"];
-export type DeleteRoutesHarnessConfigsParams =
-  components["schemas"]["DeleteRoutesHarnessConfigsParams"];
+export type GetRoutesConnectionsParams = components["schemas"]["GetRoutesConnectionsParams"];
+export type GetSandboxMetricsParams = components["schemas"]["GetSandboxMetricsParams"];
+export type GetSandboxLogsParams = components["schemas"]["GetSandboxLogsParams"];
 export type ListSandboxesParams = components["schemas"]["ListSandboxesParams"];
 export type CreateSandboxParams = components["schemas"]["CreateSandboxParams"];
 export type GetSandboxParams = components["schemas"]["GetSandboxParams"];
 export type UpdateSandboxParams = components["schemas"]["UpdateSandboxParams"];
 export type DeleteSandboxParams = components["schemas"]["DeleteSandboxParams"];
-export type ListSandboxLibraryImagesParams =
-  components["schemas"]["ListSandboxLibraryImagesParams"];
 export type ListImagesParams = components["schemas"]["ListImagesParams"];
 export type PushImageParams = components["schemas"]["PushImageParams"];
 export type CleanupImagesParams = components["schemas"]["CleanupImagesParams"];
