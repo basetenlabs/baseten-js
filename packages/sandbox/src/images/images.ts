@@ -60,29 +60,6 @@ export interface ImageInfo {
   tagCount?: number;
 }
 
-/** An image repository as returned by {@link ImageClient.list}. */
-export interface ImageSummary {
-  /**
-   * Repository name given when pushing. To create a sandbox from the image,
-   * pass `<name>:latest` as its `image`, or `<name>:<tag>` for a specific
-   * version.
-   */
-  name: string;
-
-  status: ImageStatus;
-  createdAt?: Date;
-  updatedAt?: Date;
-
-  /** Most recent time any version of the image was used by a sandbox. */
-  lastDeployedAt?: Date;
-
-  /** Total size of all versions. */
-  sizeBytes?: number;
-
-  /** Number of versions, each with its own tag. */
-  tagCount?: number;
-}
-
 /** One version of an image. */
 export interface ImageTagInfo {
   /** Tag name, assigned by the service. */
@@ -600,8 +577,8 @@ export class ImageClient {
     return imageInfoFromApi(image);
   }
 
-  /** Lists image summaries, fetching further pages as iteration reaches them. */
-  async *list(request: ImageListRequest = {}): AsyncGenerator<ImageSummary, void, undefined> {
+  /** Lists images, fetching further pages as iteration reaches them. */
+  async *list(request: ImageListRequest = {}): AsyncGenerator<ImageInfo, void, undefined> {
     const signal = request.callOptions?.signal;
     const images = paginate("image list", (cursor) =>
       this.#context.api(signal).listImages({
@@ -614,7 +591,7 @@ export class ImageClient {
         },
       }),
     );
-    for await (const image of images) yield imageSummaryFromApi(image);
+    for await (const image of images) yield imageInfoFromApi(image);
   }
 
   /**
@@ -1053,19 +1030,7 @@ function compareNames(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function imageInfoFromApi(image: ApiImage): ImageInfo {
-  return {
-    name: image.name,
-    status: image.status,
-    createdAt: optionalDate(image.created_at),
-    updatedAt: optionalDate(image.updated_at),
-    lastDeployedAt: optionalDate(image.last_deployed_at),
-    sizeBytes: image.size,
-    tagCount: image.tag_count,
-  };
-}
-
-function imageSummaryFromApi(image: ApiImageSummary): ImageSummary {
+function imageInfoFromApi(image: ApiImage | ApiImageSummary): ImageInfo {
   return {
     name: image.name,
     status: image.status,

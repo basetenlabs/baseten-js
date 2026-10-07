@@ -71,7 +71,6 @@ export {
   type ImagePushZipRequest,
   type ImageSort,
   type ImageStatus,
-  type ImageSummary,
   type ImageTagInfo,
   type ImageTagSort,
   type ImageWaitBuiltRequest,
