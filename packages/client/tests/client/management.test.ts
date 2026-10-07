@@ -71,7 +71,7 @@ describe("ManagementClient", () => {
   it("serializes query params, exploding arrays and stringifying enums", async () => {
     const { client, capture } = makeClient(200, { entries: [], next_cursor: null });
     await client.api.getAuditLogs({
-      request: {
+      params: {
         limit: 50,
         direction: "ASC",
         search: "deploy prod",

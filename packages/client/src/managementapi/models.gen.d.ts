@@ -346,10 +346,6 @@ export type components = {
       | "CHAINLET";
     /**
      * GatewayProvider
-     * @description Customer-facing provider for an endpoint target.
-     *
-     *     External providers resolve to a fixed upstream host + protocol adapter via
-     *     ``external_provider_configs()``; ``BASETEN`` derives its host from the referenced oracle.
      * @enum {string}
      */
     GatewayProvider:
@@ -386,6 +382,11 @@ export type components = {
        * @description Digest of the version the tag points at, as `b3:<hex>`.
        */
       digest: string;
+      /**
+       * Expires At
+       * @description When the tag stops resolving and leaves the volume, in ISO 8601 format. Null for a tag that never expires. The version it points at is not affected.
+       */
+      expires_at: string | null;
     };
     /** VolumeV1 */
     Volume: {
@@ -406,42 +407,57 @@ export type components = {
       version_ref: string;
       /**
        * Sequence
-       * @description Revision counter for the volume, incremented on every commit and tag change. Use it to detect that a volume changed.
+       * @description Revision counter for the volume, incremented on every commit, tag change, delete, and restore. A tag or version that expires leaves without changing it; the next write then increments it once. Use it to detect that a volume was written to.
        */
       sequence: number;
       /**
        * Updated At
        * Format: date-time
-       * @description When the volume last changed, in ISO 8601 format.
+       * @description When the volume was last written to, in ISO 8601 format. An expiry does not update it.
        */
       updated_at: string;
-      /** @description Version that the reserved `head` tag points at, which a reference with no tag or digest resolves to. Null when the volume has no head, or when your API key cannot read it. */
+      /**
+       * Expires At
+       * @description When the whole volume expires, in ISO 8601 format. At that instant every live version is deleted, every tag drops, and the volume leaves the volume listing; each version then stays restorable until its recovery deadline passes. Null for a volume that never expires.
+       */
+      expires_at: string | null;
+      /** @description Version that the reserved `head` tag points at, which a reference with no tag or digest resolves to. Never an expiring version. Null when the volume has no head, or when your API key cannot read it. */
       head: components["schemas"]["VolumeVersionSummary"] | null;
       /**
        * Tags
-       * @description Tags on the volume that your API key can read.
+       * @description Tags on the volume that your API key can read. A tag with `expires_at` leaves this list at that instant.
        */
       tags: components["schemas"]["VolumeTag"][];
       /**
        * Tag Count
-       * @description Total number of tags on the volume, which can exceed the length of `tags` when your API key cannot read all of them.
+       * @description Total number of tags on the volume, which can exceed the length of `tags` when your API key cannot read all of them. Counts only tags that have not expired.
        */
       tag_count: number;
       /**
        * Versions Alive
-       * @description Number of versions that have not been deleted.
+       * @description Number of versions that have not been deleted or expired.
        */
       versions_alive: number;
       /**
        * Versions Tombstoned
-       * @description Number of versions that have been deleted.
+       * @description Number of versions that have been deleted or expired and are still within their recovery window.
        */
       versions_tombstoned: number;
       /**
        * Versions Untagged
-       * @description Number of versions that no tag points at.
+       * @description Number of live versions that no tag points at.
        */
       versions_untagged: number;
+      /**
+       * Versions Expiring
+       * @description Number of live versions with an expiry still ahead of them. A version that has already expired counts in `versions_tombstoned` instead.
+       */
+      versions_expiring: number;
+      /**
+       * Versions Earliest Expires At
+       * @description Earliest expiry among the live versions, in ISO 8601 format. Null when no live version is scheduled to expire.
+       */
+      versions_earliest_expires_at: string | null;
     };
     /** VolumeVersionSummaryV1 */
     VolumeVersionSummary: {
@@ -556,6 +572,405 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /**
+     * VolumeSyncAuthenticationAWSAssumeRoleV1
+     * @description Authentication using an AWS IAM role assumed by Baseten.
+     */
+    VolumeSyncAuthenticationAWSAssumeRole: {
+      /**
+       * Role Arn
+       * @description AWS IAM role ARN to assume.
+       */
+      role_arn: string;
+      /**
+       * Region
+       * @description AWS region for the assumed role session.
+       */
+      region: string;
+    };
+    /**
+     * VolumeSyncAuthenticationAWSOIDCV1
+     * @description Authentication using an AWS IAM role and Baseten workload identity.
+     */
+    VolumeSyncAuthenticationAWSOIDC: {
+      /**
+       * Role Arn
+       * @description AWS IAM role ARN to assume through OIDC.
+       */
+      role_arn: string;
+      /**
+       * Region
+       * @description AWS region for the OIDC role session.
+       */
+      region: string;
+    };
+    /**
+     * VolumeSyncAuthenticationGCPOIDCV1
+     * @description Authentication using GCP Workload Identity Federation.
+     */
+    VolumeSyncAuthenticationGCPOIDC: {
+      /**
+       * Service Account
+       * @description GCP service account to impersonate through OIDC.
+       */
+      service_account: string;
+      /**
+       * Workload Identity Provider
+       * @description Full resource name of the GCP workload identity provider.
+       */
+      workload_identity_provider: string;
+    };
+    /**
+     * VolumeSyncDestinationV1
+     * @description BDN destination for a volume sync.
+     */
+    VolumeSyncDestination: {
+      /**
+       * Ref
+       * @description Destination as bdn:<namespace>/<volume> with an optional tag.
+       */
+      ref: string;
+    };
+    /**
+     * VolumeSyncErrorV1
+     * @description Public failure details for a volume sync.
+     */
+    VolumeSyncError: {
+      /**
+       * Code
+       * @description Stable machine-readable failure classification.
+       */
+      code: string;
+      /**
+       * Message
+       * @description Redacted user-facing failure message.
+       */
+      message: string;
+    };
+    /**
+     * VolumeSyncSourceAzureV1
+     * @description Azure Blob Storage source.
+     */
+    VolumeSyncSourceAzure: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Azure Blob Storage source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "AZURE";
+    };
+    /**
+     * VolumeSyncSourceBasetenTrainingV1
+     * @description Baseten training artifact source.
+     */
+    VolumeSyncSourceBasetenTraining: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * @description Baseten training artifact source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "BASETEN_TRAINING";
+    };
+    /**
+     * VolumeSyncSourceCoreWeaveV1
+     * @description CoreWeave object storage source.
+     */
+    VolumeSyncSourceCoreWeave: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description CoreWeave object storage source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "COREWEAVE";
+    };
+    /**
+     * VolumeSyncSourceGCSV1
+     * @description Google Cloud Storage source.
+     */
+    VolumeSyncSourceGCS: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Google Cloud Storage source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "GCS";
+      /** @description GCP OIDC authentication for this source. Cannot be combined with auth_secret_name. */
+      gcp_oidc?: components["schemas"]["VolumeSyncAuthenticationGCPOIDC"] | null;
+    };
+    /**
+     * VolumeSyncSourceHuggingFaceV1
+     * @description Hugging Face source.
+     */
+    VolumeSyncSourceHuggingFace: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Hugging Face source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "HUGGING_FACE";
+    };
+    /**
+     * VolumeSyncSourceR2V1
+     * @description Cloudflare R2 source.
+     */
+    VolumeSyncSourceR2: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Cloudflare R2 source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "R2";
+    };
+    /**
+     * VolumeSyncSourceS3V1
+     * @description Amazon S3 source.
+     */
+    VolumeSyncSourceS3: {
+      /**
+       * Uri
+       * @description Remote source URI to materialize into the destination volume.
+       */
+      uri: string;
+      /**
+       * Include
+       * @description Glob patterns selecting files to include.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Glob patterns selecting files to exclude.
+       */
+      exclude?: string[];
+      /**
+       * Auth Secret Name
+       * @description Optional workspace secret containing credentials for this source.
+       */
+      auth_secret_name?: string | null;
+      /**
+       * @description Amazon S3 source type. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "S3";
+      /** @description AWS AssumeRole authentication for this source. Cannot be combined with auth_secret_name. */
+      aws_assume_role?: components["schemas"]["VolumeSyncAuthenticationAWSAssumeRole"] | null;
+      /** @description AWS OIDC authentication for this source. Cannot be combined with other authentication fields. */
+      aws_oidc?: components["schemas"]["VolumeSyncAuthenticationAWSOIDC"] | null;
+    };
+    /**
+     * VolumeSyncStatusV1
+     * @enum {string}
+     */
+    VolumeSyncStatus: "PENDING" | "SYNCING" | "READY" | "FAILED" | "CANCELED";
+    /**
+     * VolumeSyncV1
+     * @description Current state and result of a volume sync.
+     */
+    VolumeSync: {
+      /**
+       * Sync Id
+       * @description Identifier of this sync operation.
+       */
+      sync_id: string;
+      /** @description Current lifecycle state of the sync. */
+      status: components["schemas"]["VolumeSyncStatus"];
+      /**
+       * Source
+       * @description Remote source being synced.
+       */
+      source:
+        | components["schemas"]["VolumeSyncSourceHuggingFace"]
+        | components["schemas"]["VolumeSyncSourceS3"]
+        | components["schemas"]["VolumeSyncSourceGCS"]
+        | components["schemas"]["VolumeSyncSourceAzure"]
+        | components["schemas"]["VolumeSyncSourceR2"]
+        | components["schemas"]["VolumeSyncSourceCoreWeave"]
+        | components["schemas"]["VolumeSyncSourceBasetenTraining"];
+      /** @description BDN volume being populated. */
+      destination: components["schemas"]["VolumeSyncDestination"];
+      /**
+       * Volume Version Id
+       * @description Produced artifact identifier; null until the sync is ready.
+       * @default null
+       */
+      volume_version_id: string | null;
+      /**
+       * Version Ref
+       * @description Immutable BDN reference; null until the sync is ready.
+       * @default null
+       */
+      version_ref: string | null;
+      /**
+       * Content Digest
+       * @description BLAKE3 digest of the synced content; null until available.
+       * @default null
+       */
+      content_digest: string | null;
+      /**
+       * Total Size Bytes
+       * @description Total size of the synced content in bytes; null until available.
+       * @default null
+       */
+      total_size_bytes: number | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time at which the sync was created.
+       */
+      created_at: string;
+      /**
+       * Completed At
+       * @description Time at which the sync reached a terminal state.
+       * @default null
+       */
+      completed_at: string | null;
+      /**
+       * @description Redacted failure details; null unless the sync failed.
+       * @default null
+       */
+      error: components["schemas"]["VolumeSyncError"] | null;
+    };
+    /**
+     * VolumeSyncsV1
+     * @description A page of volume syncs in the active workspace.
+     */
+    VolumeSyncs: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["VolumeSync"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * CreateVolumeSyncRequestV1
+     * @description Request to start an asynchronous volume sync.
+     */
+    CreateVolumeSyncRequest: {
+      /**
+       * Source
+       * @description Remote source to sync from.
+       */
+      source:
+        | components["schemas"]["VolumeSyncSourceHuggingFace"]
+        | components["schemas"]["VolumeSyncSourceS3"]
+        | components["schemas"]["VolumeSyncSourceGCS"]
+        | components["schemas"]["VolumeSyncSourceAzure"]
+        | components["schemas"]["VolumeSyncSourceR2"]
+        | components["schemas"]["VolumeSyncSourceCoreWeave"]
+        | components["schemas"]["VolumeSyncSourceBasetenTraining"];
+      /** @description BDN volume to sync into. */
+      destination: components["schemas"]["VolumeSyncDestination"];
+    };
     /** DeleteVolumeRequestV1 */
     DeleteVolumeRequest: {
       /**
@@ -616,7 +1031,7 @@ export type components = {
       sequence: number | null;
       /**
        * Lifecycle
-       * @description Lifecycle state of the version, for example ALIVE or TOMBSTONED.
+       * @description Lifecycle state of the version: ALIVE, or TOMBSTONED once it has been deleted or has expired.
        */
       lifecycle: string;
       /**
@@ -641,8 +1056,13 @@ export type components = {
        */
       created_at: string;
       /**
+       * Expires At
+       * @description When the version expires, in ISO 8601 format. At that instant it becomes TOMBSTONED with `tombstoned_at` set to this value, and every tag pointing at it drops. Null for a version that never expires, and null once the lifecycle is TOMBSTONED.
+       */
+      expires_at: string | null;
+      /**
        * Tombstoned At
-       * @description When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       * @description When the version was deleted or expired, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
        */
       tombstoned_at: string | null;
       /**
@@ -750,7 +1170,7 @@ export type components = {
       sequence: number | null;
       /**
        * Lifecycle
-       * @description Lifecycle state of the version, for example ALIVE or TOMBSTONED.
+       * @description Lifecycle state of the version: ALIVE, or TOMBSTONED once it has been deleted or has expired.
        */
       lifecycle: string;
       /**
@@ -775,8 +1195,13 @@ export type components = {
        */
       created_at: string;
       /**
+       * Expires At
+       * @description When the version expires, in ISO 8601 format. At that instant it becomes TOMBSTONED with `tombstoned_at` set to this value, and every tag pointing at it drops. Null for a version that never expires, and null once the lifecycle is TOMBSTONED.
+       */
+      expires_at: string | null;
+      /**
        * Tombstoned At
-       * @description When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
+       * @description When the version was deleted or expired, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.
        */
       tombstoned_at: string | null;
       /**
@@ -835,6 +1260,37 @@ export type components = {
        * @description Revision of the volume after the restore.
        */
       volume_sequence: number;
+    };
+    /**
+     * TokenScopeV1
+     * @description What a token minted by POST /v1/token grants access to.
+     * @enum {string}
+     */
+    TokenScope: "sandboxes";
+    /** CreateTokenRequestV1 */
+    CreateTokenRequest: {
+      /**
+       * Scopes
+       * @description What the token should grant access to. Only `sandboxes` is supported today; the token then authenticates against the sandbox API.
+       * @example [
+       *       "sandboxes"
+       *     ]
+       */
+      scopes: components["schemas"]["TokenScope"][];
+    };
+    /** TokenV1 */
+    Token: {
+      /**
+       * Token
+       * @description Short-lived bearer token for the sandbox API. Send it as Authorization: Bearer <token>.
+       */
+      token: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description Token expiry in ISO 8601 format. Tokens cannot be renewed; request a new one.
+       */
+      expires_at: string;
     };
     /**
      * SecretV1
@@ -1448,6 +1904,7 @@ export type components = {
         | components["schemas"]["AuditLogEventModelDeploymentInstanceTypeChanged"]
         | components["schemas"]["AuditLogEventModelDeploymentDeleted"]
         | components["schemas"]["AuditLogEventModelDeleted"]
+        | components["schemas"]["AuditLogEventModelRenamed"]
         | components["schemas"]["AuditLogEventChainDeployed"]
         | components["schemas"]["AuditLogEventChainDeploymentActivated"]
         | components["schemas"]["AuditLogEventChainDeploymentDeactivated"]
@@ -1465,6 +1922,9 @@ export type components = {
         | components["schemas"]["AuditLogEventGatewayEndpointCreated"]
         | components["schemas"]["AuditLogEventGatewayEndpointUpdated"]
         | components["schemas"]["AuditLogEventGatewayEndpointDeleted"]
+        | components["schemas"]["AuditLogEventProviderConnectionCreated"]
+        | components["schemas"]["AuditLogEventProviderConnectionUpdated"]
+        | components["schemas"]["AuditLogEventProviderConnectionDeleted"]
         | components["schemas"]["AuditLogEventUserInvited"]
         | components["schemas"]["AuditLogEventUserJoinedOrganization"]
         | components["schemas"]["AuditLogEventWebhookSigningSecretCreated"]
@@ -2385,6 +2845,65 @@ export type components = {
       action: components["schemas"]["AuditLogPromotionControlAction"];
     };
     /**
+     * AuditLogEventModelRenamedV1
+     * @description A model was renamed. `model_name` is the new name.
+     */
+    AuditLogEventModelRenamed: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "MODEL_RENAMED";
+      /** Model Id */
+      model_id: string;
+      /** Model Name */
+      model_name: string;
+      /** Previous Name */
+      previous_name: string | null;
+    };
+    /** AuditLogEventProviderConnectionCreatedV1 */
+    AuditLogEventProviderConnectionCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "PROVIDER_CONNECTION_CREATED";
+      /** Provider Connection Id */
+      provider_connection_id: string;
+      /** Provider */
+      provider: string;
+      /** Secret Name */
+      secret_name: string;
+    };
+    /** AuditLogEventProviderConnectionDeletedV1 */
+    AuditLogEventProviderConnectionDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "PROVIDER_CONNECTION_DELETED";
+      /** Provider Connection Id */
+      provider_connection_id: string;
+      /** Provider */
+      provider: string;
+      /** Secret Name */
+      secret_name: string;
+    };
+    /** AuditLogEventProviderConnectionUpdatedV1 */
+    AuditLogEventProviderConnectionUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "PROVIDER_CONNECTION_UPDATED";
+      /** Provider Connection Id */
+      provider_connection_id: string;
+      /** Provider */
+      provider: string;
+      /** Secret Name */
+      secret_name: string;
+    };
+    /**
      * AuditLogEventReplicaTerminatedV1
      * @description A replica of a model deployment was terminated.
      */
@@ -2487,6 +3006,7 @@ export type components = {
       | "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"
       | "MODEL_DEPLOYMENT_DELETED"
       | "MODEL_DELETED"
+      | "MODEL_RENAMED"
       | "CHAIN_DEPLOYED"
       | "CHAIN_DEPLOYMENT_ACTIVATED"
       | "CHAIN_DEPLOYMENT_DEACTIVATED"
@@ -2504,6 +3024,9 @@ export type components = {
       | "GATEWAY_ENDPOINT_CREATED"
       | "GATEWAY_ENDPOINT_UPDATED"
       | "GATEWAY_ENDPOINT_DELETED"
+      | "PROVIDER_CONNECTION_CREATED"
+      | "PROVIDER_CONNECTION_UPDATED"
+      | "PROVIDER_CONNECTION_DELETED"
       | "USER_INVITED"
       | "USER_JOINED_ORGANIZATION"
       | "WEBHOOK_SIGNING_SECRET_CREATED"
@@ -2749,9 +3272,11 @@ export type components = {
       | "ENVIRONMENT_SETTINGS"
       | "REPLICA_TERMINATED"
       | "DELETED"
+      | "METADATA"
       | "SECRETS"
       | "API_KEYS"
       | "GATEWAY"
+      | "CODE"
       | "WEBHOOK_SIGNING_SECRETS"
       | "USER_MANAGEMENT"
       | "DIRECTORY_GROUP_MANAGEMENT"
@@ -3065,6 +3590,18 @@ export type components = {
        * @description Whether the model was deleted
        */
       deleted: boolean;
+    };
+    /**
+     * UpdateModelRequestV1
+     * @description A request to update a model.
+     */
+    UpdateModelRequest: {
+      /**
+       * Name
+       * @description New name for the model, unique within its team. Renaming does not change the model ID, endpoints, or deployments. Pushes that still use the old model_name create another model or target a model that now uses that name, so update config.yaml after renaming.
+       * @example my-model
+       */
+      name?: string | null;
     };
     /**
      * DeploymentsV1
@@ -4355,13 +4892,13 @@ export type components = {
        */
       autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
       /**
-       * @description Promotion settings for the environment
+       * @description Promotion settings for the environment. New Model environments use rolling promotions by default. Set `rolling_deploy` to `false` to opt out.
        * @example {
        *       "promotion_cleanup_strategy": null,
        *       "ramp_up_duration_seconds": 600,
        *       "ramp_up_while_promoting": true,
        *       "redeploy_on_promotion": true,
-       *       "rolling_deploy": true,
+       *       "rolling_deploy": false,
        *       "rolling_deploy_config": null
        *     }
        */
@@ -5006,6 +5543,11 @@ export type components = {
        * @default null
        */
       candidate_deployment: components["schemas"]["ChainDeployment"] | null;
+      /**
+       * @description Details of the in-progress promotion, if any
+       * @default null
+       */
+      in_progress_promotion: components["schemas"]["InProgressPromotion"] | null;
     };
     /**
      * UpdateChainEnvironmentRequestV1
@@ -6486,6 +7028,28 @@ export type components = {
       training_jobs: components["schemas"]["TrainingJob"][];
     };
     /**
+     * EnablementDetailsV1
+     * @description Why a supported model is not enabled for this workspace.
+     */
+    EnablementDetails: {
+      /**
+       * Reason
+       * @description Machine-readable reason the model is not enabled. Currently one of 'needs_approval', 'sequence_length_unsupported' or 'loops_not_enabled'. Deliberately not a closed enum: values are added as the check learns to distinguish cases that call for a different action, so treat an unrecognized value as 'not enabled, reason unknown' rather than an error.
+       * @example needs_approval
+       */
+      reason: string;
+      /**
+       * Reason Detail
+       * @description Human-readable explanation of the reason.
+       */
+      reason_detail: string;
+      /**
+       * Remediation
+       * @description Human-readable next step to enable the model.
+       */
+      remediation: string;
+    };
+    /**
      * SupportedModelV1
      * @description A model supported by the Loops server.
      */
@@ -6496,8 +7060,20 @@ export type components = {
        */
       model_name: string;
       /**
+       * Max Seq Len
+       * @description The longest sequence length Baseten supports for this model. Independent of the caller: see 'max_enabled_seq_len' for what this workspace can actually train at. Named to match the 'max_seq_len' query parameter and the field of the same name on run creation, so one name follows the value through the API.
+       */
+      max_seq_len: number;
+      /**
+       * Max Enabled Seq Len
+       * @description The longest sequence length this workspace can train at. Lower than 'max_seq_len' when the longer configurations need hardware the workspace is not approved for — a model's longer sequence lengths often need a bigger SKU of the same GPU. Zero when the workspace cannot run the model at all, so a client can compare against a required length without a null case.
+       * @default 0
+       */
+      max_enabled_seq_len: number;
+      /**
        * Max Context Length
-       * @description The maximum context length (in tokens) supported by this model.
+       * @deprecated
+       * @description Deprecated. Use 'max_seq_len', which carries the same value. Kept so existing clients keep working.
        */
       max_context_length: number;
       /**
@@ -6505,18 +7081,43 @@ export type components = {
        * @description Whether the model accepts image inputs alongside text.
        */
       supports_vision_language: boolean;
+      /**
+       * Enabled
+       * @description Whether this workspace can start a run with this model now. False means Baseten supports it but the workspace cannot use it yet; 'not_enabled' says why. Capacity is resolved when the run is created, so true is not a guarantee that GPUs are free.
+       * @default true
+       */
+      enabled: boolean;
+      /**
+       * @description Why the model is not enabled, and what would change it. Present only when 'enabled' is false — an enabled model has nothing to explain. Read 'enabled' for the state; this is the detail behind it.
+       * @default null
+       */
+      enablement_details: components["schemas"]["EnablementDetails"] | null;
     };
     /**
      * GetLoopsCapabilitiesResponseV1
      * @description Response for ``GET /v1/loops/capabilities``.
+     *
+     *     A model Baseten does not support has no entry at all, so an empty list for
+     *     a single-model request means exactly that.
      */
     GetLoopsCapabilitiesResponse: {
       /**
        * Supported Models
-       * @description List of models available on the server.
+       * @description Models Baseten supports for this use case, each carrying an 'enabled' flag saying whether this workspace can run it now, and 'enablement_details' when it cannot. Filter on 'enabled' to get the models you can use.
        */
       supported_models: components["schemas"]["SupportedModel"][];
     };
+    /**
+     * LoopsUseCaseV1
+     * @description What the caller intends to run.
+     *
+     *     Reinforcement learning runs a trainer and a sampler; supervised
+     *     fine-tuning runs a trainer alone. A model can therefore be enabled for one
+     *     and not the other, and the same model can support a longer sequence length
+     *     for SFT than for RL.
+     * @enum {string}
+     */
+    LoopsUseCase: "rl" | "sft";
     /** LoopsSessionV1 */
     LoopsSession: {
       /** Id */
@@ -6659,7 +7260,10 @@ export type components = {
        */
       runs: components["schemas"]["LoopsRun"][];
     };
-    /** CreateLoopsRunRequestV1 */
+    /**
+     * CreateLoopsRunRequestV1
+     * @description Request to create a Loops run together with its paired sampler.
+     */
     CreateLoopsRunRequest: {
       /**
        * Session Id
@@ -6722,6 +7326,11 @@ export type components = {
        * @description Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.
        */
       reuse_from_session_id?: string | null;
+      /**
+       * Sampler Num Replicas
+       * @description Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.
+       */
+      sampler_num_replicas?: number | null;
     };
     /** CreateLoopsRunResponseV1 */
     CreateLoopsRunResponse: {
@@ -6753,6 +7362,70 @@ export type components = {
       /** @description The Loops run with its associated sampler. */
       run: components["schemas"]["LoopsRun"];
     };
+    /** CreateLoopsTrainerRequestV1 */
+    CreateLoopsTrainerRequest: {
+      /**
+       * Session Id
+       * @description ID of the Loops session this run belongs to.
+       */
+      session_id: string;
+      /**
+       * Base Model
+       * @description Base model ID (e.g. 'Qwen/Qwen3-8B').
+       */
+      base_model: string;
+      /**
+       * Name
+       * @description Optional display name for the run. Defaults to the base model name when omitted.
+       */
+      name?: string | null;
+      /**
+       * Max Seq Len
+       * @description Maximum prompt length (in tokens) the run must handle. Set this to the longest training example you plan to send. Defaults to the maximum supported by the model configuration.
+       */
+      max_seq_len?: number | null;
+      /**
+       * Lora Rank
+       * @description LoRA rank.
+       */
+      lora_rank?: number;
+      /**
+       * Seed
+       * @description Random seed for reproducibility.
+       */
+      seed?: number | null;
+      /**
+       * Scale Down Delay Seconds
+       * @description Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 900 (15 minutes).
+       */
+      scale_down_delay_seconds?: number;
+      /**
+       * @description Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.
+       * @example spot
+       */
+      availability_model?: components["schemas"]["V1AvailabilityModel"];
+      /**
+       * Replicas
+       * @description Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.
+       */
+      replicas?: number;
+      /**
+       * Path
+       * @description Optional bt:// URI of an existing checkpoint to load weights from on startup. Form: bt://loops:<run_id>/weights/<checkpoint_name>.
+       * @example bt://loops:k4q95w5/weights/step-100
+       */
+      path?: string | null;
+      /**
+       * Reuse From Run Id
+       * @description Optional ID of a prior Loops run whose trainer and/or sampler should be reused for this run instead of provisioning fresh. The prior run must use the same base model and belong to the same team.
+       */
+      reuse_from_run_id?: string | null;
+      /**
+       * Reuse From Session Id
+       * @description Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.
+       */
+      reuse_from_session_id?: string | null;
+    };
     /**
      * ListLoopsSamplersResponseV1
      * @description Response for ``GET /v1/loops/samplers``.
@@ -6769,6 +7442,8 @@ export type components = {
     };
     /** CreateLoopsSamplerRequestV1 */
     CreateLoopsSamplerRequest: {
+      /** @description Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'dedicated' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it. */
+      availability_model?: components["schemas"]["V1AvailabilityModel"] | null;
       /**
        * Session Id
        * @description ID of the Loops session this sampler belongs to.
@@ -6800,10 +7475,33 @@ export type components = {
        * @description Optional ID of a prior Loops session to reuse a trainer and/or sampler from. Deprecated.
        */
       reuse_from_session_id?: string | null;
+      /**
+       * Num Replicas
+       * @description Number of replicas the sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a paired sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged, and when a run ends, its sampler is scaled down.
+       */
+      num_replicas?: number | null;
     };
     /** CreateLoopsSamplerResponseV1 */
     CreateLoopsSamplerResponse: {
       sampler: components["schemas"]["LoopsSampler"];
+    };
+    /**
+     * DeactivateLoopsSamplerResponseV1
+     * @description Response for ``POST /v1/loops/samplers/<sampler_id>/deactivate``.
+     */
+    DeactivateLoopsSamplerResponse: {
+      /**
+       * Id
+       * @description The deactivated Loops sampler ID.
+       */
+      id: string;
+      /**
+       * Base Model
+       * @description The base model the deactivated sampler was serving.
+       */
+      base_model: string;
+      /** @description The user who owns the Loops sampler. */
+      user: components["schemas"]["User"];
     };
     /**
      * GetLoopsSamplerResponseV1
@@ -6899,6 +7597,42 @@ export type components = {
      *     inaccessible or malformed paths raise 400.
      */
     ValidateLoopsCheckpointResponse: Record<string, unknown>;
+    /** DeployLoopsCheckpointRequestV1 */
+    DeployLoopsCheckpointRequest: {
+      /**
+       * Checkpoint Ids
+       * @description Sampler checkpoint IDs to deploy together.
+       */
+      checkpoint_ids: string[];
+      /**
+       * Model Name
+       * @description Name for the created model.
+       */
+      model_name: string;
+      /**
+       * Instance Type Id
+       * @description Instance type ID for the deployment.
+       */
+      instance_type_id: string;
+      /**
+       * Hf Secret Name
+       * @description Name of the team-scoped secret that supplies HF_TOKEN.
+       */
+      hf_secret_name: string;
+    };
+    /** DeployLoopsCheckpointResponseV1 */
+    DeployLoopsCheckpointResponse: {
+      /**
+       * Model Id
+       * @description ID of the created or updated model.
+       */
+      model_id: string;
+      /**
+       * Deployment Id
+       * @description ID of the created model version deployment.
+       */
+      deployment_id: string;
+    };
     /**
      * LoopsCheckpointFilesResponseV1
      * @description Response with presigned URLs for files under a Loops checkpoint.
@@ -6920,6 +7654,51 @@ export type components = {
        * @description Total number of checkpoint files available.
        */
       total_count: number;
+    };
+    /**
+     * LoopsCheckpointS3SourceV1
+     * @description The checkpoint's files are fetched as presigned URLs, page by page.
+     */
+    LoopsCheckpointS3Source: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "s3";
+    };
+    /**
+     * LoopsCheckpointVolumeSourceV1
+     * @description The checkpoint's files are pulled from a Baseten volume.
+     */
+    LoopsCheckpointVolumeSource: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "volume";
+      /**
+       * Volume Ref
+       * @description Ref of the volume version holding the checkpoint, as `bdn:<namespace>/<volume>:<tag>`.
+       */
+      volume_ref: string;
+      /**
+       * Path
+       * @description Directory inside that version holding the checkpoint's files.
+       */
+      path: string;
+    };
+    /**
+     * LoopsCheckpointSourceResponseV1
+     * @description Where a checkpoint's files are fetched from, and how.
+     */
+    LoopsCheckpointSourceResponse: {
+      /**
+       * Source
+       * @description `s3` means the files endpoint serves presigned URLs for this checkpoint; `volume` carries the ref to pull instead.
+       */
+      source:
+        | components["schemas"]["LoopsCheckpointS3Source"]
+        | components["schemas"]["LoopsCheckpointVolumeSource"];
     };
     /**
      * LoopsDeploymentStatusV1
@@ -7700,6 +8479,7 @@ export type components = {
       /**
        * @description Type of the API key.
        * @example PERSONAL
+       * @example ROUTES
        * @example WORKSPACE_MANAGE_API_KEYS
        * @example WORKSPACE_EXPORT_METRICS
        * @example WORKSPACE_INVOKE
@@ -7721,6 +8501,18 @@ export type components = {
        * @default null
        */
       team_name: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time in ISO 8601 format
+       */
+      created_at: string;
+      /**
+       * Last Used At
+       * @description Last recorded use in ISO 8601 format, or null if unavailable. Updates may be delayed.
+       * @default null
+       */
+      last_used_at: string | null;
       /**
        * @description The user who owns the API key. Only present for personal API keys.
        * @default null
@@ -7821,9 +8613,9 @@ export type components = {
        * Model Family
        * @description Family the underlying model belongs to.
        * @default null
-       * @example META
-       * @example DEEPSEEK
-       * @example QWEN
+       * @example Meta
+       * @example DeepSeek
+       * @example Qwen
        */
       model_family: string | null;
       /**
@@ -8370,7 +9162,7 @@ export type components = {
        * @description Whether the listing is trending
        */
       trending?: boolean | null;
-      /** @description Model-level metadata for the listing. When provided, replaces the stored metadata. Unknown fields are rejected. */
+      /** @description Model-level metadata for the listing. When provided, replaces the stored metadata. */
       metadata?: components["schemas"]["LibraryListingMetadata"] | null;
     };
     /** BenchmarkSnapshotV1 */
@@ -8857,7 +9649,7 @@ export type components = {
       model_name: string;
       /**
        * Model Family
-       * @description Model family (e.g., llama, mistral)
+       * @description Model family (e.g., Meta, DeepSeek)
        * @default null
        */
       model_family: string | null;
@@ -8978,6 +9770,51 @@ export type components = {
        * @default null
        */
       model_apis_usage: components["schemas"]["ModelApisUsage"] | null;
+    };
+    /**
+     * ToolCallUsageBucketV1
+     * @description Server-side tool call usage for one day, provider, charge unit, and model.
+     */
+    ToolCallUsageBucket: {
+      /**
+       * Date
+       * Format: date
+       * @description UTC day the usage was recorded on.
+       */
+      date: string;
+      /**
+       * Provider
+       * @description Tool provider, such as exa or parallel.
+       */
+      provider: string;
+      /**
+       * Sku
+       * @description Charge unit, as `<provider>/<unit>`. The unit is what the provider reported, or the tool name when it reported none. Its meaning varies by provider.
+       */
+      sku: string;
+      /**
+       * Model
+       * @description Model that made the tool calls.
+       */
+      model: string;
+      /**
+       * Calls
+       * @description Number of tool calls.
+       */
+      calls: number;
+      /**
+       * Quantity
+       * @description Billable quantity in the provider's sku unit, summed over the calls.
+       */
+      quantity: number;
+    };
+    /**
+     * ToolCallUsageResponseV1
+     * @description Daily server-side tool call usage, ordered by day, provider, sku, and model.
+     */
+    ToolCallUsageResponse: {
+      /** Items */
+      items?: components["schemas"]["ToolCallUsageBucket"][];
     };
     /**
      * UserInfoV1
@@ -9132,6 +9969,988 @@ export type components = {
       items: components["schemas"]["GatewayEvent"][];
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** ExploreCostV1 */
+    ExploreCost: {
+      /**
+       * Input
+       * @description USD per 1M input tokens, when available.
+       * @default null
+       */
+      input: number | null;
+      /**
+       * Output
+       * @description USD per 1M output tokens, when available.
+       * @default null
+       */
+      output: number | null;
+      /**
+       * Cache Read
+       * @description USD per 1M input tokens read from cache, when available.
+       * @default null
+       */
+      cache_read: number | null;
+      /**
+       * Cache Write
+       * @description USD per 1M input tokens written to cache, when available.
+       * @default null
+       */
+      cache_write: number | null;
+      /**
+       * @description Prices for long-context requests, when the provider tiers by context length.
+       * @default null
+       */
+      long_context: components["schemas"]["ExploreCostValues"] | null;
+    };
+    /** ExploreCostValuesV1 */
+    ExploreCostValues: {
+      /**
+       * Input
+       * @description USD per 1M input tokens, when available.
+       * @default null
+       */
+      input: number | null;
+      /**
+       * Output
+       * @description USD per 1M output tokens, when available.
+       * @default null
+       */
+      output: number | null;
+      /**
+       * Cache Read
+       * @description USD per 1M input tokens read from cache, when available.
+       * @default null
+       */
+      cache_read: number | null;
+      /**
+       * Cache Write
+       * @description USD per 1M input tokens written to cache, when available.
+       * @default null
+       */
+      cache_write: number | null;
+    };
+    /** ExploreMetadataAPIFormatsV1 */
+    ExploreMetadataAPIFormats: {
+      /**
+       * Messages
+       * @description Anthropic Messages API support.
+       * @default false
+       */
+      messages: boolean;
+      /**
+       * Responses
+       * @description OpenAI Responses API support.
+       * @default false
+       */
+      responses: boolean;
+      /**
+       * Chat Completions
+       * @description OpenAI Chat Completions API support.
+       * @default false
+       */
+      chat_completions: boolean;
+    };
+    /** ExploreMetadataV1 */
+    ExploreMetadata: {
+      /**
+       * Slug
+       * @description Metadata slug, e.g. 'anthropic/claude-opus-4'; null for rows without one.
+       */
+      slug: string | null;
+      /**
+       * Display Name
+       * @description Model display name, when available.
+       */
+      display_name: string | null;
+      /**
+       * Release Date
+       * @description Model release date. Month-only source dates use the first day of that month.
+       */
+      release_date: string | null;
+      /**
+       * Provider
+       * @description Provider key derived from the slug prefix, e.g. 'anthropic'; null for unprefixed slugs.
+       */
+      provider: string | null;
+      /**
+       * Context Window
+       * @description Total context window in tokens.
+       */
+      context_window: number | null;
+      /**
+       * Max Output Tokens
+       * @description Maximum output tokens per response.
+       */
+      max_output_tokens: number | null;
+      /**
+       * Input Modalities
+       * @description Accepted input modalities.
+       */
+      input_modalities: string[];
+      /**
+       * Tools
+       * @description Whether the model supports tool calling.
+       */
+      tools: boolean | null;
+      /**
+       * Reasoning Effort Levels
+       * @description Reasoning effort levels the model supports.
+       */
+      reasoning_effort_levels: string[] | null;
+      /**
+       * Parallel Tool Calls
+       * @description Whether the model supports parallel tool calls.
+       */
+      parallel_tool_calls: boolean | null;
+      /** @description API formats the model supports. */
+      supported_api_formats: components["schemas"]["ExploreMetadataAPIFormats"] | null;
+      /** @description Provider list prices in USD per 1M tokens, when available. */
+      cost: components["schemas"]["ExploreCost"] | null;
+    };
+    /** ExploreMetadataResponseV1 */
+    ExploreMetadataResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["ExploreMetadata"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** RouteRefV1 */
+    RouteRef: {
+      /**
+       * Id
+       * @description Stable route identifier.
+       */
+      id: string;
+      /**
+       * Slug
+       * @description Name of the route to send in the inference request's model field.
+       */
+      slug: string;
+    };
+    /** RouteTargetAnthropicV1 */
+    RouteTargetAnthropic: {
+      /**
+       * @description Target kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "ANTHROPIC";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetBasetenModelAPIV1 */
+    RouteTargetBasetenModelAPI: {
+      /**
+       * @description Target kind for a Baseten Model API. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "BASETEN_MODEL_API";
+      /**
+       * Model
+       * @description Name of the target Model API.
+       */
+      model: string;
+    };
+    /** RouteTargetClassifierModelBasedV1 */
+    RouteTargetClassifierModelBased: {
+      /**
+       * @description Target kind for a classifier-model-based route. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "CLASSIFIER_MODEL_BASED";
+      /**
+       * Classifier Model Id
+       * @description ID of the Baseten model that picks a route for each request.
+       * @example abcd123
+       */
+      classifier_model_id: string;
+      /**
+       * Classifier Environment Name
+       * @description Environment of the classifier model. Null for production.
+       * @example production
+       */
+      classifier_environment_name: string | null;
+      /** @description Route used when the classifier picks none. */
+      default_route: components["schemas"]["RouteRef"];
+      /**
+       * Allowed Routes
+       * @description Routes the classifier may pick, in creation order.
+       */
+      allowed_routes: components["schemas"]["RouteRef"][];
+    };
+    /** RouteTargetOpenAIV1 */
+    RouteTargetOpenAI: {
+      /**
+       * @description Target kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "OPENAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetXAIV1 */
+    RouteTargetXAI: {
+      /**
+       * @description Target kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "XAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteV1 */
+    Route: {
+      /**
+       * Id
+       * @description Stable route identifier.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name to send in the inference request's model field.
+       */
+      name: string;
+      /**
+       * Team Id
+       * @description Identifier of the owning team.
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the owning team.
+       */
+      team_name: string;
+      /**
+       * Display Name
+       * @description Display label, defaulting to the route name.
+       */
+      display_name: string;
+      /**
+       * Description
+       * @description Short description of the route, empty when unset.
+       */
+      description: string;
+      /**
+       * Target
+       * @description Configured upstream target.
+       */
+      target:
+        | components["schemas"]["RouteTargetBasetenModelAPI"]
+        | components["schemas"]["RouteTargetAnthropic"]
+        | components["schemas"]["RouteTargetOpenAI"]
+        | components["schemas"]["RouteTargetXAI"]
+        | components["schemas"]["RouteTargetClassifierModelBased"];
+      /** @description Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked. */
+      metadata: components["schemas"]["ExploreMetadata"] | null;
+      /**
+       * Invoke Url
+       * @description Base URL for inference requests using this route.
+       */
+      invoke_url: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time, ISO 8601.
+       */
+      created_at: string;
+    };
+    /** RoutesResponseV1 */
+    RoutesResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["Route"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** RouteTargetConfigAnthropicV1 */
+    RouteTargetConfigAnthropic: {
+      /**
+       * @description Target kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "ANTHROPIC";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetConfigBasetenModelAPIV1 */
+    RouteTargetConfigBasetenModelAPI: {
+      /**
+       * @description Target kind for a Baseten Model API. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "BASETEN_MODEL_API";
+      /**
+       * Model
+       * @description Name of the target Model API.
+       */
+      model: string;
+    };
+    /** RouteTargetConfigClassifierModelBasedV1 */
+    RouteTargetConfigClassifierModelBased: {
+      /**
+       * @description Target kind for a classifier-model-based route. Not intended for general use: classifiers are deployed by Baseten's post-training team. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "CLASSIFIER_MODEL_BASED";
+      /**
+       * Classifier Model Id
+       * @description ID of the Baseten model that picks a route for each request. Only classifiers deployed by Baseten's post-training team are supported.
+       * @example abcd123
+       */
+      classifier_model_id: string;
+      /**
+       * Classifier Environment Name
+       * @description Environment of the classifier model. Omit for production, which is returned as null.
+       * @example production
+       */
+      classifier_environment_name?: string | null;
+      /**
+       * Allowed Route Ids
+       * @description IDs of the routes the classifier may pick. All must belong to the route's team and must not be routers themselves.
+       * @example [
+       *       "abc1234",
+       *       "def5678"
+       *     ]
+       */
+      allowed_route_ids: string[];
+      /**
+       * Default Route Id
+       * @description ID of the allowed route used when the classifier picks none.
+       * @example abc1234
+       */
+      default_route_id: string;
+    };
+    /** RouteTargetConfigOpenAIV1 */
+    RouteTargetConfigOpenAI: {
+      /**
+       * @description Target kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "OPENAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** RouteTargetConfigXAIV1 */
+    RouteTargetConfigXAI: {
+      /**
+       * @description Target kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "XAI";
+      /**
+       * Model
+       * @description Model name sent to the provider.
+       */
+      model: string;
+      /**
+       * Secret Name
+       * @description Name of a credential secret owned by the route's team.
+       */
+      secret_name: string;
+    };
+    /** CreateRouteRequestV1 */
+    CreateRouteRequest: {
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the route.
+       * @example abc1234
+       */
+      team_id?: string | null;
+      /**
+       * Display Name
+       * @description Display label. Omit to use the route name; null is not accepted.
+       * @example Assistant
+       */
+      display_name?: string | null;
+      /**
+       * Target
+       * @description Upstream target for the route.
+       * @example {
+       *       "model": "zai-org/GLM-5.3",
+       *       "type": "BASETEN_MODEL_API"
+       *     }
+       */
+      target:
+        | components["schemas"]["RouteTargetConfigBasetenModelAPI"]
+        | components["schemas"]["RouteTargetConfigAnthropic"]
+        | components["schemas"]["RouteTargetConfigOpenAI"]
+        | components["schemas"]["RouteTargetConfigXAI"]
+        | components["schemas"]["RouteTargetConfigClassifierModelBased"];
+      /**
+       * Description
+       * @description Short description of the route. Omit for no description; null is not accepted.
+       * @example Assistant for code review and debugging.
+       */
+      description?: string | null;
+    };
+    /**
+     * RouteProviderV1
+     * @description Upstream provider of a route target, named like the route target types.
+     * @enum {string}
+     */
+    RouteProvider:
+      | "BASETEN_MODEL_API"
+      | "OPENAI"
+      | "ANTHROPIC"
+      | "XAI"
+      | "VERTEX"
+      | "OPENAI_COMPATIBLE";
+    /** RoutesUsageBucketV1 */
+    RoutesUsageBucket: {
+      /**
+       * Date
+       * Format: date
+       * @description UTC calendar date for this bucket, from midnight inclusive to the next midnight exclusive.
+       */
+      date: string;
+      /**
+       * Results
+       * @description Usage broken down by the requested dimensions. Empty when there is no usage.
+       */
+      results: components["schemas"]["RoutesUsageResult"][];
+    };
+    /** RoutesUsageResultV1 */
+    RoutesUsageResult: {
+      /**
+       * User Id
+       * @description ID of the user who created the Routes key. Null when not grouping by USER.
+       * @default null
+       */
+      user_id: string | null;
+      /**
+       * Model
+       * @description Model name. For external providers, the model name sent to the provider. Null when not grouping by MODEL.
+       * @default null
+       */
+      model: string | null;
+      /**
+       * @description Provider that served the requests. Null when not grouping by PROVIDER.
+       * @default null
+       */
+      provider: components["schemas"]["RouteProvider"] | null;
+      /**
+       * Cost Usd
+       * @description Estimated cost in USD, returned as an exact decimal string. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.
+       * @example 0.00035625
+       */
+      cost_usd: string;
+      /**
+       * Input Tokens
+       * @description Input tokens, including cached input tokens.
+       */
+      input_tokens: number;
+      /**
+       * Cached Input Tokens
+       * @description Input tokens read from the prompt cache.
+       */
+      cached_input_tokens: number;
+      /**
+       * Uncached Input Tokens
+       * @description Input tokens not read from the prompt cache, including tokens written to the cache.
+       */
+      uncached_input_tokens: number;
+      /**
+       * Output Tokens
+       * @description Output tokens.
+       */
+      output_tokens: number;
+    };
+    /** RoutesUsageResponseV1 */
+    RoutesUsageResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["RoutesUsageBucket"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * RouteUsageDimensionV1
+     * @enum {string}
+     */
+    RouteUsageDimension: "USER" | "MODEL" | "PROVIDER";
+    /** RouteEffectiveSpendLimitV1 */
+    RouteEffectiveSpendLimit: {
+      /**
+       * Monthly Limit Usd
+       * @description Spend limit in USD enforced for the current UTC calendar month: the user's own limit, else the team default. Null when no limit applies.
+       * @example 200
+       */
+      monthly_limit_usd: string | null;
+      /** @description Where the limit comes from: `user` when it is set on the user, `team` when it is the team default. Null when no limit applies. */
+      source: components["schemas"]["RouteSettingSource"] | null;
+    };
+    /**
+     * RouteSettingSourceV1
+     * @enum {string}
+     */
+    RouteSettingSource: "user" | "team";
+    /** RouteSpendLimitSettingV1 */
+    RouteSpendLimitSetting: {
+      /**
+       * User Monthly Limit Usd
+       * @description Standing spend limit in USD for each UTC calendar month set on the user. Null when the user has no limit of their own.
+       * @example 200
+       */
+      user_monthly_limit_usd: string | null;
+      /** @description Per-member limit of the team the user's active Code key belongs to. This limit applies when the user has no limit of their own. Null when there is none. */
+      team_default: components["schemas"]["RouteSpendLimitTeamDefault"] | null;
+      /** @description The effective limit enforced for the current month. */
+      effective: components["schemas"]["RouteEffectiveSpendLimit"];
+    };
+    /** RouteSpendLimitTeamDefaultV1 */
+    RouteSpendLimitTeamDefault: {
+      /**
+       * Team Id
+       * @description ID of the team the user's active Code key belongs to.
+       * @example abc1234
+       */
+      team_id: string;
+      /**
+       * Per Member Monthly Limit Usd
+       * @description The team's per-member spend limit in USD for each UTC calendar month.
+       * @example 100
+       */
+      per_member_monthly_limit_usd: string;
+    };
+    /** RouteUserSettingsV1 */
+    RouteUserSettings: {
+      /**
+       * User Id
+       * @description ID of the user.
+       * @example abc1234
+       */
+      user_id: string;
+      /**
+       * Email
+       * @description Email address of the user.
+       * @example dev@example.com
+       */
+      email: string | null;
+      /** @description Spend limit for Baseten Code. Applies to requests with Routes keys the user created; personal API keys are not limited. */
+      spend_limit: components["schemas"]["RouteSpendLimitSetting"];
+    };
+    /** UpdateRouteSpendLimitSettingV1 */
+    UpdateRouteSpendLimitSetting: {
+      /**
+       * User Monthly Limit Usd
+       * @description Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.
+       * @example 200
+       */
+      user_monthly_limit_usd?: string | null;
+    };
+    /** UpdateRouteUserSettingsRequestV1 */
+    UpdateRouteUserSettingsRequest: {
+      /** @description Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged. */
+      spend_limit?: components["schemas"]["UpdateRouteSpendLimitSetting"] | null;
+    };
+    /** BackgroundHarnessDefaultsV1 */
+    BackgroundHarnessDefaults: {
+      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
+      primary: components["schemas"]["RouteHarnessModel"] | null;
+      /** @description Route for background tasks, such as session titles. Null when the team has no route to use. */
+      background: components["schemas"]["RouteHarnessModel"] | null;
+    };
+    /** PrimaryHarnessDefaultsV1 */
+    PrimaryHarnessDefaults: {
+      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
+      primary: components["schemas"]["RouteHarnessModel"] | null;
+    };
+    /** RouteHarnessDefaultsV1 */
+    RouteHarnessDefaults: {
+      /** @description Default models for Claude Code. */
+      claude_code: components["schemas"]["BackgroundHarnessDefaults"];
+      /** @description Default models for OpenCode. */
+      opencode: components["schemas"]["BackgroundHarnessDefaults"];
+      /** @description Default models for Codex. */
+      codex: components["schemas"]["PrimaryHarnessDefaults"];
+      /** @description Default models for Pi. */
+      pi: components["schemas"]["PrimaryHarnessDefaults"];
+    };
+    /** RouteHarnessModelV1 */
+    RouteHarnessModel: {
+      /** @description Where this role's route comes from. `team` covers both a route a team admin set and the default chosen from the team's Model API routes. */
+      source: components["schemas"]["RouteSettingSource"];
+      /** @description Route to use for this role. */
+      route: components["schemas"]["Route"];
+    };
+    /** RouteTeamSpendLimitSettingV1 */
+    RouteTeamSpendLimitSetting: {
+      /**
+       * Per Member Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
+       * @example 200
+       */
+      per_member_monthly_limit_usd: string | null;
+    };
+    /** RouteTeamSettingsV1 */
+    RouteTeamSettings: {
+      /**
+       * Team Id
+       * @description ID of the team.
+       * @example abc1234
+       */
+      team_id: string;
+      /** @description Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes. */
+      harness_defaults: components["schemas"]["RouteHarnessDefaults"];
+      /** @description Spend limits for Baseten Code for members whose active Code key belongs to this team. */
+      spend_limit: components["schemas"]["RouteTeamSpendLimitSetting"];
+    };
+    /** UpdateBackgroundHarnessModelsV1 */
+    UpdateBackgroundHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+      /**
+       * Background
+       * @description Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.
+       * @example def5678
+       */
+      background?: string | null;
+    };
+    /** UpdatePrimaryHarnessModelsV1 */
+    UpdatePrimaryHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+    };
+    /** UpdateRouteHarnessDefaultsV1 */
+    UpdateRouteHarnessDefaults: {
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      claude_code?: components["schemas"]["UpdateBackgroundHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      opencode?: components["schemas"]["UpdateBackgroundHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      codex?: components["schemas"]["UpdatePrimaryHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      pi?: components["schemas"]["UpdatePrimaryHarnessModels"] | null;
+    };
+    /** UpdateRouteTeamSpendLimitSettingV1 */
+    UpdateRouteTeamSpendLimitSetting: {
+      /**
+       * Per Member Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
+       * @example 200
+       */
+      per_member_monthly_limit_usd?: string | null;
+    };
+    /** UpdateRouteTeamSettingsRequestV1 */
+    UpdateRouteTeamSettingsRequest: {
+      /** @description Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default. */
+      harness_defaults?: components["schemas"]["UpdateRouteHarnessDefaults"] | null;
+      /** @description Spend limit fields to change. Pass null to remove the team's per-member limit; omit to leave it unchanged. */
+      spend_limit?: components["schemas"]["UpdateRouteTeamSpendLimitSetting"] | null;
+    };
+    /** RouteConnectionAnthropicV1 */
+    RouteConnectionAnthropic: {
+      /**
+       * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "ANTHROPIC";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+    };
+    /** RouteConnectionOpenAIV1 */
+    RouteConnectionOpenAI: {
+      /**
+       * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "OPENAI";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+    };
+    /** RouteConnectionV1 */
+    RouteConnection: {
+      /**
+       * Id
+       * @description Stable connection identifier.
+       */
+      id: string;
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the connection.
+       */
+      team_id: string;
+      /**
+       * Config
+       * @description Provider the connection authenticates with, and the team secret holding its API key.
+       */
+      config:
+        | components["schemas"]["RouteConnectionAnthropic"]
+        | components["schemas"]["RouteConnectionOpenAI"]
+        | components["schemas"]["RouteConnectionXAI"];
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time, ISO 8601.
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description Last update time, ISO 8601.
+       */
+      updated_at: string;
+    };
+    /** RouteConnectionXAIV1 */
+    RouteConnectionXAI: {
+      /**
+       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "XAI";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+    };
+    /** RouteConnectionsResponseV1 */
+    RouteConnectionsResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["RouteConnection"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** RouteConnectionConfigAnthropicV1 */
+    RouteConnectionConfigAnthropic: {
+      /**
+       * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "ANTHROPIC";
+      /**
+       * Secret Id
+       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       */
+      secret_id: string;
+    };
+    /** RouteConnectionConfigOpenAIV1 */
+    RouteConnectionConfigOpenAI: {
+      /**
+       * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "OPENAI";
+      /**
+       * Secret Id
+       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       */
+      secret_id: string;
+    };
+    /** RouteConnectionConfigXAIV1 */
+    RouteConnectionConfigXAI: {
+      /**
+       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "XAI";
+      /**
+       * Secret Id
+       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       */
+      secret_id: string;
+    };
+    /** CreateRouteConnectionRequestV1 */
+    CreateRouteConnectionRequest: {
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the connection.
+       * @example abc1234
+       */
+      team_id?: string | null;
+      /**
+       * Config
+       * @description Provider the connection authenticates with, and the team secret holding its API key.
+       * @example {
+       *       "provider": "ANTHROPIC",
+       *       "secret_id": "abc1234"
+       *     }
+       */
+      config:
+        | components["schemas"]["RouteConnectionConfigAnthropic"]
+        | components["schemas"]["RouteConnectionConfigOpenAI"]
+        | components["schemas"]["RouteConnectionConfigXAI"];
+    };
+    /** RouteConnectionTombstoneV1 */
+    RouteConnectionTombstone: {
+      /**
+       * Id
+       * @description Stable identifier of the deleted connection.
+       */
+      id: string;
+    };
+    /** UpdateRouteConnectionConfigAnthropicV1 */
+    UpdateRouteConnectionConfigAnthropic: {
+      /**
+       * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "ANTHROPIC";
+      /**
+       * Secret Id
+       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
+       */
+      secret_id?: string | null;
+    };
+    /** UpdateRouteConnectionConfigOpenAIV1 */
+    UpdateRouteConnectionConfigOpenAI: {
+      /**
+       * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "OPENAI";
+      /**
+       * Secret Id
+       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
+       */
+      secret_id?: string | null;
+    };
+    /** UpdateRouteConnectionConfigXAIV1 */
+    UpdateRouteConnectionConfigXAI: {
+      /**
+       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "XAI";
+      /**
+       * Secret Id
+       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
+       */
+      secret_id?: string | null;
+    };
+    /** UpdateRouteConnectionRequestV1 */
+    UpdateRouteConnectionRequest: {
+      /**
+       * Config
+       * @description Connection fields to change. The provider must match the connection and is immutable.
+       * @example {
+       *       "provider": "ANTHROPIC",
+       *       "secret_id": "abc1234"
+       *     }
+       */
+      config:
+        | components["schemas"]["UpdateRouteConnectionConfigAnthropic"]
+        | components["schemas"]["UpdateRouteConnectionConfigOpenAI"]
+        | components["schemas"]["UpdateRouteConnectionConfigXAI"];
+    };
+    /** RouteTombstoneV1 */
+    RouteTombstone: {
+      /**
+       * Id
+       * @description Stable identifier of the deleted route.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name of the deleted route.
+       */
+      name: string;
+    };
+    /** UpdateRouteRequestV1 */
+    UpdateRouteRequest: {
+      /**
+       * Description
+       * @description New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.
+       * @example Assistant for code review and debugging.
+       */
+      description?: string | null;
+      /**
+       * Display Name
+       * @description New display label. Omit to keep the current label; null is not accepted.
+       * @example Assistant
+       */
+      display_name?: string | null;
+      /**
+       * Target
+       * @description Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER_MODEL_BASED configuration of a router route is mutable.
+       */
+      target?:
+        | (
+            | components["schemas"]["RouteTargetConfigBasetenModelAPI"]
+            | components["schemas"]["RouteTargetConfigAnthropic"]
+            | components["schemas"]["RouteTargetConfigOpenAI"]
+            | components["schemas"]["RouteTargetConfigXAI"]
+            | components["schemas"]["RouteTargetConfigClassifierModelBased"]
+          )
+        | null;
     };
     /**
      * EndpointTargetV1
@@ -9678,7 +11497,1694 @@ export type components = {
        */
       ok: boolean;
     };
-    GetVolumesRequest: {
+    GetSandboxConfigurationResponse: {
+      /** @description Available Carbon-compatible regions, sorted by name. Empty when none are available. */
+      regions: components["schemas"]["SandboxRegion"][];
+    };
+    SandboxRegion: {
+      /**
+       * @description Public region identifier to use when creating a sandbox.
+       * @example us-was-1
+       */
+      name: string;
+      /**
+       * @description Country code.
+       * @example us
+       */
+      country: string;
+      /**
+       * @description Continent code.
+       * @example na
+       */
+      continent: string;
+      /**
+       * @description Region location.
+       * @example Washington
+       */
+      location: string;
+      /**
+       * @description Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration.
+       * @enum {string}
+       */
+      info_generation: "CARBON";
+    };
+    SandboxLogs: {
+      sandbox_name: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      logs: components["schemas"]["SandboxLogEntry"][];
+      /** @description Opaque cursor for the next page; null when there are no more entries. */
+      next_cursor: string | null;
+    };
+    SandboxLogEntry: {
+      /** Format: date-time */
+      timestamp: string;
+      message: string;
+      /** @description Numeric log severity. */
+      severity: number;
+      /** @description Associated trace identifier, or an empty string when unavailable. */
+      trace_id: string;
+      /** @description Action or command when present on the log entry. */
+      action?: string;
+    };
+    SandboxMetrics: {
+      sandbox_name: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      interval_seconds: number;
+      data: components["schemas"]["SandboxMetricsPoint"][];
+    };
+    SandboxMetricsPoint: {
+      /**
+       * Format: date-time
+       * @description Start of this interval.
+       */
+      timestamp: string;
+      /** @description Request count. Zero without traffic; null for intervals entirely before creation. */
+      requests: number | null;
+      /** @description Peak CPU usage in this interval, where 100 is one full CPU core. Null without a sample. */
+      cpu_percent: number | null;
+      /** @description Memory usage in bytes, averaged per series then maximum across series. Null without a sample. */
+      memory_bytes: number | null;
+      /** @description Fraction of requests returning 4xx or 5xx. Null when there are no requests. */
+      error_rate: number | null;
+    };
+    SandboxImageBuildLog: {
+      /** Format: date-time */
+      timestamp: string;
+      message: string;
+      /** @description Numeric OpenTelemetry severity level. */
+      severity: number;
+    };
+    SandboxImageBuildLogsResponse: {
+      logs: components["schemas"]["SandboxImageBuildLog"][];
+      /**
+       * Format: int64
+       * @description Number of matching log entries in the requested time range.
+       */
+      total_count: number;
+    };
+    /**
+     * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+     * @example {
+     *       "expiration_policies": [
+     *         {
+     *           "action": "DELETE",
+     *           "type": "TTL_IDLE",
+     *           "value": "24h"
+     *         },
+     *         {
+     *           "action": "DELETE",
+     *           "type": "TTL_MAX_AGE",
+     *           "value": "7d"
+     *         },
+     *         {
+     *           "action": "DELETE",
+     *           "type": "DATE",
+     *           "value": "2026-09-23T21:26:58Z"
+     *         }
+     *       ],
+     *       "terminated_retention": "24h"
+     *     }
+     */
+    SandboxLifecycle: {
+      /**
+       * @description List of expiration policies. Multiple policies can be combined; whichever condition is met first triggers the action.
+       * @example [
+       *       {
+       *         "action": "DELETE",
+       *         "type": "TTL_IDLE",
+       *         "value": "24h"
+       *       },
+       *       {
+       *         "action": "DELETE",
+       *         "type": "TTL_MAX_AGE",
+       *         "value": "7d"
+       *       },
+       *       {
+       *         "action": "DELETE",
+       *         "type": "DATE",
+       *         "value": "2026-09-23T21:26:58Z"
+       *       }
+       *     ]
+       */
+      expiration_policies?: components["schemas"]["SandboxExpirationPolicy"][];
+      /**
+       * @description Duration to keep the sandbox record after termination for log access (e.g., '1h', '24h', '7d'). Defaults to 5m. Subject to maximum quota limits.
+       * @example 24h
+       */
+      terminated_retention?: components["schemas"]["SandboxDuration"];
+    };
+    /** @description Expiration policy. The type determines whether value is a duration or an absolute timestamp. */
+    SandboxExpirationPolicy:
+      | components["schemas"]["SandboxTTLIdleExpirationPolicy"]
+      | components["schemas"]["SandboxTTLMaxAgeExpirationPolicy"]
+      | components["schemas"]["SandboxDateExpirationPolicy"];
+    /**
+     * @description Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w, where d is 24h and w is 7 × 24h. Days and weeks cannot be combined with other units, so 1d12h is rejected; use 36h instead. Values are returned exactly as sent, without normalization.
+     * @example 24h
+     */
+    SandboxDuration: string;
+    /** @description Delete after the specified period of inactivity. */
+    SandboxTTLIdleExpirationPolicy: {
+      /** @enum {string} */
+      action: "DELETE";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "TTL_IDLE";
+      value: components["schemas"]["SandboxDuration"];
+    };
+    /** @description Delete after the specified total lifetime. */
+    SandboxTTLMaxAgeExpirationPolicy: {
+      /** @enum {string} */
+      action: "DELETE";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "TTL_MAX_AGE";
+      value: components["schemas"]["SandboxDuration"];
+    };
+    /** @description Delete at the specified absolute timestamp. */
+    SandboxDateExpirationPolicy: {
+      /** @enum {string} */
+      action: "DELETE";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "DATE";
+      /**
+       * Format: date-time
+       * @example 2026-09-23T21:26:58Z
+       */
+      value: string;
+    };
+    /**
+     * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
+     * @example {
+     *       "proxy": {
+     *         "allowed_domains": [
+     *           "api.openai.com",
+     *           "pypi.org",
+     *           "files.pythonhosted.org",
+     *           "registry.npmjs.org"
+     *         ],
+     *         "bypass": [
+     *           "registry.npmjs.org"
+     *         ],
+     *         "forbidden_domains": [
+     *           "facebook.com",
+     *           "*.facebook.com"
+     *         ],
+     *         "routing": [
+     *           {
+     *             "destinations": [
+     *               "api.openai.com"
+     *             ],
+     *             "headers": {
+     *               "Authorization": "Bearer {{SECRET:openai-key}}"
+     *             },
+     *             "body": {
+     *               "user": "baseten-api-review-0916"
+     *             },
+     *             "secrets": {
+     *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *             }
+     *           }
+     *         ]
+     *       },
+     *       "subnet": "default"
+     *     }
+     */
+    SandboxNetwork: {
+      /**
+       * @description Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection
+       * @example {
+       *       "allowed_domains": [
+       *         "api.openai.com",
+       *         "pypi.org",
+       *         "files.pythonhosted.org",
+       *         "registry.npmjs.org"
+       *       ],
+       *       "bypass": [
+       *         "registry.npmjs.org"
+       *       ],
+       *       "forbidden_domains": [
+       *         "facebook.com",
+       *         "*.facebook.com"
+       *       ],
+       *       "routing": [
+       *         {
+       *           "destinations": [
+       *             "api.openai.com"
+       *           ],
+       *           "headers": {
+       *             "Authorization": "Bearer {{SECRET:openai-key}}"
+       *           },
+       *           "body": {
+       *             "user": "baseten-api-review-0916"
+       *           },
+       *           "secrets": {
+       *             "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *           }
+       *         }
+       *       ]
+       *     }
+       */
+      proxy?: components["schemas"]["SandboxProxyConfig"];
+      /**
+       * @description Subnet name for the sandbox. Defaults to "default" at creation.
+       * @example default
+       */
+      subnet?: string;
+    };
+    /**
+     * @description Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection
+     * @example {
+     *       "allowed_domains": [
+     *         "api.openai.com",
+     *         "pypi.org",
+     *         "files.pythonhosted.org",
+     *         "registry.npmjs.org"
+     *       ],
+     *       "bypass": [
+     *         "registry.npmjs.org"
+     *       ],
+     *       "forbidden_domains": [
+     *         "facebook.com",
+     *         "*.facebook.com"
+     *       ],
+     *       "routing": [
+     *         {
+     *           "destinations": [
+     *             "api.openai.com"
+     *           ],
+     *           "headers": {
+     *             "Authorization": "Bearer {{SECRET:openai-key}}"
+     *           },
+     *           "body": {
+     *             "user": "baseten-api-review-0916"
+     *           },
+     *           "secrets": {
+     *             "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *           }
+     *         }
+     *       ]
+     *     }
+     */
+    SandboxProxyConfig: {
+      /**
+       * @description List of allowed external domains (allowlist). When set, only these domains are reachable. Supports wildcards (e.g. *.storage.example.com).
+       * @example [
+       *       "api.openai.com",
+       *       "pypi.org",
+       *       "files.pythonhosted.org",
+       *       "registry.npmjs.org"
+       *     ]
+       */
+      allowed_domains?: string[];
+      /**
+       * @description Domains that bypass the proxy entirely via the NO_PROXY directive. Traffic to these destinations goes direct, not through the CONNECT tunnel. Supports wildcards. Note that localhost, private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 169.254.169.254, .local and .internal are always bypassed by default.
+       * @example [
+       *       "registry.npmjs.org"
+       *     ]
+       */
+      bypass?: string[];
+      /**
+       * @description List of forbidden external domains (denylist). When set, all domains except these are reachable. Supports wildcards (e.g. *.malware.com). If both allowed_domains and forbidden_domains are set, allowed_domains takes precedence.
+       * @example [
+       *       "facebook.com",
+       *       "*.facebook.com"
+       *     ]
+       */
+      forbidden_domains?: string[];
+      /**
+       * @description Per-destination routing rules with header/body injection and secrets. Use destinations ["*"] for global rules that apply to all destinations.
+       * @example [
+       *       {
+       *         "destinations": [
+       *           "api.openai.com"
+       *         ],
+       *         "headers": {
+       *           "Authorization": "Bearer {{SECRET:openai-key}}"
+       *         },
+       *         "body": {
+       *           "user": "baseten-api-review-0916"
+       *         },
+       *         "secrets": {
+       *           "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *         }
+       *       }
+       *     ]
+       */
+      routing?: components["schemas"]["SandboxProxyTarget"][];
+    };
+    /**
+     * @description Routing rule that injects headers and body fields into requests matching the given destinations. Use destinations ["*"] for a global rule that applies to all proxied traffic.
+     * @example {
+     *       "destinations": [
+     *         "api.openai.com"
+     *       ],
+     *       "headers": {
+     *         "Authorization": "Bearer {{SECRET:openai-key}}"
+     *       },
+     *       "body": {
+     *         "user": "baseten-api-review-0916"
+     *       },
+     *       "secrets": {
+     *         "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *       }
+     *     }
+     */
+    SandboxProxyTarget: {
+      /**
+       * @description Body fields to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.
+       * @example {
+       *       "user": "baseten-api-review-0916"
+       *     }
+       */
+      body?: {
+        [key: string]: string;
+      };
+      /**
+       * @description Destination domains this rule applies to. Use ["*"] for a global rule that matches all destinations.
+       * @example [
+       *       "api.openai.com"
+       *     ]
+       */
+      destinations?: string[];
+      /**
+       * @description Headers to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.
+       * @example {
+       *       "Authorization": "Bearer {{SECRET:openai-key}}"
+       *     }
+       */
+      headers?: {
+        [key: string]: string;
+      };
+      /**
+       * @description Named secret values for this routing rule, referenced in headers/body via {{SECRET:name}}. Stored encrypted at rest. Write-only: never returned in API responses.
+       * @example {
+       *       "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *     }
+       */
+      secrets?: {
+        [key: string]: string;
+      };
+    };
+    /**
+     * @description Environment variable with name and value
+     * @example {
+     *       "name": "NODE_ENV",
+     *       "secret": false,
+     *       "value": "production"
+     *     }
+     */
+    SandboxEnv: {
+      /**
+       * @description Name of the environment variable
+       * @example NODE_ENV
+       */
+      name?: string;
+      /**
+       * @description Whether the value is a secret. Defaults to true; secret values are returned as "****". Set false explicitly to return the original value.
+       * @example false
+       */
+      secret?: boolean;
+      /**
+       * @description Value of the environment variable
+       * @example production
+       */
+      value?: string;
+    };
+    /**
+     * @description Set of ports for a resource
+     * @example [
+     *       {
+     *         "name": "http",
+     *         "protocol": "HTTP",
+     *         "target": 3000
+     *       }
+     *     ]
+     */
+    SandboxPorts: components["schemas"]["SandboxPort"][];
+    /**
+     * @description A port for a resource
+     * @example {
+     *       "name": "http",
+     *       "protocol": "HTTP",
+     *       "target": 3000
+     *     }
+     */
+    SandboxPort: {
+      /**
+       * @description The name of the port
+       * @example http
+       */
+      name?: string;
+      /**
+       * @description The protocol of the port
+       * @example HTTP
+       * @enum {string}
+       */
+      protocol?: "HTTP" | "TCP" | "UDP" | "TLS";
+      /**
+       * @description The target port of the port
+       * @example 3000
+       */
+      target: number;
+    };
+    /**
+     * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+     * @example {
+     *       "env": "development",
+     *       "project": "api-review",
+     *       "team": "engineering"
+     *     }
+     */
+    SandboxMetadataLabels: {
+      [key: string]: string;
+    };
+    /**
+     * @description Writable sandbox configuration. Fields are serialized at the root of the request or resource.
+     * @example {
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "network": {
+     *         "proxy": {
+     *           "allowed_domains": [
+     *             "api.openai.com",
+     *             "pypi.org",
+     *             "files.pythonhosted.org",
+     *             "registry.npmjs.org"
+     *           ],
+     *           "bypass": [
+     *             "registry.npmjs.org"
+     *           ],
+     *           "forbidden_domains": [
+     *             "facebook.com",
+     *             "*.facebook.com"
+     *           ],
+     *           "routing": [
+     *             {
+     *               "destinations": [
+     *                 "api.openai.com"
+     *               ],
+     *               "headers": {
+     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
+     *               },
+     *               "body": {
+     *                 "user": "baseten-api-review-0916"
+     *               },
+     *               "secrets": {
+     *                 "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *               }
+     *             }
+     *           ]
+     *         },
+     *         "subnet": "default"
+     *       },
+     *       "region": "us-pdx-1",
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "image": "baseten/base-image:latest",
+     *       "memory": 4096,
+     *       "ports": [
+     *         {
+     *           "name": "http",
+     *           "protocol": "HTTP",
+     *           "target": 3000
+     *         }
+     *       ],
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering"
+     *       }
+     *     }
+     */
+    SandboxConfiguration: {
+      /**
+       * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+       * @example {
+       *       "expiration_policies": [
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_IDLE",
+       *           "value": "24h"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_MAX_AGE",
+       *           "value": "7d"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "DATE",
+       *           "value": "2026-09-23T21:26:58Z"
+       *         }
+       *       ],
+       *       "terminated_retention": "24h"
+       *     }
+       */
+      lifecycle?: components["schemas"]["SandboxLifecycle"];
+      /**
+       * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
+       * @example {
+       *       "proxy": {
+       *         "allowed_domains": [
+       *           "api.openai.com",
+       *           "pypi.org",
+       *           "files.pythonhosted.org",
+       *           "registry.npmjs.org"
+       *         ],
+       *         "bypass": [
+       *           "registry.npmjs.org"
+       *         ],
+       *         "forbidden_domains": [
+       *           "facebook.com",
+       *           "*.facebook.com"
+       *         ],
+       *         "routing": [
+       *           {
+       *             "destinations": [
+       *               "api.openai.com"
+       *             ],
+       *             "headers": {
+       *               "Authorization": "Bearer {{SECRET:openai-key}}"
+       *             },
+       *             "body": {
+       *               "user": "baseten-api-review-0916"
+       *             },
+       *             "secrets": {
+       *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *             }
+       *           }
+       *         ]
+       *       },
+       *       "subnet": "default"
+       *     }
+       */
+      network?: components["schemas"]["SandboxNetwork"];
+      /**
+       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
+       * @example us-pdx-1
+       */
+      region?: string;
+      /**
+       * @description Environment variables injected into the sandbox.
+       * @example [
+       *       {
+       *         "name": "NODE_ENV",
+       *         "secret": false,
+       *         "value": "production"
+       *       },
+       *       {
+       *         "name": "PORT",
+       *         "secret": false,
+       *         "value": "3000"
+       *       }
+       *     ]
+       */
+      envs?: components["schemas"]["SandboxEnv"][];
+      /**
+       * @description Image reference including its tag. Built-in image references are returned in the canonical baseten/ namespace. Use baseten/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example baseten/base-image:latest
+       */
+      image?: string;
+      /**
+       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).
+       * @example 4096
+       */
+      memory?: number;
+      /**
+       * @description Set of ports for a resource
+       * @example [
+       *       {
+       *         "name": "http",
+       *         "protocol": "HTTP",
+       *         "target": 3000
+       *       }
+       *     ]
+       */
+      ports?: components["schemas"]["SandboxPorts"];
+      /**
+       * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+      /**
+       * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+       * @example {
+       *       "env": "development",
+       *       "project": "api-review",
+       *       "team": "engineering"
+       *     }
+       */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /**
+     * @description Configuration for a new sandbox. The client may provide a name; otherwise the server generates one. The name is immutable after creation.
+     * @example {
+     *       "name": "baseten-api-review-0916",
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "network": {
+     *         "proxy": {
+     *           "allowed_domains": [
+     *             "api.openai.com",
+     *             "pypi.org",
+     *             "files.pythonhosted.org",
+     *             "registry.npmjs.org"
+     *           ],
+     *           "bypass": [
+     *             "registry.npmjs.org"
+     *           ],
+     *           "forbidden_domains": [
+     *             "facebook.com",
+     *             "*.facebook.com"
+     *           ],
+     *           "routing": [
+     *             {
+     *               "destinations": [
+     *                 "api.openai.com"
+     *               ],
+     *               "headers": {
+     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
+     *               },
+     *               "body": {
+     *                 "user": "baseten-api-review-0916"
+     *               },
+     *               "secrets": {
+     *                 "openai-key": "sk-proj-demo-not-a-valid-api-key"
+     *               }
+     *             }
+     *           ]
+     *         },
+     *         "subnet": "default"
+     *       },
+     *       "region": "us-pdx-1",
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "image": "baseten/base-image:latest",
+     *       "memory": 4096,
+     *       "ports": [
+     *         {
+     *           "name": "http",
+     *           "protocol": "HTTP",
+     *           "target": 3000
+     *         }
+     *       ],
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering"
+     *       }
+     *     }
+     */
+    CreateSandboxRequest: {
+      /** @description When true, return the existing live sandbox with this name or recreate it if it is failed, terminated, or being deleted. The server handles concurrent creation and deletion races with a bounded wait; persistent contention returns a conflict. Requires name. Existing configuration is preserved. Defaults to false when omitted. */
+      create_if_not_exists?: boolean;
+      /**
+       * @description Optional unique sandbox name. Generated by the server when omitted; immutable after creation.
+       * @example baseten-api-review-0916
+       */
+      name?: string;
+      /**
+       * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+       * @example {
+       *       "expiration_policies": [
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_IDLE",
+       *           "value": "24h"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_MAX_AGE",
+       *           "value": "7d"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "DATE",
+       *           "value": "2026-09-23T21:26:58Z"
+       *         }
+       *       ],
+       *       "terminated_retention": "24h"
+       *     }
+       */
+      lifecycle?: components["schemas"]["SandboxLifecycle"];
+      /**
+       * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
+       * @example {
+       *       "proxy": {
+       *         "allowed_domains": [
+       *           "api.openai.com",
+       *           "pypi.org",
+       *           "files.pythonhosted.org",
+       *           "registry.npmjs.org"
+       *         ],
+       *         "bypass": [
+       *           "registry.npmjs.org"
+       *         ],
+       *         "forbidden_domains": [
+       *           "facebook.com",
+       *           "*.facebook.com"
+       *         ],
+       *         "routing": [
+       *           {
+       *             "destinations": [
+       *               "api.openai.com"
+       *             ],
+       *             "headers": {
+       *               "Authorization": "Bearer {{SECRET:openai-key}}"
+       *             },
+       *             "body": {
+       *               "user": "baseten-api-review-0916"
+       *             },
+       *             "secrets": {
+       *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
+       *             }
+       *           }
+       *         ]
+       *       },
+       *       "subnet": "default"
+       *     }
+       */
+      network?: components["schemas"]["SandboxNetwork"];
+      /**
+       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
+       * @example us-pdx-1
+       */
+      region?: string;
+      /**
+       * @description Environment variables injected into the sandbox.
+       * @example [
+       *       {
+       *         "name": "NODE_ENV",
+       *         "secret": false,
+       *         "value": "production"
+       *       },
+       *       {
+       *         "name": "PORT",
+       *         "secret": false,
+       *         "value": "3000"
+       *       }
+       *     ]
+       */
+      envs?: components["schemas"]["SandboxEnv"][];
+      /**
+       * @description Image reference including its tag. Defaults to baseten/base-image:latest, the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.
+       * @example baseten/base-image:latest
+       */
+      image?: string;
+      /**
+       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096.
+       * @example 4096
+       */
+      memory?: number;
+      /**
+       * @description Set of ports for a resource
+       * @example [
+       *       {
+       *         "name": "http",
+       *         "protocol": "HTTP",
+       *         "target": 3000
+       *       }
+       *     ]
+       */
+      ports?: components["schemas"]["SandboxPorts"];
+      /**
+       * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+      /**
+       * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+       * @example {
+       *       "env": "development",
+       *       "project": "api-review",
+       *       "team": "engineering"
+       *     }
+       */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /**
+     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, network, region, image, and ports are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
+     * @example {
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering",
+     *         "revision": "2"
+     *       }
+     *     }
+     */
+    UpdateSandboxRequest: {
+      /**
+       * @description Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates
+       * @example {
+       *       "expiration_policies": [
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_IDLE",
+       *           "value": "24h"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "TTL_MAX_AGE",
+       *           "value": "7d"
+       *         },
+       *         {
+       *           "action": "DELETE",
+       *           "type": "DATE",
+       *           "value": "2026-09-23T21:26:58Z"
+       *         }
+       *       ],
+       *       "terminated_retention": "24h"
+       *     }
+       */
+      lifecycle?: components["schemas"]["SandboxLifecycle"];
+      /**
+       * @description Environment variables injected into the sandbox.
+       * @example [
+       *       {
+       *         "name": "NODE_ENV",
+       *         "secret": false,
+       *         "value": "production"
+       *       },
+       *       {
+       *         "name": "PORT",
+       *         "secret": false,
+       *         "value": "3000"
+       *       }
+       *     ]
+       */
+      envs?: components["schemas"]["SandboxEnv"][];
+      /**
+       * @description Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+      /**
+       * @description Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.
+       * @example {
+       *       "env": "development",
+       *       "project": "api-review",
+       *       "team": "engineering",
+       *       "revision": "2"
+       *     }
+       */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /**
+     * @description Sandbox resource with configuration and server-managed fields at the root. No metadata, spec, or runtime wrapper.
+     * @example {
+     *       "lifecycle": {
+     *         "expiration_policies": [
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_IDLE",
+     *             "value": "24h"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "TTL_MAX_AGE",
+     *             "value": "7d"
+     *           },
+     *           {
+     *             "action": "DELETE",
+     *             "type": "DATE",
+     *             "value": "2026-09-23T21:26:58Z"
+     *           }
+     *         ],
+     *         "terminated_retention": "24h"
+     *       },
+     *       "network": {
+     *         "proxy": {
+     *           "allowed_domains": [
+     *             "api.openai.com",
+     *             "pypi.org",
+     *             "files.pythonhosted.org",
+     *             "registry.npmjs.org"
+     *           ],
+     *           "bypass": [
+     *             "registry.npmjs.org"
+     *           ],
+     *           "forbidden_domains": [
+     *             "facebook.com",
+     *             "*.facebook.com"
+     *           ],
+     *           "routing": [
+     *             {
+     *               "destinations": [
+     *                 "api.openai.com"
+     *               ],
+     *               "headers": {
+     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
+     *               },
+     *               "body": {
+     *                 "user": "baseten-api-review-0916"
+     *               }
+     *             }
+     *           ]
+     *         },
+     *         "subnet": "default"
+     *       },
+     *       "region": "us-pdx-1",
+     *       "envs": [
+     *         {
+     *           "name": "NODE_ENV",
+     *           "secret": false,
+     *           "value": "production"
+     *         },
+     *         {
+     *           "name": "PORT",
+     *           "secret": false,
+     *           "value": "3000"
+     *         }
+     *       ],
+     *       "image": "baseten/base-image:latest",
+     *       "memory": 4096,
+     *       "ports": [
+     *         {
+     *           "name": "http",
+     *           "protocol": "HTTP",
+     *           "target": 3000
+     *         }
+     *       ],
+     *       "external_id": "api-review-20260916-001",
+     *       "labels": {
+     *         "env": "development",
+     *         "project": "api-review",
+     *         "team": "engineering"
+     *       },
+     *       "name": "baseten-api-review-0916",
+     *       "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
+     *       "status": "DEPLOYED",
+     *       "created_at": "2026-09-16T21:26:58.545765901Z",
+     *       "updated_at": "2026-09-16T21:31:13Z",
+     *       "created_by": "sandbox-automation",
+     *       "updated_by": "sandbox-automation",
+     *       "last_used_at": "2026-09-16T21:31:13Z",
+     *       "expires_in": 86400
+     *     }
+     */
+    Sandbox: components["schemas"]["SandboxConfiguration"] & {
+      /**
+       * @description Immutable sandbox name, provided by the client or generated by the server, used in sandbox_name path parameters.
+       * @example baseten-api-review-0916
+       */
+      readonly name: string;
+      /**
+       * Format: uri
+       * @description Base URL of this sandbox's execution API, always present on successful creation. The URL is assigned before deployment completes; inspect status for readiness. Use this exact returned URL; do not reconstruct its hostname. Authenticate requests with your authentication token using Authorization: Bearer <token>. Do not send the Baseten API key directly. No additional routing headers are required. Fetch GET {url}/swagger/doc.json with that header for the API reference served by this sandbox. For example, POST {url}/process with Content-Type: application/json and {"command":"echo hello","waitForCompletion":true} executes a command and waits for its result. Execution API fields use camelCase, independently of this API's snake_case fields.
+       * @example https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run
+       */
+      readonly url: string;
+      /**
+       * @description Sandbox deployment status.
+       * @example DEPLOYED
+       */
+      status: components["schemas"]["SandboxStatus"];
+      /**
+       * Format: date-time
+       * @description Time the sandbox was created.
+       * @example 2026-09-16T21:26:58.545765901Z
+       */
+      readonly created_at: string;
+      /**
+       * Format: date-time
+       * @description Time the sandbox was last updated.
+       * @example 2026-09-16T21:31:13Z
+       */
+      readonly updated_at?: string;
+      /**
+       * @description User or service account that created the sandbox.
+       * @example sandbox-automation
+       */
+      readonly created_by?: string;
+      /**
+       * @description User or service account that last updated the sandbox.
+       * @example sandbox-automation
+       */
+      readonly updated_by?: string;
+      /**
+       * Format: date-time
+       * @description Time the sandbox was last used.
+       * @example 2026-09-16T21:31:13Z
+       */
+      readonly last_used_at?: string;
+      /**
+       * @description Seconds remaining before automatic deletion, when expiration is configured.
+       * @example 86400
+       */
+      readonly expires_in?: number;
+    };
+    /**
+     * @description Sandbox deployment status, always uppercase. This tracks provisioning and differs from the execution API state, whose values such as running are lowercase.
+     * @example DEPLOYED
+     * @enum {string}
+     */
+    SandboxStatus:
+      | "DEPLOYING"
+      | "DEPLOYED"
+      | "FAILED"
+      | "DEACTIVATING"
+      | "DEACTIVATED"
+      | "DELETING"
+      | "TERMINATED"
+      | "ARCHIVING"
+      | "ARCHIVED"
+      | "UNARCHIVING"
+      | "BUILDING"
+      | "UPLOADING";
+    /**
+     * @description Cursor pagination information. The cursor is present only when another page is available.
+     * @example {
+     *       "has_more": true,
+     *       "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+     *     }
+     */
+    SandboxApiPagination: {
+      /**
+       * @description Whether another page is available.
+       * @example true
+       */
+      has_more: boolean;
+      /**
+       * @description Opaque cursor to pass to the next list request. Keep the same filters.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+    };
+    /**
+     * @description One page of sandboxes.
+     * @example {
+     *       "items": [
+     *         {
+     *           "lifecycle": {
+     *             "expiration_policies": [
+     *               {
+     *                 "action": "DELETE",
+     *                 "type": "TTL_IDLE",
+     *                 "value": "24h"
+     *               },
+     *               {
+     *                 "action": "DELETE",
+     *                 "type": "TTL_MAX_AGE",
+     *                 "value": "7d"
+     *               },
+     *               {
+     *                 "action": "DELETE",
+     *                 "type": "DATE",
+     *                 "value": "2026-09-23T21:26:58Z"
+     *               }
+     *             ],
+     *             "terminated_retention": "24h"
+     *           },
+     *           "network": {
+     *             "proxy": {
+     *               "allowed_domains": [
+     *                 "api.openai.com",
+     *                 "pypi.org",
+     *                 "files.pythonhosted.org",
+     *                 "registry.npmjs.org"
+     *               ],
+     *               "bypass": [
+     *                 "registry.npmjs.org"
+     *               ],
+     *               "forbidden_domains": [
+     *                 "facebook.com",
+     *                 "*.facebook.com"
+     *               ],
+     *               "routing": [
+     *                 {
+     *                   "destinations": [
+     *                     "api.openai.com"
+     *                   ],
+     *                   "headers": {
+     *                     "Authorization": "Bearer {{SECRET:openai-key}}"
+     *                   },
+     *                   "body": {
+     *                     "user": "baseten-api-review-0916"
+     *                   }
+     *                 }
+     *               ]
+     *             },
+     *             "subnet": "default"
+     *           },
+     *           "region": "us-pdx-1",
+     *           "envs": [
+     *             {
+     *               "name": "NODE_ENV",
+     *               "secret": false,
+     *               "value": "production"
+     *             },
+     *             {
+     *               "name": "PORT",
+     *               "secret": false,
+     *               "value": "3000"
+     *             }
+     *           ],
+     *           "image": "baseten/base-image:latest",
+     *           "memory": 4096,
+     *           "ports": [
+     *             {
+     *               "name": "http",
+     *               "protocol": "HTTP",
+     *               "target": 3000
+     *             }
+     *           ],
+     *           "external_id": "api-review-20260916-001",
+     *           "labels": {
+     *             "env": "development",
+     *             "project": "api-review",
+     *             "team": "engineering"
+     *           },
+     *           "name": "baseten-api-review-0916",
+     *           "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
+     *           "status": "DEPLOYED",
+     *           "created_at": "2026-09-16T21:26:58.545765901Z",
+     *           "updated_at": "2026-09-16T21:31:13Z",
+     *           "created_by": "sandbox-automation",
+     *           "updated_by": "sandbox-automation",
+     *           "last_used_at": "2026-09-16T21:31:13Z",
+     *           "expires_in": 86400
+     *         }
+     *       ],
+     *       "pagination": {
+     *         "has_more": true,
+     *         "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+     *       }
+     *     }
+     */
+    ListSandboxesResponse: {
+      /**
+       * @description Resources on this page.
+       * @example [
+       *       {
+       *         "lifecycle": {
+       *           "expiration_policies": [
+       *             {
+       *               "action": "DELETE",
+       *               "type": "TTL_IDLE",
+       *               "value": "24h"
+       *             },
+       *             {
+       *               "action": "DELETE",
+       *               "type": "TTL_MAX_AGE",
+       *               "value": "7d"
+       *             },
+       *             {
+       *               "action": "DELETE",
+       *               "type": "DATE",
+       *               "value": "2026-09-23T21:26:58Z"
+       *             }
+       *           ],
+       *           "terminated_retention": "24h"
+       *         },
+       *         "network": {
+       *           "proxy": {
+       *             "allowed_domains": [
+       *               "api.openai.com",
+       *               "pypi.org",
+       *               "files.pythonhosted.org",
+       *               "registry.npmjs.org"
+       *             ],
+       *             "bypass": [
+       *               "registry.npmjs.org"
+       *             ],
+       *             "forbidden_domains": [
+       *               "facebook.com",
+       *               "*.facebook.com"
+       *             ],
+       *             "routing": [
+       *               {
+       *                 "destinations": [
+       *                   "api.openai.com"
+       *                 ],
+       *                 "headers": {
+       *                   "Authorization": "Bearer {{SECRET:openai-key}}"
+       *                 },
+       *                 "body": {
+       *                   "user": "baseten-api-review-0916"
+       *                 }
+       *               }
+       *             ]
+       *           },
+       *           "subnet": "default"
+       *         },
+       *         "region": "us-pdx-1",
+       *         "envs": [
+       *           {
+       *             "name": "NODE_ENV",
+       *             "secret": false,
+       *             "value": "production"
+       *           },
+       *           {
+       *             "name": "PORT",
+       *             "secret": false,
+       *             "value": "3000"
+       *           }
+       *         ],
+       *         "image": "baseten/base-image:latest",
+       *         "memory": 4096,
+       *         "ports": [
+       *           {
+       *             "name": "http",
+       *             "protocol": "HTTP",
+       *             "target": 3000
+       *           }
+       *         ],
+       *         "external_id": "api-review-20260916-001",
+       *         "labels": {
+       *           "env": "development",
+       *           "project": "api-review",
+       *           "team": "engineering"
+       *         },
+       *         "name": "baseten-api-review-0916",
+       *         "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
+       *         "status": "DEPLOYED",
+       *         "created_at": "2026-09-16T21:26:58.545765901Z",
+       *         "updated_at": "2026-09-16T21:31:13Z",
+       *         "created_by": "sandbox-automation",
+       *         "updated_by": "sandbox-automation",
+       *         "last_used_at": "2026-09-16T21:31:13Z",
+       *         "expires_in": 86400
+       *       }
+       *     ]
+       */
+      items: components["schemas"]["Sandbox"][];
+      /**
+       * @description Cursor pagination information. The cursor is present only when another page is available.
+       * @example {
+       *       "has_more": true,
+       *       "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+       *     }
+       */
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    /** @description One page of image repository summaries. Fetch tags through the separate tag listing endpoint. */
+    ListSandboxImagesResponse: {
+      /** @description Image repositories on this page. */
+      items: components["schemas"]["SandboxImageSummary"][];
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    /** @description One page of image tags. */
+    ListSandboxImageTagsResponse: {
+      items: components["schemas"]["SandboxImageTag"][];
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    /**
+     * @description Image processing status. Only BUILT images are ready to use.
+     * @example BUILT
+     * @enum {string}
+     */
+    SandboxImageStatus: "UPLOADING" | "BUILDING" | "BUILT" | "FAILED";
+    /**
+     * @description A tag identifying a version of a sandbox image.
+     * @example {
+     *       "name": "latest",
+     *       "created_at": "2026-09-16T21:20:00Z",
+     *       "updated_at": "2026-09-16T21:25:00Z",
+     *       "size": 134217728
+     *     }
+     */
+    SandboxImageTag: {
+      /**
+       * @description Image tag name.
+       * @example latest
+       */
+      name: string;
+      /**
+       * Format: date-time
+       * @description Time the tag was created.
+       * @example 2026-09-16T21:20:00Z
+       */
+      readonly created_at?: string;
+      /**
+       * Format: date-time
+       * @description Time the tag was last updated.
+       * @example 2026-09-16T21:25:00Z
+       */
+      readonly updated_at?: string;
+      /**
+       * Format: int64
+       * @description Image size in bytes.
+       * @example 134217728
+       */
+      readonly size?: number;
+    };
+    /**
+     * @description Sandbox image repository summary. Fetch tags through GET /sandboxes/images/{image_name}/tags.
+     * @example {
+     *       "name": "base-image",
+     *       "status": "BUILT",
+     *       "created_at": "2026-09-15T21:20:00Z",
+     *       "updated_at": "2026-09-16T21:25:00Z",
+     *       "last_deployed_at": "2026-09-16T21:26:58.545765901Z",
+     *       "size": 260046848,
+     *       "tag_count": 2
+     *     }
+     */
+    SandboxImageSummary: {
+      /**
+       * @description Stable repository name supplied when pushing the image.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Image processing status. Only BUILT images are ready to use.
+       * @example BUILT
+       */
+      status: components["schemas"]["SandboxImageStatus"];
+      /**
+       * Format: date-time
+       * @description Time the image was created.
+       * @example 2026-09-15T21:20:00Z
+       */
+      readonly created_at?: string;
+      /**
+       * Format: date-time
+       * @description Time the image was last updated.
+       * @example 2026-09-16T21:25:00Z
+       */
+      readonly updated_at?: string;
+      /**
+       * Format: date-time
+       * @description Most recent deployment time across all tags, if deployed.
+       * @example 2026-09-16T21:26:58.545765901Z
+       */
+      readonly last_deployed_at?: string;
+      /**
+       * Format: int64
+       * @description Total repository size in bytes.
+       * @example 260046848
+       */
+      readonly size?: number;
+      /**
+       * Format: int64
+       * @description Number of image versions in the repository.
+       * @example 2
+       */
+      readonly tag_count?: number;
+    };
+    /**
+     * @description Sandbox image repository. Get operations return a summary with an empty tags array.
+     * @example {
+     *       "name": "base-image",
+     *       "status": "BUILT",
+     *       "created_at": "2026-09-15T21:20:00Z",
+     *       "updated_at": "2026-09-16T21:25:00Z",
+     *       "last_deployed_at": "2026-09-16T21:26:58.545765901Z",
+     *       "size": 260046848,
+     *       "tag_count": 2,
+     *       "tags": []
+     *     }
+     */
+    SandboxImage: components["schemas"]["SandboxImageSummary"] & {
+      /**
+       * @description Empty for get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.
+       * @example []
+       */
+      tags: components["schemas"]["SandboxImageTag"][];
+    };
+    /**
+     * @description Push a sandbox image from a source archive or an existing registry image.
+     * @example {
+     *       "name": "base-image",
+     *       "image": "docker.io/b10/base-image:latest",
+     *       "docker_config": "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"YjEwLXJldmlldzpkZW1vLW5vdC1hLXZhbGlkLXJlZ2lzdHJ5LXRva2Vu\"}}}"
+     *     }
+     */
+    PushSandboxImageRequest: {
+      /**
+       * @description Target image repository name. Reusing a name pushes a new version to the existing repository.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Optional source registry image reference including a registry hostname. When omitted, the response provides an archive upload URL. The uploaded ZIP archive must not exceed 5 GB.
+       * @example docker.io/b10/base-image:latest
+       */
+      image?: string;
+      /**
+       * @description Optional serialized registry authentication configuration for importing a private image. Used only when image is supplied; never returned.
+       * @example {"auths":{"https://index.docker.io/v1/":{"auth":"YjEwLXJldmlldzpkZW1vLW5vdC1hLXZhbGlkLXJlZ2lzdHJ5LXRva2Vu"}}}
+       */
+      docker_config?: string;
+    };
+    /**
+     * @description Accepted image push. Acceptance does not imply readiness; poll GET /sandboxes/images/{image_name} until status is BUILT or FAILED.
+     * @example {
+     *       "name": "base-image",
+     *       "status": "BUILDING",
+     *       "image": "b10/base-image:latest"
+     *     }
+     */
+    PushSandboxImageResponse: {
+      /**
+       * @description Target image repository name.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Image processing status. Only BUILT images are ready to use.
+       * @example BUILDING
+       */
+      status: components["schemas"]["SandboxImageStatus"];
+      /**
+       * Format: uri
+       * @description Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. The uploaded ZIP archive must not exceed 5 GB. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.
+       * @example https://uploads.b10.run/images/base-image/20260916212658/source.zip?expires=2026-09-16T22%3A26%3A58Z&signature=demo-not-a-valid-upload-signature
+       */
+      upload_url?: string;
+      /**
+       * @description Registered image reference including its tag, when available. Tags are assigned by the service; GET /sandboxes/images/{image_name} returns the available tags once processing completes.
+       * @example b10/base-image:latest
+       */
+      image?: string;
+    };
+    /** @description Volume attachment suggested by a built-in image. */
+    SandboxLibraryImageVolume: {
+      /**
+       * @description Volume name, or an internal identifier for ephemeral volumes.
+       * @example scratch
+       */
+      name: string;
+      /**
+       * @description Absolute filesystem path where the volume is mounted.
+       * @example /mnt/data
+       */
+      mount_path: string;
+      /**
+       * @description Volume type, persistent when empty.
+       * @example ephemeral
+       */
+      type?: string;
+      /**
+       * @description Storage capacity in megabytes for ephemeral volumes.
+       * @example 10240
+       */
+      size_mb?: number;
+      /**
+       * @description Whether the volume is mounted read-only.
+       * @example false
+       */
+      read_only?: boolean;
+    };
+    /** @description Optional settings suggested when creating a sandbox from this image. */
+    SandboxLibraryImageCreationOptions: {
+      /** @description Kernel selection arguments. */
+      extra_args?: {
+        [key: string]: string;
+      };
+      /** @description Volume attachments. */
+      volumes?: components["schemas"]["SandboxLibraryImageVolume"][];
+    };
+    /** @description Built-in sandbox image usable directly as a sandbox image. */
+    SandboxLibraryImage: {
+      /**
+       * @description Stable identifier of the built-in image.
+       * @example base-image
+       */
+      name: string;
+      /**
+       * @description Human-readable name.
+       * @example Base Image
+       */
+      display_name?: string;
+      /**
+       * @description Short description.
+       * @example A minimal sandbox environment with the sandbox execution API.
+       */
+      description?: string;
+      /** @description Detailed description. */
+      long_description?: string;
+      /**
+       * @description Image reference including its tag, usable as the image of a sandbox.
+       * @example baseten/base-image:latest
+       */
+      image: string;
+      /**
+       * @description Recommended memory allocation in megabytes.
+       * @example 4096
+       */
+      memory?: number;
+      ports?: components["schemas"]["SandboxPorts"];
+      /** @description Categories of the image. */
+      categories?: string[];
+      /** @description Tags of the image. */
+      tags?: string[];
+      /** @description Documentation URL. */
+      url?: string;
+      /** @description Icon URL. */
+      icon?: string;
+      /** @description Light-mode icon URL. */
+      icon_light?: string;
+      /** @description Dark-mode icon URL. */
+      icon_dark?: string;
+      /**
+       * @description Whether the image requires an enterprise plan.
+       * @example false
+       */
+      enterprise?: boolean;
+      /**
+       * @description Whether the image is hidden. Always false in listings.
+       * @example false
+       */
+      hidden?: boolean;
+      /**
+       * @description Whether the image is not yet available. Always false in listings.
+       * @example false
+       */
+      coming_soon?: boolean;
+      creation_options?: components["schemas"]["SandboxLibraryImageCreationOptions"];
+    };
+    /** @description Built-in sandbox images. */
+    ListSandboxLibraryImagesResponse: {
+      /** @description Built-in images. */
+      items: components["schemas"]["SandboxLibraryImage"][];
+    };
+    /**
+     * @description Result of cleaning up unused sandbox images.
+     * @example {
+     *       "deleted": 3,
+     *       "message": "Removed 3 unused image versions. Image versions used by active sandboxes were retained."
+     *     }
+     */
+    CleanupSandboxImagesResponse: {
+      /**
+       * @description Number of image versions removed.
+       * @example 3
+       */
+      deleted: number;
+      /**
+       * @description Human-readable cleanup result.
+       * @example Removed 3 unused image versions. Image versions used by active sandboxes were retained.
+       */
+      message: string;
+    };
+    GetVolumesParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9695,7 +13201,7 @@ export type components = {
        */
       namespace: string;
     };
-    GetVolumesNamespacesRequest: {
+    GetVolumesNamespacesParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9707,21 +13213,38 @@ export type components = {
        */
       limit?: number;
     };
-    GetVolumesVersionsRequest: {
+    GetVolumesSyncsParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Ref
+       * @description Exact destination reference to match.
+       */
+      ref?: string | null;
+    };
+    GetVolumesVersionsParams: {
       /**
        * Include Tombstoned
-       * @description Whether to include deleted versions. A deleted version carries a TOMBSTONED lifecycle and stays restorable until its recovery deadline passes.
+       * @description Whether to include deleted and expired versions. Such a version carries a TOMBSTONED lifecycle and stays restorable until its recovery deadline passes.
        */
       include_tombstoned?: boolean;
     };
-    GetTeamsRequest: {
+    GetTeamsParams: {
       /**
        * Name
        * @description When set, returns only the team with this exact name, if any.
        */
       name?: string | null;
     };
-    GetAuditLogsRequest: {
+    GetAuditLogsParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9780,21 +13303,21 @@ export type components = {
        */
       end_epoch_millis?: number | null;
     };
-    GetModelsRequest: {
+    GetModelsParams: {
       /**
        * Name
        * @description When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.
        */
       name?: string | null;
     };
-    GetTeamsModelsRequest: {
+    GetTeamsModelsParams: {
       /**
        * Name
        * @description When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.
        */
       name?: string | null;
     };
-    GetModelsAuditLogsRequest: {
+    GetModelsAuditLogsParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -9853,18 +13376,18 @@ export type components = {
        */
       end_epoch_millis?: number | null;
     };
-    GetModelsDeploymentsRequest: {
+    GetModelsDeploymentsParams: {
       /**
        * Name
        * @description When set, returns only the deployment with this exact name, if any.
        */
       name?: string | null;
     };
-    GetModelsDeploymentsConfigRequest: {
+    GetModelsDeploymentsConfigParams: {
       /** @description 'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated. */
       output_format?: components["schemas"]["DeploymentConfigOutputFormat"];
     };
-    GetModelsDeploymentsLogsRequest: {
+    GetModelsDeploymentsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -9915,7 +13438,7 @@ export type components = {
        */
       excludes?: string[];
     };
-    GetModelsDeploymentsMetricsRequest: {
+    GetModelsDeploymentsMetricsParams: {
       /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
       mode?: components["schemas"]["ModelMetricMode"];
       /**
@@ -9934,7 +13457,7 @@ export type components = {
        */
       metrics?: string[];
     };
-    GetModelsEnvironmentsLogsRequest: {
+    GetModelsEnvironmentsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -9985,7 +13508,7 @@ export type components = {
        */
       excludes?: string[];
     };
-    GetModelsEnvironmentsMetricsRequest: {
+    GetModelsEnvironmentsMetricsParams: {
       /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
       mode?: components["schemas"]["ModelMetricMode"];
       /**
@@ -10004,7 +13527,7 @@ export type components = {
        */
       metrics?: string[];
     };
-    GetChainsAuditLogsRequest: {
+    GetChainsAuditLogsParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10063,7 +13586,7 @@ export type components = {
        */
       end_epoch_millis?: number | null;
     };
-    GetChainsDeploymentsChainletsLogsRequest: {
+    GetChainsDeploymentsChainletsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -10114,7 +13637,7 @@ export type components = {
        */
       excludes?: string[];
     };
-    GetTrainingProjectsJobsLogsRequest: {
+    GetTrainingProjectsJobsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -10135,7 +13658,7 @@ export type components = {
       /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
       min_level?: components["schemas"]["LogLevel"] | null;
     };
-    GetTrainingProjectsJobsMetricsRequest: {
+    GetTrainingProjectsJobsMetricsParams: {
       /**
        * End Epoch Millis
        * @description Epoch millis timestamp to end fetching metrics
@@ -10152,7 +13675,7 @@ export type components = {
        */
       step_seconds?: number | null;
     };
-    GetTrainingProjectsJobsCheckpointFilesRequest: {
+    GetTrainingProjectsJobsCheckpointFilesParams: {
       /**
        * Page Size
        * @description Max files per page (default 1000).
@@ -10164,7 +13687,26 @@ export type components = {
        */
       page_token?: number;
     };
-    GetLoopsRunsRequest: {
+    GetLoopsCapabilitiesParams: {
+      /**
+       * Model
+       * @description Restrict the response to one model, identified by its HuggingFace repo id. A supported model comes back with its 'enabled' flag and, when false, its 'enablement_details'. An empty list means Baseten does not support that model. Omit to list every supported model.
+       * @example Qwen/Qwen3-8B
+       */
+      model?: string | null;
+      /**
+       * @description What the caller intends to run. Defaults to 'rl', the stricter of the two: an RL run needs both a trainer and a sampler, so anything enabled for 'rl' is also enabled for 'sft'.
+       * @example rl
+       */
+      use_case?: components["schemas"]["LoopsUseCase"];
+      /**
+       * Max Seq Len
+       * @description The sequence length the caller intends to train at — the same value they would pass as 'max_seq_len' when creating the run. Models that cannot serve it are reported as not enabled rather than returned with a ceiling the caller cannot use. Omit for the model's highest enabled sequence length.
+       * @example 32768
+       */
+      max_seq_len?: number | null;
+    };
+    GetLoopsRunsParams: {
       /**
        * Run Id
        * @description Filter by run ID.
@@ -10184,7 +13726,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetLoopsSamplersRequest: {
+    GetLoopsSamplersParams: {
       /**
        * Scope
        * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
@@ -10192,7 +13734,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetLoopsCheckpointsRequest: {
+    GetLoopsCheckpointsParams: {
       /**
        * Run Id
        * @description Filter by run ID. Returns all checkpoints saved by the run.
@@ -10212,7 +13754,7 @@ export type components = {
        */
       checkpoint_path?: string | null;
     };
-    GetLoopsCheckpointsFilesRequest: {
+    GetLoopsCheckpointsFilesParams: {
       /**
        * Page Size
        * @description Max files per page (default 1000).
@@ -10224,7 +13766,7 @@ export type components = {
        */
       page_token?: number;
     };
-    GetLoopsDeploymentsRequest: {
+    GetLoopsDeploymentsParams: {
       /**
        * Scope
        * @description Defaults to the caller's own deployments; pass 'org' to list every deployment in the caller's organization.
@@ -10232,7 +13774,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetLoopsDeploymentsDebugArchiveFilesRequest: {
+    GetLoopsDeploymentsDebugArchiveFilesParams: {
       /**
        * Page Size
        * @description Max files per page (default and maximum 1000).
@@ -10244,7 +13786,7 @@ export type components = {
        */
       page_token?: string | null;
     };
-    GetLoopsDeploymentsLogsRequest: {
+    GetLoopsDeploymentsLogsParams: {
       /**
        * Start Epoch Millis
        * @description Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.
@@ -10265,7 +13807,7 @@ export type components = {
       /** @description Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level. */
       min_level?: components["schemas"]["LogLevel"] | null;
     };
-    GetTeamsLoopsRunsRequest: {
+    GetTeamsLoopsRunsParams: {
       /**
        * Run Id
        * @description Filter by run ID.
@@ -10285,7 +13827,7 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetTeamsLoopsSamplersRequest: {
+    GetTeamsLoopsSamplersParams: {
       /**
        * Scope
        * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
@@ -10293,7 +13835,16 @@ export type components = {
        */
       scope?: string | null;
     };
-    GetModelApisRequest: {
+    GetApiKeysParams: {
+      /** @description Filter by API key type */
+      type?: components["schemas"]["APIKeyCategory"] | null;
+      /**
+       * Created By Me
+       * @description Return only keys created by the authenticated user
+       */
+      created_by_me?: boolean;
+    };
+    GetModelApisParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10310,7 +13861,7 @@ export type components = {
        */
       added_only?: boolean;
     };
-    GetModelApisUsageRequest: {
+    GetModelApisUsageParams: {
       /**
        * Start Time
        * @description Start of the query range (ISO 8601, UTC), inclusive. Snapped down to the start of its bucket. Required on the first page, and ignored when you pass a cursor.
@@ -10354,7 +13905,7 @@ export type components = {
        */
       cursor?: string | null;
     };
-    GetBillingModelApisRequest: {
+    GetBillingModelApisParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10401,7 +13952,7 @@ export type components = {
        */
       service_tiers?: string[];
     };
-    GetBillingUsageSummaryRequest: {
+    GetBillingUsageSummaryParams: {
       /**
        * Start Date
        * Format: date-time
@@ -10415,7 +13966,20 @@ export type components = {
        */
       end_date: string;
     };
-    GetUsersRequest: {
+    GetBillingToolCallUsageParams: {
+      /**
+       * Start Date
+       * Format: date
+       * @description Inclusive UTC calendar day at the start of the query range.
+       */
+      start_date: string;
+      /**
+       * End Date
+       * @description Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included. The date range cannot exceed 90 days.
+       */
+      end_date?: string | null;
+    };
+    GetUsersParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -10432,7 +13996,7 @@ export type components = {
        */
       email?: string | null;
     };
-    GetGatewayEventsRequest: {
+    GetGatewayEventsParams: {
       /**
        * Start Time
        * @description Inclusive start (ISO 8601, UTC). Required without a cursor.
@@ -10464,9 +14028,387 @@ export type components = {
        */
       cursor?: string | null;
     };
+    GetExploreMetadataParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Provider
+       * @description Filter to a provider by slug prefix, e.g. 'anthropic'. Preserved by the cursor; if repeated, must match the original filter.
+       */
+      provider?: string | null;
+      /**
+       * Q
+       * @description Case-insensitive substring search over metadata slugs. Preserved by the cursor; if repeated, must match the original filter.
+       */
+      q?: string | null;
+    };
+    GetRoutesParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Team Id
+       * @description Identifier of the team whose routes to list.
+       */
+      team_id?: string | null;
+      /**
+       * Name
+       * @description Filter by exact route name. Preserved by the cursor; if repeated, must match the original filter.
+       */
+      name?: string | null;
+    };
+    GetRoutesUsageParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Number of daily buckets to return. Defaults to 7; maximum 31.
+       */
+      limit?: number;
+      /**
+       * Start Date
+       * @description Inclusive UTC calendar day at the start of the query range. Defaults to the previous UTC date, and is ignored when you pass a cursor.
+       */
+      start_date?: string | null;
+      /**
+       * End Date
+       * @description Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included.
+       */
+      end_date?: string | null;
+      /**
+       * Group By
+       * @description Dimensions to break usage down by, repeated once per dimension: USER, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.
+       */
+      group_by?: components["schemas"]["RouteUsageDimension"][];
+      /**
+       * User Ids
+       * @description Return only usage from Routes keys created by these user IDs, repeated once per ID.
+       */
+      user_ids?: string[];
+      /**
+       * Models
+       * @description Return only usage for these exact model names, repeated once per model.
+       */
+      models?: string[];
+      /**
+       * Providers
+       * @description Return only usage for these providers, repeated once per provider.
+       */
+      providers?: components["schemas"]["RouteProvider"][];
+    };
+    GetRoutesConnectionsParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Team Id
+       * @description Identifier of the team whose connections to list.
+       */
+      team_id?: string | null;
+    };
+    GetSandboxMetricsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      /** @enum {integer} */
+      interval_seconds: 10 | 30 | 60 | 300 | 900 | 3600;
+    };
+    GetSandboxLogsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      limit?: number;
+      /** @description Opaque next_cursor from the previous page. Omit for the first page. */
+      cursor?: string;
+    };
+    ListSandboxesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+      /**
+       * @description Search indexed sandbox names and labels. Search is applied before pagination.
+       * @example api-review
+       */
+      q?: string;
+      /**
+       * @description Deployment statuses. Repeat the query parameter for each status, for example status=DEPLOYED&status=FAILED. Unknown values are rejected. Cannot be combined with external_id.
+       * @example [
+       *       "DEPLOYED",
+       *       "FAILED"
+       *     ]
+       */
+      status?: string[];
+      /**
+       * @description Filter by a caller-owned external identifier. Cannot be combined with status.
+       * @example api-review-20260916-001
+       */
+      external_id?: string;
+    };
+    CreateSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    GetSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /** @description Reveal environment variable values for workspace administrators. Defaults to false. Callers without the admin role receive masked values even when true. */
+      show_secrets?: boolean;
+    };
+    UpdateSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    DeleteSandboxParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    ListImagesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+      /** @description Sort by repository name or creation time: name:asc, name:desc, createdAt:asc, or createdAt:desc. Keep the same sort when following a cursor. */
+      sort?: string;
+      /** @description Case-sensitive repository name prefix. Search is applied before pagination. */
+      q?: string;
+    };
+    PushImageParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    CleanupImagesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    GetImageParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    DeleteImageParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    GetImageBuildLogsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * Format: date-time
+       * @description Inclusive RFC 3339 start time. Defaults to 24 hours before end_time.
+       */
+      start_time?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 end time. Defaults to the current time.
+       */
+      end_time?: string;
+      /** @description Maximum number of log entries to return. */
+      limit?: number;
+      /** @description Number of log entries to skip. Narrow the time range beyond 10000 entries. */
+      offset?: number;
+    };
+    ListImageTagsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+      /** @description Sort by tag name: name:asc or name:desc. Keep the same sort when following a cursor. */
+      sort?: string;
+      /** @description Case-sensitive tag name prefix. Cannot be combined with name. Forces ascending name order. */
+      q?: string;
+      /** @description Exact tag name. Cannot be combined with q. Forces ascending name order. */
+      name?: string;
+    };
+    DeleteImageTagParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
   };
-  responses: never;
+  responses: {
+    /** @description Invalid request. Returns a JSON error with code, message, and optional details. */
+    SandboxError400: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "INVALID_REQUEST",
+         *       "message": "One or more request parameters are invalid.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Missing or invalid authentication. Returns a JSON error with code, message, and optional details. */
+    SandboxError401: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "UNAUTHORIZED",
+         *       "message": "Provide a valid authentication token in the Authorization header.",
+         *       "details": {
+         *         "header": "Authorization"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Insufficient permissions. Returns a JSON error with code, message, and optional details. */
+    SandboxError403: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "FORBIDDEN",
+         *       "message": "This authentication token does not grant permission to perform this operation.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Resource not found. Returns a JSON error with code, message, and optional details. */
+    SandboxError404: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "NOT_FOUND",
+         *       "message": "The requested resource was not found.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Resource is currently in use or conflicts with the requested operation. Returns a JSON error with code, message, and optional details. */
+    SandboxError409: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "RESOURCE_IN_USE",
+         *       "message": "The resource is currently in use or conflicts with the requested operation.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Request limit exceeded. Returns a JSON error with code, message, and optional details. */
+    SandboxError429: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "RATE_LIMITED",
+         *       "message": "Too many requests. Try again in 30 seconds.",
+         *       "details": {
+         *         "retry_after_seconds": 30
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+    /** @description Internal server error. Returns a JSON error with code, message, and optional details. */
+    SandboxError500: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "code": "INTERNAL_ERROR",
+         *       "message": "The request could not be completed. Try again later.",
+         *       "details": {
+         *         "request_id": "a3b7c4d2-91e6-4f08-9b5a-2c6d7e8f1043"
+         *       }
+         *     }
+         */
+        "application/json": unknown;
+      };
+    };
+  };
   parameters: {
+    volume_sync_id: string;
     volume_namespace: string;
     volume_name: string;
     volume_version: string;
@@ -10490,8 +14432,24 @@ export type components = {
     user_defined_listing_id: string;
     version_tag: string;
     user_id: string;
+    connection_id: string;
+    route_id: string;
     endpoint_id: string;
     group_id: string;
+    /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+    TeamId: string;
+    /** @description Optional team ID. Must match the team_id query parameter when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+    TeamIdHeader: string;
+    /** @description Immutable sandbox name returned by creation. */
+    SandboxName: string;
+    /** @description Image repository name. */
+    SandboxImageName: string;
+    /** @description Image tag name. */
+    TagName: string;
+    /** @description Opaque cursor from the previous page; omit for the first page. */
+    Cursor: string;
+    /** @description Maximum number of items to return. */
+    Limit: number;
   };
   requestBodies: never;
   headers: never;
@@ -10534,6 +14492,26 @@ export type VolumeTokenScope = components["schemas"]["VolumeTokenScope"];
 export type CreateVolumeTokenRequest = components["schemas"]["CreateVolumeTokenRequest"];
 export type CreateVolumeTokenResponse = components["schemas"]["CreateVolumeTokenResponse"];
 export type ListVolumeNamespacesResponse = components["schemas"]["ListVolumeNamespacesResponse"];
+export type VolumeSyncAuthenticationAwsAssumeRole =
+  components["schemas"]["VolumeSyncAuthenticationAWSAssumeRole"];
+export type VolumeSyncAuthenticationAwsoidc =
+  components["schemas"]["VolumeSyncAuthenticationAWSOIDC"];
+export type VolumeSyncAuthenticationGcpoidc =
+  components["schemas"]["VolumeSyncAuthenticationGCPOIDC"];
+export type VolumeSyncDestination = components["schemas"]["VolumeSyncDestination"];
+export type VolumeSyncError = components["schemas"]["VolumeSyncError"];
+export type VolumeSyncSourceAzure = components["schemas"]["VolumeSyncSourceAzure"];
+export type VolumeSyncSourceBasetenTraining =
+  components["schemas"]["VolumeSyncSourceBasetenTraining"];
+export type VolumeSyncSourceCoreWeave = components["schemas"]["VolumeSyncSourceCoreWeave"];
+export type VolumeSyncSourceGcs = components["schemas"]["VolumeSyncSourceGCS"];
+export type VolumeSyncSourceHuggingFace = components["schemas"]["VolumeSyncSourceHuggingFace"];
+export type VolumeSyncSourceR2 = components["schemas"]["VolumeSyncSourceR2"];
+export type VolumeSyncSourceS3 = components["schemas"]["VolumeSyncSourceS3"];
+export type VolumeSyncStatus = components["schemas"]["VolumeSyncStatus"];
+export type VolumeSync = components["schemas"]["VolumeSync"];
+export type VolumeSyncs = components["schemas"]["VolumeSyncs"];
+export type CreateVolumeSyncRequest = components["schemas"]["CreateVolumeSyncRequest"];
 export type DeleteVolumeRequest = components["schemas"]["DeleteVolumeRequest"];
 export type DeleteVolumeResponse = components["schemas"]["DeleteVolumeResponse"];
 export type VolumeVersion = components["schemas"]["VolumeVersion"];
@@ -10543,6 +14521,9 @@ export type DeleteVolumeVersionResponse = components["schemas"]["DeleteVolumeVer
 export type VolumeVersionDetail = components["schemas"]["VolumeVersionDetail"];
 export type RestoreVolumeVersionRequest = components["schemas"]["RestoreVolumeVersionRequest"];
 export type RestoreVolumeVersionResponse = components["schemas"]["RestoreVolumeVersionResponse"];
+export type TokenScope = components["schemas"]["TokenScope"];
+export type CreateTokenRequest = components["schemas"]["CreateTokenRequest"];
+export type Token = components["schemas"]["Token"];
 export type Secret = components["schemas"]["Secret"];
 export type Secrets = components["schemas"]["Secrets"];
 export type UpsertSecretRequest = components["schemas"]["UpsertSecretRequest"];
@@ -10638,6 +14619,13 @@ export type AuditLogEventModelDeploymentRetried =
   components["schemas"]["AuditLogEventModelDeploymentRetried"];
 export type AuditLogEventModelPromotionControlAction =
   components["schemas"]["AuditLogEventModelPromotionControlAction"];
+export type AuditLogEventModelRenamed = components["schemas"]["AuditLogEventModelRenamed"];
+export type AuditLogEventProviderConnectionCreated =
+  components["schemas"]["AuditLogEventProviderConnectionCreated"];
+export type AuditLogEventProviderConnectionDeleted =
+  components["schemas"]["AuditLogEventProviderConnectionDeleted"];
+export type AuditLogEventProviderConnectionUpdated =
+  components["schemas"]["AuditLogEventProviderConnectionUpdated"];
 export type AuditLogEventReplicaTerminated =
   components["schemas"]["AuditLogEventReplicaTerminated"];
 export type AuditLogEventRequireGroupBasedAdminsEnabled =
@@ -10683,6 +14671,7 @@ export type RequestBackpressurePolicy = components["schemas"]["RequestBackpressu
 export type RequestBackpressureSettings = components["schemas"]["RequestBackpressureSettings"];
 export type CreatedModelDeployment = components["schemas"]["CreatedModelDeployment"];
 export type ModelTombstone = components["schemas"]["ModelTombstone"];
+export type UpdateModelRequest = components["schemas"]["UpdateModelRequest"];
 export type Deployments = components["schemas"]["Deployments"];
 export type DeploymentArchiveSource = components["schemas"]["DeploymentArchiveSource"];
 export type CreateModelDeploymentRequest = components["schemas"]["CreateModelDeploymentRequest"];
@@ -10851,8 +14840,10 @@ export type GetTrainingProjectResponse = components["schemas"]["GetTrainingProje
 export type OrderBy = components["schemas"]["OrderBy"];
 export type SearchTrainingJobsRequest = components["schemas"]["SearchTrainingJobsRequest"];
 export type SearchTrainingJobsResponse = components["schemas"]["SearchTrainingJobsResponse"];
+export type EnablementDetails = components["schemas"]["EnablementDetails"];
 export type SupportedModel = components["schemas"]["SupportedModel"];
 export type GetLoopsCapabilitiesResponse = components["schemas"]["GetLoopsCapabilitiesResponse"];
+export type LoopsUseCase = components["schemas"]["LoopsUseCase"];
 export type LoopsSession = components["schemas"]["LoopsSession"];
 export type CreateLoopsSessionResponse = components["schemas"]["CreateLoopsSessionResponse"];
 export type GetLoopsSessionResponse = components["schemas"]["GetLoopsSessionResponse"];
@@ -10866,9 +14857,12 @@ export type CreateLoopsRunRequest = components["schemas"]["CreateLoopsRunRequest
 export type CreateLoopsRunResponse = components["schemas"]["CreateLoopsRunResponse"];
 export type DeactivateLoopsRunResponse = components["schemas"]["DeactivateLoopsRunResponse"];
 export type GetLoopsRunResponse = components["schemas"]["GetLoopsRunResponse"];
+export type CreateLoopsTrainerRequest = components["schemas"]["CreateLoopsTrainerRequest"];
 export type ListLoopsSamplersResponse = components["schemas"]["ListLoopsSamplersResponse"];
 export type CreateLoopsSamplerRequest = components["schemas"]["CreateLoopsSamplerRequest"];
 export type CreateLoopsSamplerResponse = components["schemas"]["CreateLoopsSamplerResponse"];
+export type DeactivateLoopsSamplerResponse =
+  components["schemas"]["DeactivateLoopsSamplerResponse"];
 export type GetLoopsSamplerResponse = components["schemas"]["GetLoopsSamplerResponse"];
 export type LoopsCheckpoint = components["schemas"]["LoopsCheckpoint"];
 export type ListLoopsCheckpointsResponse = components["schemas"]["ListLoopsCheckpointsResponse"];
@@ -10876,7 +14870,12 @@ export type ValidateLoopsCheckpointRequest =
   components["schemas"]["ValidateLoopsCheckpointRequest"];
 export type ValidateLoopsCheckpointResponse =
   components["schemas"]["ValidateLoopsCheckpointResponse"];
+export type DeployLoopsCheckpointRequest = components["schemas"]["DeployLoopsCheckpointRequest"];
+export type DeployLoopsCheckpointResponse = components["schemas"]["DeployLoopsCheckpointResponse"];
 export type LoopsCheckpointFilesResponse = components["schemas"]["LoopsCheckpointFilesResponse"];
+export type LoopsCheckpointS3Source = components["schemas"]["LoopsCheckpointS3Source"];
+export type LoopsCheckpointVolumeSource = components["schemas"]["LoopsCheckpointVolumeSource"];
+export type LoopsCheckpointSourceResponse = components["schemas"]["LoopsCheckpointSourceResponse"];
 export type LoopsDeploymentStatus = components["schemas"]["LoopsDeploymentStatus"];
 export type LoopsDeployment = components["schemas"]["LoopsDeployment"];
 export type ListLoopsDeploymentsResponse = components["schemas"]["ListLoopsDeploymentsResponse"];
@@ -10961,6 +14960,8 @@ export type ModelApisUsage = components["schemas"]["ModelApisUsage"];
 export type TrainingItem = components["schemas"]["TrainingItem"];
 export type TrainingUsage = components["schemas"]["TrainingUsage"];
 export type UsageSummary = components["schemas"]["UsageSummary"];
+export type ToolCallUsageBucket = components["schemas"]["ToolCallUsageBucket"];
+export type ToolCallUsageResponse = components["schemas"]["ToolCallUsageResponse"];
 export type UserInfo = components["schemas"]["UserInfo"];
 export type UsersResponse = components["schemas"]["UsersResponse"];
 export type AwsAssumeRole = components["schemas"]["AwsAssumeRole"];
@@ -10968,6 +14969,74 @@ export type OrganizationInfo = components["schemas"]["OrganizationInfo"];
 export type GatewayEventTokens = components["schemas"]["GatewayEventTokens"];
 export type GatewayEvent = components["schemas"]["GatewayEvent"];
 export type GatewayEventsResponse = components["schemas"]["GatewayEventsResponse"];
+export type ExploreCost = components["schemas"]["ExploreCost"];
+export type ExploreCostValues = components["schemas"]["ExploreCostValues"];
+export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAPIFormats"];
+export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
+export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
+export type RouteRef = components["schemas"]["RouteRef"];
+export type RouteTargetAnthropic = components["schemas"]["RouteTargetAnthropic"];
+export type RouteTargetBasetenModelApi = components["schemas"]["RouteTargetBasetenModelAPI"];
+export type RouteTargetClassifierModelBased =
+  components["schemas"]["RouteTargetClassifierModelBased"];
+export type RouteTargetOpenAi = components["schemas"]["RouteTargetOpenAI"];
+export type RouteTargetXai = components["schemas"]["RouteTargetXAI"];
+export type Route = components["schemas"]["Route"];
+export type RoutesResponse = components["schemas"]["RoutesResponse"];
+export type RouteTargetConfigAnthropic = components["schemas"]["RouteTargetConfigAnthropic"];
+export type RouteTargetConfigBasetenModelApi =
+  components["schemas"]["RouteTargetConfigBasetenModelAPI"];
+export type RouteTargetConfigClassifierModelBased =
+  components["schemas"]["RouteTargetConfigClassifierModelBased"];
+export type RouteTargetConfigOpenAi = components["schemas"]["RouteTargetConfigOpenAI"];
+export type RouteTargetConfigXai = components["schemas"]["RouteTargetConfigXAI"];
+export type CreateRouteRequest = components["schemas"]["CreateRouteRequest"];
+export type RouteProvider = components["schemas"]["RouteProvider"];
+export type RoutesUsageBucket = components["schemas"]["RoutesUsageBucket"];
+export type RoutesUsageResult = components["schemas"]["RoutesUsageResult"];
+export type RoutesUsageResponse = components["schemas"]["RoutesUsageResponse"];
+export type RouteUsageDimension = components["schemas"]["RouteUsageDimension"];
+export type RouteEffectiveSpendLimit = components["schemas"]["RouteEffectiveSpendLimit"];
+export type RouteSettingSource = components["schemas"]["RouteSettingSource"];
+export type RouteSpendLimitSetting = components["schemas"]["RouteSpendLimitSetting"];
+export type RouteSpendLimitTeamDefault = components["schemas"]["RouteSpendLimitTeamDefault"];
+export type RouteUserSettings = components["schemas"]["RouteUserSettings"];
+export type UpdateRouteSpendLimitSetting = components["schemas"]["UpdateRouteSpendLimitSetting"];
+export type UpdateRouteUserSettingsRequest =
+  components["schemas"]["UpdateRouteUserSettingsRequest"];
+export type BackgroundHarnessDefaults = components["schemas"]["BackgroundHarnessDefaults"];
+export type PrimaryHarnessDefaults = components["schemas"]["PrimaryHarnessDefaults"];
+export type RouteHarnessDefaults = components["schemas"]["RouteHarnessDefaults"];
+export type RouteHarnessModel = components["schemas"]["RouteHarnessModel"];
+export type RouteTeamSpendLimitSetting = components["schemas"]["RouteTeamSpendLimitSetting"];
+export type RouteTeamSettings = components["schemas"]["RouteTeamSettings"];
+export type UpdateBackgroundHarnessModels = components["schemas"]["UpdateBackgroundHarnessModels"];
+export type UpdatePrimaryHarnessModels = components["schemas"]["UpdatePrimaryHarnessModels"];
+export type UpdateRouteHarnessDefaults = components["schemas"]["UpdateRouteHarnessDefaults"];
+export type UpdateRouteTeamSpendLimitSetting =
+  components["schemas"]["UpdateRouteTeamSpendLimitSetting"];
+export type UpdateRouteTeamSettingsRequest =
+  components["schemas"]["UpdateRouteTeamSettingsRequest"];
+export type RouteConnectionAnthropic = components["schemas"]["RouteConnectionAnthropic"];
+export type RouteConnectionOpenAi = components["schemas"]["RouteConnectionOpenAI"];
+export type RouteConnection = components["schemas"]["RouteConnection"];
+export type RouteConnectionXai = components["schemas"]["RouteConnectionXAI"];
+export type RouteConnectionsResponse = components["schemas"]["RouteConnectionsResponse"];
+export type RouteConnectionConfigAnthropic =
+  components["schemas"]["RouteConnectionConfigAnthropic"];
+export type RouteConnectionConfigOpenAi = components["schemas"]["RouteConnectionConfigOpenAI"];
+export type RouteConnectionConfigXai = components["schemas"]["RouteConnectionConfigXAI"];
+export type CreateRouteConnectionRequest = components["schemas"]["CreateRouteConnectionRequest"];
+export type RouteConnectionTombstone = components["schemas"]["RouteConnectionTombstone"];
+export type UpdateRouteConnectionConfigAnthropic =
+  components["schemas"]["UpdateRouteConnectionConfigAnthropic"];
+export type UpdateRouteConnectionConfigOpenAi =
+  components["schemas"]["UpdateRouteConnectionConfigOpenAI"];
+export type UpdateRouteConnectionConfigXai =
+  components["schemas"]["UpdateRouteConnectionConfigXAI"];
+export type UpdateRouteConnectionRequest = components["schemas"]["UpdateRouteConnectionRequest"];
+export type RouteTombstone = components["schemas"]["RouteTombstone"];
+export type UpdateRouteRequest = components["schemas"]["UpdateRouteRequest"];
 export type EndpointTarget = components["schemas"]["EndpointTarget"];
 export type Endpoint = components["schemas"]["Endpoint"];
 export type SharedEndpointRegion = components["schemas"]["SharedEndpointRegion"];
@@ -10998,49 +15067,117 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
-export type GetVolumesRequest = components["schemas"]["GetVolumesRequest"];
-export type GetVolumesNamespacesRequest = components["schemas"]["GetVolumesNamespacesRequest"];
-export type GetVolumesVersionsRequest = components["schemas"]["GetVolumesVersionsRequest"];
-export type GetTeamsRequest = components["schemas"]["GetTeamsRequest"];
-export type GetAuditLogsRequest = components["schemas"]["GetAuditLogsRequest"];
-export type GetModelsRequest = components["schemas"]["GetModelsRequest"];
-export type GetTeamsModelsRequest = components["schemas"]["GetTeamsModelsRequest"];
-export type GetModelsAuditLogsRequest = components["schemas"]["GetModelsAuditLogsRequest"];
-export type GetModelsDeploymentsRequest = components["schemas"]["GetModelsDeploymentsRequest"];
-export type GetModelsDeploymentsConfigRequest =
-  components["schemas"]["GetModelsDeploymentsConfigRequest"];
-export type GetModelsDeploymentsLogsRequest =
-  components["schemas"]["GetModelsDeploymentsLogsRequest"];
-export type GetModelsDeploymentsMetricsRequest =
-  components["schemas"]["GetModelsDeploymentsMetricsRequest"];
-export type GetModelsEnvironmentsLogsRequest =
-  components["schemas"]["GetModelsEnvironmentsLogsRequest"];
-export type GetModelsEnvironmentsMetricsRequest =
-  components["schemas"]["GetModelsEnvironmentsMetricsRequest"];
-export type GetChainsAuditLogsRequest = components["schemas"]["GetChainsAuditLogsRequest"];
-export type GetChainsDeploymentsChainletsLogsRequest =
-  components["schemas"]["GetChainsDeploymentsChainletsLogsRequest"];
-export type GetTrainingProjectsJobsLogsRequest =
-  components["schemas"]["GetTrainingProjectsJobsLogsRequest"];
-export type GetTrainingProjectsJobsMetricsRequest =
-  components["schemas"]["GetTrainingProjectsJobsMetricsRequest"];
-export type GetTrainingProjectsJobsCheckpointFilesRequest =
-  components["schemas"]["GetTrainingProjectsJobsCheckpointFilesRequest"];
-export type GetLoopsRunsRequest = components["schemas"]["GetLoopsRunsRequest"];
-export type GetLoopsSamplersRequest = components["schemas"]["GetLoopsSamplersRequest"];
-export type GetLoopsCheckpointsRequest = components["schemas"]["GetLoopsCheckpointsRequest"];
-export type GetLoopsCheckpointsFilesRequest =
-  components["schemas"]["GetLoopsCheckpointsFilesRequest"];
-export type GetLoopsDeploymentsRequest = components["schemas"]["GetLoopsDeploymentsRequest"];
-export type GetLoopsDeploymentsDebugArchiveFilesRequest =
-  components["schemas"]["GetLoopsDeploymentsDebugArchiveFilesRequest"];
-export type GetLoopsDeploymentsLogsRequest =
-  components["schemas"]["GetLoopsDeploymentsLogsRequest"];
-export type GetTeamsLoopsRunsRequest = components["schemas"]["GetTeamsLoopsRunsRequest"];
-export type GetTeamsLoopsSamplersRequest = components["schemas"]["GetTeamsLoopsSamplersRequest"];
-export type GetModelApisRequest = components["schemas"]["GetModelApisRequest"];
-export type GetModelApisUsageRequest = components["schemas"]["GetModelApisUsageRequest"];
-export type GetBillingModelApisRequest = components["schemas"]["GetBillingModelApisRequest"];
-export type GetBillingUsageSummaryRequest = components["schemas"]["GetBillingUsageSummaryRequest"];
-export type GetUsersRequest = components["schemas"]["GetUsersRequest"];
-export type GetGatewayEventsRequest = components["schemas"]["GetGatewayEventsRequest"];
+export type GetSandboxConfigurationResponse =
+  components["schemas"]["GetSandboxConfigurationResponse"];
+export type SandboxRegion = components["schemas"]["SandboxRegion"];
+export type SandboxLogs = components["schemas"]["SandboxLogs"];
+export type SandboxLogEntry = components["schemas"]["SandboxLogEntry"];
+export type SandboxMetrics = components["schemas"]["SandboxMetrics"];
+export type SandboxMetricsPoint = components["schemas"]["SandboxMetricsPoint"];
+export type SandboxImageBuildLog = components["schemas"]["SandboxImageBuildLog"];
+export type SandboxImageBuildLogsResponse = components["schemas"]["SandboxImageBuildLogsResponse"];
+export type SandboxLifecycle = components["schemas"]["SandboxLifecycle"];
+export type SandboxExpirationPolicy = components["schemas"]["SandboxExpirationPolicy"];
+export type SandboxDuration = components["schemas"]["SandboxDuration"];
+export type SandboxTtlIdleExpirationPolicy =
+  components["schemas"]["SandboxTTLIdleExpirationPolicy"];
+export type SandboxTtlMaxAgeExpirationPolicy =
+  components["schemas"]["SandboxTTLMaxAgeExpirationPolicy"];
+export type SandboxDateExpirationPolicy = components["schemas"]["SandboxDateExpirationPolicy"];
+export type SandboxNetwork = components["schemas"]["SandboxNetwork"];
+export type SandboxProxyConfig = components["schemas"]["SandboxProxyConfig"];
+export type SandboxProxyTarget = components["schemas"]["SandboxProxyTarget"];
+export type SandboxEnv = components["schemas"]["SandboxEnv"];
+export type SandboxPorts = components["schemas"]["SandboxPorts"];
+export type SandboxPort = components["schemas"]["SandboxPort"];
+export type SandboxMetadataLabels = components["schemas"]["SandboxMetadataLabels"];
+export type SandboxConfiguration = components["schemas"]["SandboxConfiguration"];
+export type CreateSandboxRequest = components["schemas"]["CreateSandboxRequest"];
+export type UpdateSandboxRequest = components["schemas"]["UpdateSandboxRequest"];
+export type Sandbox = components["schemas"]["Sandbox"];
+export type SandboxStatus = components["schemas"]["SandboxStatus"];
+export type SandboxApiPagination = components["schemas"]["SandboxApiPagination"];
+export type ListSandboxesResponse = components["schemas"]["ListSandboxesResponse"];
+export type ListSandboxImagesResponse = components["schemas"]["ListSandboxImagesResponse"];
+export type ListSandboxImageTagsResponse = components["schemas"]["ListSandboxImageTagsResponse"];
+export type SandboxImageStatus = components["schemas"]["SandboxImageStatus"];
+export type SandboxImageTag = components["schemas"]["SandboxImageTag"];
+export type SandboxImageSummary = components["schemas"]["SandboxImageSummary"];
+export type SandboxImage = components["schemas"]["SandboxImage"];
+export type PushSandboxImageRequest = components["schemas"]["PushSandboxImageRequest"];
+export type PushSandboxImageResponse = components["schemas"]["PushSandboxImageResponse"];
+export type SandboxLibraryImageVolume = components["schemas"]["SandboxLibraryImageVolume"];
+export type SandboxLibraryImageCreationOptions =
+  components["schemas"]["SandboxLibraryImageCreationOptions"];
+export type SandboxLibraryImage = components["schemas"]["SandboxLibraryImage"];
+export type ListSandboxLibraryImagesResponse =
+  components["schemas"]["ListSandboxLibraryImagesResponse"];
+export type CleanupSandboxImagesResponse = components["schemas"]["CleanupSandboxImagesResponse"];
+export type GetVolumesParams = components["schemas"]["GetVolumesParams"];
+export type GetVolumesNamespacesParams = components["schemas"]["GetVolumesNamespacesParams"];
+export type GetVolumesSyncsParams = components["schemas"]["GetVolumesSyncsParams"];
+export type GetVolumesVersionsParams = components["schemas"]["GetVolumesVersionsParams"];
+export type GetTeamsParams = components["schemas"]["GetTeamsParams"];
+export type GetAuditLogsParams = components["schemas"]["GetAuditLogsParams"];
+export type GetModelsParams = components["schemas"]["GetModelsParams"];
+export type GetTeamsModelsParams = components["schemas"]["GetTeamsModelsParams"];
+export type GetModelsAuditLogsParams = components["schemas"]["GetModelsAuditLogsParams"];
+export type GetModelsDeploymentsParams = components["schemas"]["GetModelsDeploymentsParams"];
+export type GetModelsDeploymentsConfigParams =
+  components["schemas"]["GetModelsDeploymentsConfigParams"];
+export type GetModelsDeploymentsLogsParams =
+  components["schemas"]["GetModelsDeploymentsLogsParams"];
+export type GetModelsDeploymentsMetricsParams =
+  components["schemas"]["GetModelsDeploymentsMetricsParams"];
+export type GetModelsEnvironmentsLogsParams =
+  components["schemas"]["GetModelsEnvironmentsLogsParams"];
+export type GetModelsEnvironmentsMetricsParams =
+  components["schemas"]["GetModelsEnvironmentsMetricsParams"];
+export type GetChainsAuditLogsParams = components["schemas"]["GetChainsAuditLogsParams"];
+export type GetChainsDeploymentsChainletsLogsParams =
+  components["schemas"]["GetChainsDeploymentsChainletsLogsParams"];
+export type GetTrainingProjectsJobsLogsParams =
+  components["schemas"]["GetTrainingProjectsJobsLogsParams"];
+export type GetTrainingProjectsJobsMetricsParams =
+  components["schemas"]["GetTrainingProjectsJobsMetricsParams"];
+export type GetTrainingProjectsJobsCheckpointFilesParams =
+  components["schemas"]["GetTrainingProjectsJobsCheckpointFilesParams"];
+export type GetLoopsCapabilitiesParams = components["schemas"]["GetLoopsCapabilitiesParams"];
+export type GetLoopsRunsParams = components["schemas"]["GetLoopsRunsParams"];
+export type GetLoopsSamplersParams = components["schemas"]["GetLoopsSamplersParams"];
+export type GetLoopsCheckpointsParams = components["schemas"]["GetLoopsCheckpointsParams"];
+export type GetLoopsCheckpointsFilesParams =
+  components["schemas"]["GetLoopsCheckpointsFilesParams"];
+export type GetLoopsDeploymentsParams = components["schemas"]["GetLoopsDeploymentsParams"];
+export type GetLoopsDeploymentsDebugArchiveFilesParams =
+  components["schemas"]["GetLoopsDeploymentsDebugArchiveFilesParams"];
+export type GetLoopsDeploymentsLogsParams = components["schemas"]["GetLoopsDeploymentsLogsParams"];
+export type GetTeamsLoopsRunsParams = components["schemas"]["GetTeamsLoopsRunsParams"];
+export type GetTeamsLoopsSamplersParams = components["schemas"]["GetTeamsLoopsSamplersParams"];
+export type GetApiKeysParams = components["schemas"]["GetApiKeysParams"];
+export type GetModelApisParams = components["schemas"]["GetModelApisParams"];
+export type GetModelApisUsageParams = components["schemas"]["GetModelApisUsageParams"];
+export type GetBillingModelApisParams = components["schemas"]["GetBillingModelApisParams"];
+export type GetBillingUsageSummaryParams = components["schemas"]["GetBillingUsageSummaryParams"];
+export type GetBillingToolCallUsageParams = components["schemas"]["GetBillingToolCallUsageParams"];
+export type GetUsersParams = components["schemas"]["GetUsersParams"];
+export type GetGatewayEventsParams = components["schemas"]["GetGatewayEventsParams"];
+export type GetExploreMetadataParams = components["schemas"]["GetExploreMetadataParams"];
+export type GetRoutesParams = components["schemas"]["GetRoutesParams"];
+export type GetRoutesUsageParams = components["schemas"]["GetRoutesUsageParams"];
+export type GetRoutesConnectionsParams = components["schemas"]["GetRoutesConnectionsParams"];
+export type GetSandboxMetricsParams = components["schemas"]["GetSandboxMetricsParams"];
+export type GetSandboxLogsParams = components["schemas"]["GetSandboxLogsParams"];
+export type ListSandboxesParams = components["schemas"]["ListSandboxesParams"];
+export type CreateSandboxParams = components["schemas"]["CreateSandboxParams"];
+export type GetSandboxParams = components["schemas"]["GetSandboxParams"];
+export type UpdateSandboxParams = components["schemas"]["UpdateSandboxParams"];
+export type DeleteSandboxParams = components["schemas"]["DeleteSandboxParams"];
+export type ListImagesParams = components["schemas"]["ListImagesParams"];
+export type PushImageParams = components["schemas"]["PushImageParams"];
+export type CleanupImagesParams = components["schemas"]["CleanupImagesParams"];
+export type GetImageParams = components["schemas"]["GetImageParams"];
+export type DeleteImageParams = components["schemas"]["DeleteImageParams"];
+export type GetImageBuildLogsParams = components["schemas"]["GetImageBuildLogsParams"];
+export type ListImageTagsParams = components["schemas"]["ListImageTagsParams"];
+export type DeleteImageTagParams = components["schemas"]["DeleteImageTagParams"];
