@@ -58,7 +58,6 @@ function apiSandbox(name: string, extra: Record<string, unknown> = {}) {
     name,
     url: `https://sbx-${name}.b10.run`,
     status: "DEPLOYED",
-    enabled: true,
     created_at: "2026-09-16T21:26:58Z",
     ...extra,
   };
@@ -171,7 +170,7 @@ describe("SandboxClient", () => {
     for await (const _ of client.list()) {
       // Drained for the request only.
     }
-    await client.update({ name: "sb-1", enabled: false });
+    await client.update({ name: "sb-1", labels: {} });
     await client.delete({ name: "sb-1" });
     expect(server.requests.map((r) => r.query.get("team_id"))).toEqual([
       "team-1",
@@ -240,7 +239,6 @@ describe("SandboxClient", () => {
       image: "blaxel/base-image:latest",
       memory: 4096,
       region: "us-pdx-1",
-      enabled: true,
       envs: { PLAIN: { value: "a", secret: false }, HIDDEN: { value: "", secret: true } },
       labels: { team: "eng" },
       externalId: "ext-1",
@@ -436,39 +434,31 @@ describe("SandboxClient", () => {
   });
 
   it("updates with every field mapped and returns the record", async () => {
-    const server = fakeServer(() => apiSandbox("sb-1", { enabled: false }));
+    const server = fakeServer(() => apiSandbox("sb-1", { external_id: "ext-2" }));
     const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
     const info = await client.update({
       name: "sb-1",
-      enabled: false,
       lifecycle: {
         expirationPolicies: [{ type: "TTL_IDLE", afterMs: 1_800_000 }],
         terminatedRetentionMs: 300_000,
       },
-      region: "us-pdx-1",
       envs: { PLAIN: { value: "a" } },
-      image: "custom:2",
-      ports: [{ target: 8080 }],
       externalId: "ext-2",
       labels: { team: "infra" },
     });
     expect(server.requests[0]!.method).toBe("PATCH");
     expect(server.requests[0]!.path).toBe("/v1/sandboxes/instances/sb-1");
     expect(server.requests[0]!.body).toEqual({
-      enabled: false,
       lifecycle: {
         expiration_policies: [{ type: "TTL_IDLE", action: "DELETE", value: "1800000ms" }],
         terminated_retention: "300000ms",
       },
-      region: "us-pdx-1",
       envs: [{ name: "PLAIN", value: "a" }],
-      image: "custom:2",
-      ports: [{ target: 8080 }],
       external_id: "ext-2",
       labels: { team: "infra" },
     });
     expect(info.name).toBe("sb-1");
-    expect(info.enabled).toBe(false);
+    expect(info.externalId).toBe("ext-2");
   });
 
   it("updates only the fields that are set", async () => {
@@ -484,15 +474,15 @@ describe("SandboxClient", () => {
 
   it("fails an update the server rejects", async () => {
     const server = fakeServer(() =>
-      Response.json({ error: "BAD_REQUEST", message: "memory is immutable" }, { status: 400 }),
+      Response.json({ error: "BAD_REQUEST", message: "labels are invalid" }, { status: 400 }),
     );
     const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
-    const err = await client.update({ name: "sb-1", image: "x:1" }).catch((e: unknown) => e);
+    const err = await client.update({ name: "sb-1", labels: { "": "x" } }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(SandboxApiError);
     expect(err).toMatchObject({
       status: 400,
       code: "BAD_REQUEST",
-      message: "sandbox API error (HTTP 400) BAD_REQUEST: memory is immutable",
+      message: "sandbox API error (HTTP 400) BAD_REQUEST: labels are invalid",
     });
   });
 

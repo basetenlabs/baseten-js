@@ -292,6 +292,7 @@ describe("SandboxProcess", () => {
     const records = [
       `${JSON.stringify({ type: "stdout", data: "a\n\nb\n" })}\n`,
       `${JSON.stringify({ type: "stdout", data: "Continue? " })}\n`,
+      `${JSON.stringify({ type: "keepalive" })}\n`,
       `${JSON.stringify({ type: "stderr", data: "" })}\n`,
       `${JSON.stringify({ type: "result", data: result })}\n`,
     ].join("");
@@ -301,7 +302,7 @@ describe("SandboxProcess", () => {
     for await (const event of sandbox.process.execStream({ command: "echo hi" })) {
       events.push(event);
     }
-    expect(requests[0]!.headers.get("accept")).toBe("text/event-stream");
+    expect(requests[0]!.headers.get("accept")).toBe("application/x-ndjson");
     expect(jsonBody(requests[0]!)).toEqual({ command: "echo hi", waitForCompletion: true });
     expect(events).toHaveLength(4);
     expect(events[0]).toEqual({ type: "output", stream: "stdout", text: "a\n\nb\n" });
@@ -316,6 +317,19 @@ describe("SandboxProcess", () => {
     const events = sandbox.process.execStream({ command: "echo hi" });
     expect((await events.next()).value).toMatchObject({ type: "output" });
     await expect(events.next()).rejects.toThrow(/before reporting the process's exit/);
+  });
+
+  it("fails an exec stream on an error record, with its message", async () => {
+    const result = JSON.stringify(apiProcess({ status: "completed", exitCode: 0 }));
+    const { response } = streamed([
+      `${JSON.stringify({ type: "stdout", data: "hi" })}\n`,
+      `${JSON.stringify({ type: "error", data: "process vanished" })}\n`,
+      `${JSON.stringify({ type: "result", data: result })}\n`,
+    ]);
+    const { sandbox } = fakeSandbox(() => response);
+    const events = sandbox.process.execStream({ command: "echo hi" });
+    expect((await events.next()).value).toMatchObject({ type: "output" });
+    await expect(events.next()).rejects.toThrow("process stream failed: process vanished");
   });
 
   it("waits through running and retryable errors to a finished process", async () => {

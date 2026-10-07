@@ -541,6 +541,7 @@ describe("SandboxFileSystem", () => {
       maxResults: 10,
       filePattern: "*.ts",
       excludeDirs: ["dist"],
+      contextLines: 1,
     });
     expect(result).toEqual({
       matches: [{ path: "/work/a.ts", line: 3, column: 5, text: "a needle", context: "x" }],
@@ -553,6 +554,7 @@ describe("SandboxFileSystem", () => {
       maxResults: "10",
       filePattern: "*.ts",
       excludeDirs: "dist",
+      contextLines: "1",
     });
   });
 
@@ -613,7 +615,7 @@ describe("SandboxFileSystem", () => {
   it("watches, joining each event's directory and name", async () => {
     const { response } = streamed([
       `${JSON.stringify({ op: "CREATE", path: "/work", name: "a.txt" })}\n[keepalive]\n`,
-      `${JSON.stringify({ op: "WRITE", path: "/work/", name: "b.txt" })}\n\n`,
+      `${JSON.stringify({ op: "WRITE|CHMOD", path: "/work/", name: "b.txt" })}\n\n`,
       JSON.stringify({ op: "REMOVE", path: "/work/d", name: "c.txt" }),
     ]);
     const { sandbox, requests } = fakeSandbox(() => response);
@@ -622,12 +624,21 @@ describe("SandboxFileSystem", () => {
       events.push(event);
     }
     expect(events).toEqual([
-      { op: "CREATE", path: "/work/a.txt" },
-      { op: "WRITE", path: "/work/b.txt" },
-      { op: "REMOVE", path: "/work/d/c.txt" },
+      { ops: ["CREATE"], path: "/work/a.txt" },
+      { ops: ["WRITE", "CHMOD"], path: "/work/b.txt" },
+      { ops: ["REMOVE"], path: "/work/d/c.txt" },
     ]);
     expect(requests[0]!.path).toBe("/watch/filesystem/%2Fwork");
     expect(requests[0]!.query.get("ignore")).toBe("*.log,tmp");
+  });
+
+  it("watches recursively by appending /** to the path", async () => {
+    const { response } = streamed([]);
+    const { sandbox, requests } = fakeSandbox(() => response);
+    for await (const _ of sandbox.fs.watch({ path: "/work/", recursive: true })) {
+      // Drained for the request only.
+    }
+    expect(requests[0]!.path).toBe("/watch/filesystem/%2Fwork%2F**");
   });
 
   it("cancels the watch stream when iteration ends early", async () => {

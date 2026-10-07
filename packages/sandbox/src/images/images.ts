@@ -1,7 +1,8 @@
 import type {
   ApiClient as ManagementApiClient,
-  Image as ApiImage,
-  ImageTag as ApiImageTag,
+  SandboxImage as ApiImage,
+  SandboxImageSummary as ApiImageSummary,
+  SandboxImageTag as ApiImageTag,
   SandboxLibraryImage as ApiLibraryImage,
 } from "@basetenlabs/client/managementapi";
 import { callControlPlane, paginate } from "../client";
@@ -38,6 +39,29 @@ export type ImageStatus = "UPLOADING" | "BUILDING" | "BUILT" | "FAILED" | (strin
 
 /** An image repository as last reported by the control plane. */
 export interface ImageInfo {
+  /**
+   * Repository name given when pushing. To create a sandbox from the image,
+   * pass `<name>:latest` as its `image`, or `<name>:<tag>` for a specific
+   * version.
+   */
+  name: string;
+
+  status: ImageStatus;
+  createdAt?: Date;
+  updatedAt?: Date;
+
+  /** Most recent time any version of the image was used by a sandbox. */
+  lastDeployedAt?: Date;
+
+  /** Total size of all versions. */
+  sizeBytes?: number;
+
+  /** Number of versions, each with its own tag. */
+  tagCount?: number;
+}
+
+/** An image repository as returned by {@link ImageClient.list}. */
+export interface ImageSummary {
   /**
    * Repository name given when pushing. To create a sandbox from the image,
    * pass `<name>:latest` as its `image`, or `<name>:<tag>` for a specific
@@ -576,8 +600,8 @@ export class ImageClient {
     return imageInfoFromApi(image);
   }
 
-  /** Lists images, fetching further pages as iteration reaches them. */
-  async *list(request: ImageListRequest = {}): AsyncGenerator<ImageInfo, void, undefined> {
+  /** Lists image summaries, fetching further pages as iteration reaches them. */
+  async *list(request: ImageListRequest = {}): AsyncGenerator<ImageSummary, void, undefined> {
     const signal = request.callOptions?.signal;
     const images = paginate("image list", (cursor) =>
       this.#context.api(signal).listImages({
@@ -590,7 +614,7 @@ export class ImageClient {
         },
       }),
     );
-    for await (const image of images) yield imageInfoFromApi(image);
+    for await (const image of images) yield imageSummaryFromApi(image);
   }
 
   /**
@@ -655,9 +679,7 @@ export class ImageClient {
   async listLibrary(request: ImageListLibraryRequest = {}): Promise<ImageLibraryInfo[]> {
     const signal = request.callOptions?.signal;
     const result = await callControlPlane(() =>
-      this.#context
-        .api(signal)
-        .listSandboxLibraryImages({ params: { team_id: this.#context.teamId } }),
+      this.#context.api(signal).listSandboxLibraryImages(),
     );
     return result.items.map(imageLibraryInfoFromApi);
   }
@@ -1032,6 +1054,18 @@ function compareNames(a: string, b: string): number {
 }
 
 function imageInfoFromApi(image: ApiImage): ImageInfo {
+  return {
+    name: image.name,
+    status: image.status,
+    createdAt: optionalDate(image.created_at),
+    updatedAt: optionalDate(image.updated_at),
+    lastDeployedAt: optionalDate(image.last_deployed_at),
+    sizeBytes: image.size,
+    tagCount: image.tag_count,
+  };
+}
+
+function imageSummaryFromApi(image: ApiImageSummary): ImageSummary {
   return {
     name: image.name,
     status: image.status,

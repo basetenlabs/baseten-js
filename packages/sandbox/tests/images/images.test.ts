@@ -858,7 +858,8 @@ describe("ImageClient", () => {
       },
     ]);
     expect(server.requests.map((r) => `${r.method} ${r.url.pathname}${r.url.search}`)).toEqual([
-      "GET /v1/sandboxes/library_images?team_id=team-1",
+      // No team, since library images are the same for every team.
+      "GET /v1/sandboxes/library_images",
     ]);
   });
 });

@@ -34,6 +34,16 @@ describe.runIf(e2eEnabled())("SandboxFileSystem", () => {
     expect(await sandbox.fs.read({ path: `${dir}/a/b/c.txt` })).toBe("nested");
   });
 
+  it("writes and reads a relative path", async () => {
+    const path = `${uniqueName()}.txt`;
+    await sandbox.fs.write({ path, content: "relative" });
+    try {
+      expect(await sandbox.fs.read({ path })).toBe("relative");
+    } finally {
+      await sandbox.fs.remove({ path });
+    }
+  });
+
   it("fails reading a missing file", async () => {
     const dir = await testDir();
     const err = await sandbox.fs.read({ path: `${dir}/missing.txt` }).catch((e: unknown) => e);
@@ -68,10 +78,22 @@ describe.runIf(e2eEnabled())("SandboxFileSystem", () => {
       content: new TextEncoder().encode("#!/bin/sh\necho ran\n"),
       permissions: "0755",
     });
-    // TODO: Assert the file is 755 and runs once the server honors
-    // permissions on multipart uploads. It ignores them today, leaving 644.
-    const listing = await sandbox.fs.list({ path: dir });
-    expect(listing.files.map((f) => f.name)).toEqual(["run.sh"]);
+    const ran = await sandbox.process.exec({
+      command: `stat -c %a ${dir}/run.sh && ${dir}/run.sh`,
+      waitForCompletion: true,
+    });
+    expect(ran.stdout).toBe("755\nran\n");
+    // An existing file keeps its mode.
+    await sandbox.fs.writeBytes({
+      path: `${dir}/run.sh`,
+      content: new TextEncoder().encode("#!/bin/sh\necho again\n"),
+      permissions: "0700",
+    });
+    const mode = await sandbox.process.exec({
+      command: `stat -c %a ${dir}/run.sh`,
+      waitForCompletion: true,
+    });
+    expect(mode.stdout.trim()).toBe("755");
   });
 
   it("writes bytes over 5MB in parts, every byte exact", async () => {
@@ -183,6 +205,9 @@ describe.runIf(e2eEnabled())("SandboxFileSystem", () => {
       line: 2,
       text: "find Needle here",
     });
+    expect(found.matches[0]!.context).toBeUndefined();
+    const withContext = await sandbox.fs.grep({ path: dir, query: "needle", contextLines: 1 });
+    expect(withContext.matches[0]!.context).toBe("one\nfind Needle here\nthree");
     const exact = await sandbox.fs.grep({ path: dir, query: "needle", caseSensitive: true });
     expect(exact.total).toBe(0);
   });
@@ -216,13 +241,14 @@ describe.runIf(e2eEnabled())("SandboxFileSystem", () => {
     expect(await sandbox.fs.read({ path: `${dir}/keep.txt` })).toBe("keep");
   });
 
-  // The watch covers only the directory itself: in an earlier run, 20 writes
-  // to a file in a subdirectory produced no event for it.
-  it("watches changes in a directory", async () => {
-    const dir = await testDir();
-    const path = `${dir}/top.txt`;
+  // Watches with the request and writes path until the watch reports an
+  // event for it.
+  async function watchUntilWritten(
+    request: { path: string; recursive?: boolean },
+    path: string,
+  ): Promise<void> {
     const abort = new AbortController();
-    const events = sandbox.fs.watch({ path: dir, callOptions: { signal: abort.signal } });
+    const events = sandbox.fs.watch({ ...request, callOptions: { signal: abort.signal } });
     const unmatched: SandboxFileSystemWatchEvent[] = [];
     try {
       // The server's watch starts at some unknown point after the request, so
@@ -246,12 +272,27 @@ describe.runIf(e2eEnabled())("SandboxFileSystem", () => {
         }
       }
       expect(event, `no event for ${path}, only ${JSON.stringify(unmatched)}`).toBeDefined();
-      expect(["CREATE", "WRITE"]).toContain(event!.op);
+      expect(event!.ops.some((op) => op === "CREATE" || op === "WRITE")).toBe(true);
     } finally {
       // Aborting rather than calling return(), which would wait behind a
       // pending next() forever.
       abort.abort();
     }
+  }
+
+  // The watch covers only the directory itself: in an earlier run, 20 writes
+  // to a file in a subdirectory produced no event for it.
+  it("watches changes in a directory", async () => {
+    const dir = await testDir();
+    await watchUntilWritten({ path: dir }, `${dir}/top.txt`);
+  });
+
+  it("watches changes in subdirectories recursively", async () => {
+    const dir = await testDir();
+    // The subdirectory exists before the watch, so the event shows the watch
+    // covers it.
+    await sandbox.fs.write({ path: `${dir}/sub/existing.txt`, content: "existing" });
+    await watchUntilWritten({ path: dir, recursive: true }, `${dir}/sub/nested.txt`);
   });
 });
 

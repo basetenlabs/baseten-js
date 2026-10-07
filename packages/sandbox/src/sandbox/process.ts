@@ -85,7 +85,9 @@ export type SandboxProcessExecEvent =
   | {
       /**
        * Output as the process wrote it, which may hold several lines, part of
-       * one, or text with no newline at all, such as a prompt.
+       * one, or text with no newline at all, such as a prompt. If the process
+       * finished before streaming started, each line instead arrives as its
+       * own event, without its newline.
        */
       type: "output";
       stream: "stdout" | "stderr";
@@ -254,11 +256,9 @@ export class SandboxProcess {
   async *execStream(
     request: SandboxProcessExecStreamRequest,
   ): AsyncGenerator<SandboxProcessExecEvent, void, undefined> {
-    // The sandbox streams only when asked for text/event-stream, though what
-    // it sends is newline-delimited JSON.
     const response = await callSandbox(() =>
       this.#context.api(request.callOptions?.signal).postProcessRaw({
-        accept: "text/event-stream",
+        accept: "application/x-ndjson",
         request: { ...processRequestToApi(request), waitForCompletion: true },
       }),
     );
@@ -273,7 +273,14 @@ export class SandboxProcess {
           process: processInfoFromApi(JSON.parse(String(event.data)) as ProcessResponse),
         };
         return;
+      } else if (event.type === "error") {
+        // The response status is already sent, so a failure after streaming
+        // starts arrives as a record that ends the stream.
+        throw new Error(`process stream failed: ${String(event.data ?? "")}`);
+      } else if (event.type === "keepalive") {
+        continue;
       }
+      // Other record types are skipped, so new ones don't break streaming.
     }
     throw new Error("the process stream ended before reporting the process's exit");
   }
@@ -298,7 +305,10 @@ export class SandboxProcess {
     return response.map(processInfoFromApi);
   }
 
-  /** Asks a process to stop, letting it shut down cleanly. */
+  /**
+   * Requests that a process exit gracefully and returns without waiting. Use
+   * {@link SandboxProcess.wait} for it to end, with status `stopped`.
+   */
   async stop(request: SandboxProcessStopRequest): Promise<void> {
     await callSandbox(() =>
       this.#context
@@ -307,7 +317,10 @@ export class SandboxProcess {
     );
   }
 
-  /** Kills a process immediately. */
+  /**
+   * Requests that a process exit forcefully and returns without waiting. Use
+   * {@link SandboxProcess.wait} for it to end, with status `killed`.
+   */
   async kill(request: SandboxProcessKillRequest): Promise<void> {
     await callSandbox(() =>
       this.#context
@@ -329,7 +342,9 @@ export class SandboxProcess {
   /**
    * Yields a process's output line by line as it arrives, ending when the
    * process exits. Works for any process, including one started elsewhere.
-   * Ending iteration early, or aborting, stops only the stream.
+   * A partial line, such as a prompt, is yielded once its newline arrives or
+   * the stream ends. Use {@link SandboxProcess.execStream} for output as it is
+   * written. Ending iteration early, or aborting, stops only the stream.
    */
   async *streamLogs(
     request: SandboxProcessStreamLogsRequest,

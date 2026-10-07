@@ -32,21 +32,21 @@ const UPLOAD_PARTS_IN_FLIGHT = 2;
 
 /** Request for {@link SandboxFileSystem.read}. */
 export interface SandboxFileSystemReadRequest {
-  /** Absolute path of the file. */
+  /** Path of the file. */
   path: string;
   callOptions?: CallOptions;
 }
 
 /** Request for {@link SandboxFileSystem.readBytes}. */
 export interface SandboxFileSystemReadBytesRequest {
-  /** Absolute path of the file. */
+  /** Path of the file. */
   path: string;
   callOptions?: CallOptions;
 }
 
 /** Request for {@link SandboxFileSystem.write}. */
 export interface SandboxFileSystemWriteRequest {
-  /** Absolute path of the file, created or replaced. */
+  /** Path of the file, created or replaced. */
   path: string;
 
   /** Text content to write. */
@@ -56,20 +56,23 @@ export interface SandboxFileSystemWriteRequest {
 
 /** Request for {@link SandboxFileSystem.writeBytes}. */
 export interface SandboxFileSystemWriteBytesRequest {
-  /** Absolute path of the file, created or replaced. */
+  /** Path of the file, created or replaced. */
   path: string;
 
   /** Content to write. */
   content: Uint8Array | Blob;
 
-  /** Octal file mode, such as `"0755"`. The sandbox's default when unset. */
+  /**
+   * Octal file mode, such as `"0755"`, applied when the file is created. An
+   * existing file keeps its mode. The sandbox's default when unset.
+   */
   permissions?: string;
   callOptions?: CallOptions;
 }
 
 /** Request for {@link SandboxFileSystem.mkdir}. */
 export interface SandboxFileSystemMkdirRequest {
-  /** Absolute path of the directory. */
+  /** Path of the directory. */
   path: string;
 
   /** Octal directory mode, such as `"0755"`. The sandbox's default when unset. */
@@ -79,14 +82,14 @@ export interface SandboxFileSystemMkdirRequest {
 
 /** Request for {@link SandboxFileSystem.list}. */
 export interface SandboxFileSystemListRequest {
-  /** Absolute path of the directory. */
+  /** Path of the directory. */
   path: string;
   callOptions?: CallOptions;
 }
 
 /** Request for {@link SandboxFileSystem.remove}. */
 export interface SandboxFileSystemRemoveRequest {
-  /** Absolute path of the file or directory. */
+  /** Path of the file or directory. */
   path: string;
 
   /** Whether to remove a directory and everything in it. */
@@ -96,7 +99,7 @@ export interface SandboxFileSystemRemoveRequest {
 
 /** Request for {@link SandboxFileSystem.find}. */
 export interface SandboxFileSystemFindRequest {
-  /** Absolute path of the directory to search in. */
+  /** Path of the directory to search in. */
   path: string;
 
   /** Whether to find only files or only directories. Both when unset. */
@@ -121,7 +124,7 @@ export interface SandboxFileSystemFindRequest {
 
 /** Request for {@link SandboxFileSystem.grep}. */
 export interface SandboxFileSystemGrepRequest {
-  /** Absolute path of the directory to search in. */
+  /** Path of the directory to search in. */
   path: string;
 
   /** Text to search for. */
@@ -141,15 +144,21 @@ export interface SandboxFileSystemGrepRequest {
    * build directories, such as `node_modules` and `.git`.
    */
   excludeDirs?: string[];
+
+  /**
+   * How many lines before and after each match to include in its
+   * {@link SandboxFileSystemGrepMatch.context}, at most 20. None when unset.
+   */
+  contextLines?: number;
   callOptions?: CallOptions;
 }
 
 /** Request for {@link SandboxFileSystem.copy}. */
 export interface SandboxFileSystemCopyRequest {
-  /** Absolute path of the file or directory to copy. */
+  /** Path of the file or directory to copy. */
   source: string;
 
-  /** Absolute path to copy to. */
+  /** Path to copy to. */
   destination: string;
 
   /**
@@ -162,7 +171,7 @@ export interface SandboxFileSystemCopyRequest {
 
 /** Request for {@link SandboxFileSystem.writeTree}. */
 export interface SandboxFileSystemWriteTreeRequest {
-  /** Absolute path of the directory to write under. */
+  /** Path of the directory to write under. */
   path: string;
 
   /** Text content of each file, by path relative to {@link path}. */
@@ -172,10 +181,13 @@ export interface SandboxFileSystemWriteTreeRequest {
 
 /** Request for {@link SandboxFileSystem.watch}. */
 export interface SandboxFileSystemWatchRequest {
-  /** Absolute path of the directory to watch. */
+  /** Path of the directory to watch. */
   path: string;
 
-  /** Patterns of paths to ignore. */
+  /** Whether to also watch every subdirectory, including ones created later. */
+  recursive?: boolean;
+
+  /** Skips events whose full path contains any of these substrings. */
   ignore?: string[];
   callOptions?: CallOptions;
 }
@@ -248,12 +260,15 @@ export interface SandboxFileSystemGrepMatch {
   /** The matching line. */
   text: string;
 
-  /** Lines around the match, when the sandbox includes them. */
+  /**
+   * The matching line with up to {@link SandboxFileSystemGrepRequest.contextLines}
+   * lines before and after it, newline-separated. Unset when `contextLines` is.
+   */
   context?: string;
 }
 
 /**
- * Kind of change in a {@link SandboxFileSystemWatchEvent}. Other values may
+ * A kind of change in a {@link SandboxFileSystemWatchEvent}. Other values may
  * be added, so do not treat this list as exhaustive.
  */
 export type SandboxFileSystemWatchOp =
@@ -266,13 +281,17 @@ export type SandboxFileSystemWatchOp =
 
 /** A change seen by {@link SandboxFileSystem.watch}. */
 export interface SandboxFileSystemWatchEvent {
-  op: SandboxFileSystemWatchOp;
+  /** Kinds of change, more than one when the sandbox reports several together. */
+  ops: SandboxFileSystemWatchOp[];
 
   /** Full path of the changed entry. */
   path: string;
 }
 
-/** Files and directories in a sandbox. */
+/**
+ * Files and directories in a sandbox. Relative paths are resolved against the
+ * sandbox's working directory.
+ */
 export class SandboxFileSystem {
   readonly #context: SandboxContext;
   // One per sandbox, since a sandbox builds its file system once.
@@ -325,7 +344,7 @@ export class SandboxFileSystem {
         return this.#writeMultipart(request.path, content, undefined, signal);
       }
     }
-    // Retried, since a repeat writes the same content.
+    // Retried, since the spec documents the write as idempotent.
     await callSandboxUpload(this.#context, signal, () =>
       this.#context
         .api(signal)
@@ -346,9 +365,9 @@ export class SandboxFileSystem {
       return this.#writeMultipart(request.path, content, request.permissions, signal);
     }
     const filename = request.path.split("/").pop() || "file";
-    // The generated client has no multipart form for this endpoint, since the
-    // spec documents only a JSON body there. Retried, since a repeat writes
-    // the same content, with the form rebuilt for each attempt.
+    // The generated client has no multipart form for this endpoint, since it
+    // also takes a JSON body. Retried, since the spec documents the write as
+    // idempotent, with the form rebuilt for each attempt.
     await callSandboxUpload(this.#context, signal, async () => {
       const form = new FormData();
       form.append("file", content, filename);
@@ -365,7 +384,7 @@ export class SandboxFileSystem {
   /** Creates a directory. */
   async mkdir(request: SandboxFileSystemMkdirRequest): Promise<void> {
     const signal = request.callOptions?.signal;
-    // Retried, since a repeat creates the same directory.
+    // Retried, since the spec documents the write as idempotent.
     await callSandboxUpload(this.#context, signal, () =>
       this.#context.api(signal).putFilesystem({
         path: request.path,
@@ -431,6 +450,7 @@ export class SandboxFileSystem {
           maxResults: request.maxResults,
           filePattern: request.filePattern,
           excludeDirs: request.excludeDirs?.join(","),
+          contextLines: request.contextLines,
         },
       }),
     );
@@ -480,7 +500,7 @@ export class SandboxFileSystem {
    */
   async writeTree(request: SandboxFileSystemWriteTreeRequest): Promise<void> {
     const signal = request.callOptions?.signal;
-    // Retried, since a repeat writes the same content.
+    // Retried, since the spec documents the write as idempotent.
     await callSandboxUpload(this.#context, signal, () =>
       this.#context
         .api(signal)
@@ -490,21 +510,23 @@ export class SandboxFileSystem {
 
   /**
    * Yields changes in a directory as they happen, until iteration ends or
-   * the signal aborts. Changes in its subdirectories are not included.
+   * the signal aborts. Only the directory's direct entries are watched unless
+   * {@link SandboxFileSystemWatchRequest.recursive} is set.
    */
   async *watch(
     request: SandboxFileSystemWatchRequest,
   ): AsyncGenerator<SandboxFileSystemWatchEvent, void, undefined> {
+    const path = request.recursive ? `${request.path.replace(/\/+$/, "")}/**` : request.path;
     const response = await callSandbox(() =>
       this.#context.api(request.callOptions?.signal).getWatchFilesystem({
-        path: request.path,
+        path,
         params: { ignore: request.ignore?.join(",") },
       }),
     );
     for await (const line of responseLines(response)) {
       if (line.trim() === "" || line.startsWith("[keepalive]")) continue;
       const event = JSON.parse(line) as { op: string; path: string; name: string };
-      yield { op: event.op, path: joinPath(event.path, event.name) };
+      yield { ops: event.op.split("|"), path: joinPath(event.path, event.name) };
     }
   }
 

@@ -159,9 +159,6 @@ export interface SandboxInfo {
 
   region?: string;
 
-  /** False when the sandbox is disabled and accepts no connections. */
-  enabled: boolean;
-
   /**
    * Environment variables, by name. Secret values are masked, so passing
    * these back to an update overwrites their real values with the masks.
@@ -195,7 +192,6 @@ export function sandboxInfoFromApi(sandbox: ApiSandbox): SandboxInfo {
     image: sandbox.image,
     memory: sandbox.memory,
     region: sandbox.region,
-    enabled: sandbox.enabled,
     envs: sandboxEnvsFromApi(sandbox.envs),
     labels: { ...sandbox.labels },
     externalId: sandbox.external_id,

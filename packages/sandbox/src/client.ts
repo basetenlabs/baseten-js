@@ -177,21 +177,11 @@ export interface SandboxListRequest {
 export interface SandboxUpdateRequest {
   name: string;
 
-  /** False to disable the sandbox, so it accepts no connections. */
-  enabled?: boolean;
-
   /** When the sandbox is deleted automatically. */
   lifecycle?: SandboxLifecycle;
 
-  region?: string;
-
   /** Environment variables, by name. */
   envs?: Record<string, SandboxEnvValue>;
-
-  /** Image reference including its tag. */
-  image?: string;
-
-  ports?: SandboxPort[];
 
   /** Caller-owned identifier for external lookups. */
   externalId?: string;
@@ -350,13 +340,9 @@ export class SandboxClient {
         sandbox_name: request.name,
         params: { team_id: this.#options.teamId },
         request: {
-          enabled: request.enabled,
           lifecycle:
             request.lifecycle === undefined ? undefined : sandboxLifecycleToApi(request.lifecycle),
-          region: request.region,
           envs: request.envs === undefined ? undefined : sandboxEnvsToApi(request.envs),
-          image: request.image,
-          ports: request.ports === undefined ? undefined : sandboxPortsToApi(request.ports),
           external_id: request.externalId,
           labels: request.labels,
         },
