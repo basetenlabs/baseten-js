@@ -31,6 +31,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Sandbox docs resolve @basetenlabs/client through its built dist.
+      - name: Build
+        run: pnpm run build
+
       # Each package writes its docs to its own subdirectory of _site.
       - name: Generate docs
         run: pnpm -r run generate-docs
