@@ -114,13 +114,26 @@ describe("SandboxClient", () => {
     const client = new SandboxClient({ token: "t", baseUrl: BASE_URL, fetch });
 
     const response = await client.api.postProcessRaw({
-      accept: "text/event-stream",
+      accept: "application/x-ndjson",
       request: { command: "echo hi" },
     });
 
-    expect(capture().headers.accept).toBe("text/event-stream");
+    expect(capture().headers.accept).toBe("application/x-ndjson");
     expect(response).toBeInstanceOf(Response);
     expect(response.bodyUsed).toBe(false);
+  });
+
+  it("returns a headers-only response unread without an Accept", async () => {
+    const { fetch, capture } = rawCapture();
+    const client = new SandboxClient({ token: "t", baseUrl: BASE_URL, fetch });
+
+    const response = await client.api.headFilesystem({ path: "/app" });
+
+    const req = capture();
+    expect(req.init.method).toBe("HEAD");
+    expect(req.url).toBe(`${BASE_URL}/filesystem/%2Fapp`);
+    expect(req.headers.accept).toBeUndefined();
+    expect(response).toBeInstanceOf(Response);
   });
 
   it("narrows an export on its status code", async () => {

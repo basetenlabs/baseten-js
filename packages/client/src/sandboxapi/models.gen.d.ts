@@ -87,6 +87,7 @@ export type components = {
       /** @example 10 */
       column: number;
       /**
+       * @description The matching line with up to contextLines lines before and after it, newline-separated; omitted when contextLines is 0
        * @example previous line
        *     current line
        *     next line
@@ -324,7 +325,10 @@ export type components = {
     HealthResponse: {
       /** @example amd64 */
       arch: string;
-      /** @example 2026-01-29T17:36:52Z */
+      /**
+       * @description Build time in RFC 3339 (UTC), or "unknown" for builds without it
+       * @example 2026-01-29T17:36:52Z
+       */
       buildTime: string;
       /** @example abc123 */
       gitCommit: string;
@@ -333,7 +337,10 @@ export type components = {
       lastUpgrade: components["schemas"]["UpgradeStatus"];
       /** @example linux */
       os: string;
-      /** @example 2026-01-29T18:45:49Z */
+      /**
+       * @description API start time in RFC 3339
+       * @example 2026-01-29T18:45:49Z
+       */
       startedAt: string;
       /** @example ok */
       status: string;
@@ -466,7 +473,10 @@ export type components = {
     ProcessResponse: {
       /** @example ls -la */
       command: string;
-      /** @example Wed, 01 Jan 2023 12:01:00 GMT */
+      /**
+       * @description Completion time, same format as startedAt. Empty string while the process runs
+       * @example Wed, 01 Jan 2023 12:01:00 GMT
+       */
       completedAt: string;
       /** @example 0 */
       exitCode: number;
@@ -487,7 +497,10 @@ export type components = {
       restartCount?: number;
       /** @example true */
       restartOnFailure?: boolean;
-      /** @example Wed, 01 Jan 2023 12:00:00 GMT */
+      /**
+       * @description Start time as an HTTP date (RFC 1123, e.g. Wed, 01 Jan 2023 12:00:00 GMT)
+       * @example Wed, 01 Jan 2023 12:00:00 GMT
+       */
       startedAt: string;
       /**
        * @example running
@@ -725,6 +738,8 @@ export type components = {
       filePattern?: string;
       /** @description Comma-separated directory names to skip (default: node_modules,vendor,.git,dist,build,target,__pycache__,.venv,.next,coverage) */
       excludeDirs?: string;
+      /** @description Lines to include before and after each match in its context field (default: 0, max: 20; invalid values count as 0) */
+      contextLines?: number;
     };
     GetFilesystemFindParams: {
       /** @description Type of search (file or directory) */
@@ -743,9 +758,11 @@ export type components = {
       partNumber: number;
     };
     GetFilesystemSearchParams: {
+      /** @description Fuzzy pattern matched against each relative path (e.g., mngo for src/main.go). When omitted, the search path itself is used as the pattern. */
+      query?: string;
       /** @description Maximum number of results to return (default: 20) */
       maxResults?: number;
-      /** @description Comma-separated file patterns to include (e.g., *.go,*.js) */
+      /** @description Accepted for compatibility but currently ignored; use filesystem-find for glob filtering */
       patterns?: string;
       /** @description Comma-separated directory names to skip (default: node_modules,vendor,.git,dist,build,target,__pycache__,.venv,.next,coverage). Use empty string to skip no directories. */
       excludeDirs?: string;
@@ -765,7 +782,7 @@ export type components = {
       recursive?: boolean;
     };
     GetWatchFilesystemParams: {
-      /** @description Ignore patterns (comma-separated) */
+      /** @description Comma-separated substrings; events whose full path contains one are skipped */
       ignore?: string;
     };
     GetFilesystemResponse:

@@ -467,6 +467,18 @@ export class ApiClient {
     });
   }
 
+  /** Stat a file or directory */
+  async headFilesystem(params: { path: string }): Promise<Response> {
+    return this._do({
+      method: "HEAD",
+      pathFmt: "/filesystem/{}",
+      pathArgs: [params.path],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Export the filesystem changes to a presigned URL */
   async postArchiveExport(params: {
     request: ExportOptions;
@@ -582,7 +594,7 @@ export class ApiClient {
 
   /** Execute a command. Returns the response unread, in the requested content type. */
   async postProcessRaw(params: {
-    accept: "application/json" | "text/event-stream";
+    accept: "application/json" | "application/x-ndjson";
     request: ProcessRequest;
   }): Promise<Response> {
     return this._do({
