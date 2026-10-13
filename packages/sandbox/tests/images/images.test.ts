@@ -32,7 +32,7 @@ interface Recorded {
   method: string;
   url: URL;
   authorization: string | null;
-  contentType: string | null;
+  headers: Headers;
   body: Uint8Array;
 }
 
@@ -54,7 +54,7 @@ function fakeServer(route: (request: Recorded) => unknown) {
       method: request.method,
       url,
       authorization: request.headers.get("authorization"),
-      contentType: request.headers.get("content-type"),
+      headers: request.headers,
       body: new Uint8Array(await request.arrayBuffer()),
     };
     requests.push(recorded);
@@ -146,7 +146,7 @@ describe("ImageClient.push", () => {
     expect(upload!.method).toBe("PUT");
     expect(upload!.url.href).toBe(UPLOAD_URL);
     expect(upload!.authorization).toBeNull();
-    expect(upload!.contentType).toBe("application/zip");
+    expect([...upload!.headers]).toEqual([["content-type", "application/zip"]]);
     const files = unzipSync(upload!.body);
     expect(new TextDecoder().decode(files.Dockerfile)).toBe(DOCKERFILE);
     expect(new TextDecoder().decode(files["hello.txt"])).toBe("hi");
@@ -255,6 +255,62 @@ describe("ImageClient.push", () => {
       name: "app",
       image: "ghcr.io/org/app:v2",
       docker_config: '{"auths":{}}',
+    });
+    expect(server.requests.some((r) => r.method === "PUT")).toBe(false);
+  });
+
+  it("sends build sizes, then uploads with the headers the push returned", async () => {
+    const server = fakeServer((request) => {
+      if (request.url.host === "uploads.b10.run") return new Response(null, { status: 200 });
+      return {
+        name: "app",
+        status: "UPLOADING",
+        upload_url: UPLOAD_URL,
+        upload_headers: { "X-Signed-One": "a b", "x-signed-two": "2048" },
+      };
+    });
+    await server.client.images.push({
+      name: "app",
+      builder: ImageBuilder.fromRegistry("debian:bookworm-slim"),
+      buildMemory: 2048,
+      buildVolume: 8192,
+      wait: false,
+    });
+    const [push, upload] = server.requests;
+    expect(json(push!)).toEqual({ name: "app", build_memory: 2048, build_volume: 8192 });
+    expect(upload!.authorization).toBeNull();
+    expect([...upload!.headers]).toEqual([
+      ["content-type", "application/zip"],
+      ["x-signed-one", "a b"],
+      ["x-signed-two", "2048"],
+    ]);
+  });
+
+  it("sends a build volume of 0 rather than leaving it out", async () => {
+    const server = buildServer([]);
+    await server.client.images.push({
+      name: "app",
+      files: { Dockerfile: DOCKERFILE },
+      buildVolume: 0,
+      wait: false,
+    });
+    expect(json(server.requests[0]!)).toEqual({ name: "app", build_volume: 0 });
+  });
+
+  it("imports a registry image with build sizes", async () => {
+    const server = fakeServer(() => ({ name: "app", status: "BUILDING" }));
+    await server.client.images.push({
+      name: "app",
+      registryImage: "ghcr.io/org/app:v2",
+      buildMemory: 4096,
+      buildVolume: 32768,
+      wait: false,
+    });
+    expect(json(server.requests[0]!)).toEqual({
+      name: "app",
+      image: "ghcr.io/org/app:v2",
+      build_memory: 4096,
+      build_volume: 32768,
     });
     expect(server.requests.some((r) => r.method === "PUT")).toBe(false);
   });

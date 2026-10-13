@@ -170,6 +170,22 @@ export interface ImagePushRequestBase extends ImageWaitOptions {
   name: string;
 
   /**
+   * Memory in megabytes, from 1 to 32768, of the temporary environment that
+   * builds the image from its build context, or imports it from a registry.
+   * Unset uses the default size. Does not change the memory of sandboxes
+   * created from the image.
+   */
+  buildMemory?: number;
+
+  /**
+   * Scratch disk in megabytes, from 0 to 131072, attached to the temporary
+   * build environment for intermediate layers. Set it for a large image that
+   * runs out of space while building or importing. 0, the default, builds in
+   * memory. Teams with HIPAA compliance enabled accept only 0.
+   */
+  buildVolume?: number;
+
+  /**
    * Whether to return only once the image is ready to use, throwing
    * {@link ImageBuildError} if it fails. Defaults to true.
    */
@@ -500,6 +516,8 @@ export class ImageClient {
             name: request.name,
             image: request.registryImage,
             docker_config: request.dockerConfig,
+            build_memory: request.buildMemory,
+            build_volume: request.buildVolume,
           },
         }),
       );
@@ -507,7 +525,13 @@ export class ImageClient {
         if (response.upload_url === undefined) {
           throw new Error(`pushing image ${request.name} returned no upload URL`);
         }
-        await this.#upload(request.name, response.upload_url, archive.zip, signal);
+        await this.#upload(
+          request.name,
+          response.upload_url,
+          response.upload_headers,
+          archive.zip,
+          signal,
+        );
       }
     } finally {
       await archive?.remove?.();
@@ -661,13 +685,21 @@ export class ImageClient {
     return result.items.map(imageLibraryInfoFromApi);
   }
 
-  async #upload(name: string, url: string, zip: Blob, signal: AbortSignal | undefined) {
+  async #upload(
+    name: string,
+    url: string,
+    uploadHeaders: Record<string, string> | undefined,
+    zip: Blob,
+    signal: AbortSignal | undefined,
+  ) {
     // The URL is signed for storage, so none of the API's headers or
-    // credentials go with it. A Blob, in memory or backed by a file, has a
-    // known size, so fetch sends the Content-Length storage requires.
+    // credentials go with it. It is also signed for any headers the push
+    // returned, so storage rejects the upload unless they go as given. A
+    // Blob, in memory or backed by a file, has a known size, so fetch sends
+    // the Content-Length storage requires.
     const response = await this.#context.fetch(url, {
       method: "PUT",
-      headers: { "Content-Type": "application/zip" },
+      headers: { "Content-Type": "application/zip", ...uploadHeaders },
       body: zip,
       signal,
     });
