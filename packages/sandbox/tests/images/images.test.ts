@@ -272,12 +272,12 @@ describe("ImageClient.push", () => {
     await server.client.images.push({
       name: "app",
       builder: ImageBuilder.fromRegistry("debian:bookworm-slim"),
-      buildMemory: 2048,
-      buildVolume: 8192,
+      memoryMb: 2048,
+      volumeMb: 8192,
       wait: false,
     });
     const [push, upload] = server.requests;
-    expect(json(push!)).toEqual({ name: "app", build_memory: 2048, build_volume: 8192 });
+    expect(json(push!)).toEqual({ name: "app", memory_mb: 2048, volume_mb: 8192 });
     expect(upload!.authorization).toBeNull();
     expect([...upload!.headers]).toEqual([
       ["content-type", "application/zip"],
@@ -291,10 +291,10 @@ describe("ImageClient.push", () => {
     await server.client.images.push({
       name: "app",
       files: { Dockerfile: DOCKERFILE },
-      buildVolume: 0,
+      volumeMb: 0,
       wait: false,
     });
-    expect(json(server.requests[0]!)).toEqual({ name: "app", build_volume: 0 });
+    expect(json(server.requests[0]!)).toEqual({ name: "app", volume_mb: 0 });
   });
 
   it("imports a registry image with build sizes", async () => {
@@ -302,15 +302,15 @@ describe("ImageClient.push", () => {
     await server.client.images.push({
       name: "app",
       registryImage: "ghcr.io/org/app:v2",
-      buildMemory: 4096,
-      buildVolume: 32768,
+      memoryMb: 4096,
+      volumeMb: 32768,
       wait: false,
     });
     expect(json(server.requests[0]!)).toEqual({
       name: "app",
       image: "ghcr.io/org/app:v2",
-      build_memory: 4096,
-      build_volume: 32768,
+      memory_mb: 4096,
+      volume_mb: 32768,
     });
     expect(server.requests.some((r) => r.method === "PUT")).toBe(false);
   });
