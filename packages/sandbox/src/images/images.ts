@@ -175,7 +175,7 @@ export interface ImagePushRequestBase extends ImageWaitOptions {
    * Unset uses the default size. Does not change the memory of sandboxes
    * created from the image.
    */
-  memoryMb?: number;
+  memory?: number;
 
   /**
    * Scratch disk in megabytes, from 0 to 131072, attached to the temporary
@@ -183,7 +183,7 @@ export interface ImagePushRequestBase extends ImageWaitOptions {
    * runs out of space while building or importing. 0, the default, builds in
    * memory. Teams with HIPAA compliance enabled accept only 0.
    */
-  volumeMb?: number;
+  volume?: number;
 
   /**
    * Whether to return only once the image is ready to use, throwing
@@ -516,8 +516,8 @@ export class ImageClient {
             name: request.name,
             image: request.registryImage,
             docker_config: request.dockerConfig,
-            memory_mb: request.memoryMb,
-            volume_mb: request.volumeMb,
+            memory: request.memory,
+            volume: request.volume,
           },
         }),
       );

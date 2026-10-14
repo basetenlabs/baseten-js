@@ -13014,8 +13014,8 @@ export type components = {
      *       "name": "base-image",
      *       "image": "docker.io/b10/base-image:latest",
      *       "docker_config": "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"YjEwLXJldmlldzpkZW1vLW5vdC1hLXZhbGlkLXJlZ2lzdHJ5LXRva2Vu\"}}}",
-     *       "memory_mb": 16384,
-     *       "volume_mb": 32768
+     *       "memory": 16384,
+     *       "volume": 32768
      *     }
      */
     PushSandboxImageRequest: {
@@ -13038,12 +13038,12 @@ export type components = {
        * @description Memory in megabytes of the temporary environment that builds the source archive or imports the registry image. Omit it to use the default size. Does not change the memory of sandboxes created from the image.
        * @example 16384
        */
-      memory_mb?: number;
+      memory?: number;
       /**
        * @description Scratch disk in megabytes attached to the temporary build environment for intermediate layers. Set it for large images that run out of space while building or importing. 0 builds in memory, which is the default. Teams with HIPAA compliance enabled accept only 0.
        * @example 32768
        */
-      volume_mb?: number;
+      volume?: number;
     };
     /**
      * @description Accepted image push. Acceptance does not imply readiness; poll GET /sandboxes/images/{image_name} until status is BUILT or FAILED.
@@ -13070,7 +13070,7 @@ export type components = {
        * @example https://uploads.b10.run/images/base-image/20260916212658/source.zip?expires=2026-09-16T22%3A26%3A58Z&signature=demo-not-a-valid-upload-signature
        */
       upload_url?: string;
-      /** @description Headers the source archive upload must send, in addition to Content-Type, with exactly these names and values. Present only with upload_url, when memory_mb or volume_mb was set. upload_url is signed for these headers, so storage rejects an upload that omits or changes them. Treat names and values as opaque. */
+      /** @description Headers the source archive upload must send, in addition to Content-Type, with exactly these names and values. Present only with upload_url, when memory or volume was set. upload_url is signed for these headers, so storage rejects an upload that omits or changes them. Treat names and values as opaque. */
       upload_headers?: {
         [key: string]: string;
       };
