@@ -792,14 +792,6 @@ export type components = {
       | components["schemas"]["Directory"]
       | components["schemas"]["FileWithContent"]
       | string;
-    GetFilesystemTreeResponse:
-      | components["schemas"]["Directory"]
-      | components["schemas"]["FileWithContent"]
-      | string;
-    PutFilesystemTreeResponse:
-      | components["schemas"]["Directory"]
-      | components["schemas"]["FileWithContent"]
-      | string;
     DeleteNetworkProcessMonitorResponse: {
       [key: string]: unknown;
     };
@@ -883,8 +875,6 @@ export type GetFilesystemParams = components["schemas"]["GetFilesystemParams"];
 export type DeleteFilesystemTreeParams = components["schemas"]["DeleteFilesystemTreeParams"];
 export type GetWatchFilesystemParams = components["schemas"]["GetWatchFilesystemParams"];
 export type GetFilesystemResponse = components["schemas"]["GetFilesystemResponse"];
-export type GetFilesystemTreeResponse = components["schemas"]["GetFilesystemTreeResponse"];
-export type PutFilesystemTreeResponse = components["schemas"]["PutFilesystemTreeResponse"];
 export type DeleteNetworkProcessMonitorResponse =
   components["schemas"]["DeleteNetworkProcessMonitorResponse"];
 export type PostNetworkProcessMonitorResponse =

@@ -56,6 +56,8 @@ import type {
   DeleteSandboxParams,
   DeleteVolumeRequest,
   DeleteVolumeResponse,
+  DeleteVolumeTagRequest,
+  DeleteVolumeTagResponse,
   DeleteVolumeVersionRequest,
   DeleteVolumeVersionResponse,
   DeployLoopsCheckpointRequest,
@@ -118,8 +120,12 @@ import type {
   GetModelsDeploymentsLogsParams,
   GetModelsDeploymentsMetricsParams,
   GetModelsDeploymentsParams,
+  GetModelsDeploymentsStartupsParams,
+  GetModelsDeploymentsStartupsSummaryParams,
   GetModelsEnvironmentsLogsParams,
   GetModelsEnvironmentsMetricsParams,
+  GetModelsEnvironmentsStartupsParams,
+  GetModelsEnvironmentsStartupsSummaryParams,
   GetModelsParams,
   GetRoutesConnectionsParams,
   GetRoutesParams,
@@ -195,6 +201,8 @@ import type {
   PatchLoopsUserConfigResponse,
   PatchTeamTrainingGpuCapacityRequest,
   PatchTeamTrainingGpuCapacityResponse,
+  PatchVolumeRequest,
+  PatchVolumeResponse,
   PrepareModelUploadRequest,
   PrepareModelUploadResponse,
   PromoteRequest,
@@ -216,8 +224,10 @@ import type {
   RouteConnectionTombstone,
   RouteConnectionsResponse,
   RouteTeamSettings,
+  RouteTeamUserSettings,
+  RouteTeamUserSettingsList,
   RouteTombstone,
-  RouteUserSettings,
+  RouteUserTeamSettingsList,
   RoutesResponse,
   RoutesUsageResponse,
   Sandbox,
@@ -230,9 +240,13 @@ import type {
   Secret,
   SecretTombstone,
   Secrets,
+  SetVolumeTagRequest,
+  SetVolumeTagResponse,
   SignSshCertificateRequest,
   SignSshCertificateResponse,
   SignalPromotionResponse,
+  StartupAttempts,
+  StartupSummary,
   StopTrainingJobRequest,
   StopTrainingJobResponse,
   SyncDeploymentPatchesRequest,
@@ -632,6 +646,23 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/volumes/{}/{}",
       pathArgs: [params.volume_namespace, params.volume_name],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes a volume tag */
+  async deleteVolumesTags(params: {
+    volume_namespace: string;
+    volume_name: string;
+    volume_tag: string;
+    request: DeleteVolumeTagRequest;
+  }): Promise<DeleteVolumeTagResponse> {
+    return this._doJson<DeleteVolumeTagResponse>({
+      method: "DELETE",
+      pathFmt: "/v1/volumes/{}/{}/tags/{}",
+      pathArgs: [params.volume_namespace, params.volume_name, params.volume_tag],
       query: null,
       body: params.request,
       errorCodes: null,
@@ -1476,6 +1507,38 @@ export class ApiClient {
     });
   }
 
+  /** Lists the startups of a model deployment */
+  async getModelsDeploymentsStartups(params: {
+    model_id: string;
+    deployment_id: string;
+    params: GetModelsDeploymentsStartupsParams;
+  }): Promise<StartupAttempts> {
+    return this._doJson<StartupAttempts>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/deployments/{}/startups",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the startup summary for a model deployment */
+  async getModelsDeploymentsStartupsSummary(params: {
+    model_id: string;
+    deployment_id: string;
+    params: GetModelsDeploymentsStartupsSummaryParams;
+  }): Promise<StartupSummary> {
+    return this._doJson<StartupSummary>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/deployments/{}/startups/summary",
+      pathArgs: [params.model_id, params.deployment_id],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Gets all environments */
   async getModelsEnvironments(params: { model_id: string }): Promise<Environments> {
     return this._doJson<Environments>({
@@ -1528,6 +1591,38 @@ export class ApiClient {
     return this._doJson<GetModelMetricsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/environments/{}/metrics",
+      pathArgs: [params.model_id, params.env_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists the startups of a model environment */
+  async getModelsEnvironmentsStartups(params: {
+    model_id: string;
+    env_name: string;
+    params: GetModelsEnvironmentsStartupsParams;
+  }): Promise<StartupAttempts> {
+    return this._doJson<StartupAttempts>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/environments/{}/startups",
+      pathArgs: [params.model_id, params.env_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets the startup summary for a model environment */
+  async getModelsEnvironmentsStartupsSummary(params: {
+    model_id: string;
+    env_name: string;
+    params: GetModelsEnvironmentsStartupsSummaryParams;
+  }): Promise<StartupSummary> {
+    return this._doJson<StartupSummary>({
+      method: "GET",
+      pathFmt: "/v1/models/{}/environments/{}/startups/summary",
       pathArgs: [params.model_id, params.env_name],
       query: params.params ?? null,
       body: null,
@@ -1621,11 +1716,42 @@ export class ApiClient {
     });
   }
 
-  /** Gets a user's route settings */
-  async getRoutesSettingsUsers(params: { user_id: string }): Promise<RouteUserSettings> {
-    return this._doJson<RouteUserSettings>({
+  /** Lists users' route settings in a team */
+  async getRoutesSettingsTeamsUsers(params: {
+    team_id: string;
+  }): Promise<RouteTeamUserSettingsList> {
+    return this._doJson<RouteTeamUserSettingsList>({
       method: "GET",
-      pathFmt: "/v1/routes/settings/users/{}",
+      pathFmt: "/v1/routes/settings/teams/{}/users",
+      pathArgs: [params.team_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a user's route settings in a team */
+  async getRoutesSettingsTeamsUsersUserId(params: {
+    team_id: string;
+    user_id: string;
+  }): Promise<RouteTeamUserSettings> {
+    return this._doJson<RouteTeamUserSettings>({
+      method: "GET",
+      pathFmt: "/v1/routes/settings/teams/{}/users/{}",
+      pathArgs: [params.team_id, params.user_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists a user's route settings in each of their teams */
+  async getRoutesSettingsUsersTeams(params: {
+    user_id: string;
+  }): Promise<RouteUserTeamSettingsList> {
+    return this._doJson<RouteUserTeamSettingsList>({
+      method: "GET",
+      pathFmt: "/v1/routes/settings/users/{}/teams",
       pathArgs: [params.user_id],
       query: null,
       body: null,
@@ -1687,7 +1813,7 @@ export class ApiClient {
   /** Get sandbox metrics */
   async getSandboxMetrics(params: {
     sandbox_name: string;
-    params: GetSandboxMetricsParams;
+    params?: GetSandboxMetricsParams;
   }): Promise<SandboxMetrics> {
     return this._doJson<SandboxMetrics>({
       method: "GET",
@@ -2473,15 +2599,16 @@ export class ApiClient {
     });
   }
 
-  /** Updates a user's route settings */
-  async patchRoutesSettingsUsers(params: {
+  /** Updates a user's route settings in a team */
+  async patchRoutesSettingsTeamsUsers(params: {
+    team_id: string;
     user_id: string;
     request: UpdateRouteUserSettingsRequest;
-  }): Promise<RouteUserSettings> {
-    return this._doJson<RouteUserSettings>({
+  }): Promise<RouteTeamUserSettings> {
+    return this._doJson<RouteTeamUserSettings>({
       method: "PATCH",
-      pathFmt: "/v1/routes/settings/users/{}",
-      pathArgs: [params.user_id],
+      pathFmt: "/v1/routes/settings/teams/{}/users/{}",
+      pathArgs: [params.team_id, params.user_id],
       query: null,
       body: params.request,
       errorCodes: null,
@@ -2545,6 +2672,22 @@ export class ApiClient {
       method: "PATCH",
       pathFmt: "/v1/training_projects/{}/jobs/{}/interactive_sessions/{}",
       pathArgs: [params.training_project_id, params.training_job_id, params.session_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a volume */
+  async patchVolumes(params: {
+    volume_namespace: string;
+    volume_name: string;
+    request: PatchVolumeRequest;
+  }): Promise<PatchVolumeResponse> {
+    return this._doJson<PatchVolumeResponse>({
+      method: "PATCH",
+      pathFmt: "/v1/volumes/{}/{}",
+      pathArgs: [params.volume_namespace, params.volume_name],
       query: null,
       body: params.request,
       errorCodes: null,
@@ -3595,6 +3738,22 @@ export class ApiClient {
       pathArgs: [params.volume_sync_id],
       query: null,
       body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Sets a volume tag */
+  async postVolumesTags(params: {
+    volume_namespace: string;
+    volume_name: string;
+    request: SetVolumeTagRequest;
+  }): Promise<SetVolumeTagResponse> {
+    return this._doJson<SetVolumeTagResponse>({
+      method: "POST",
+      pathFmt: "/v1/volumes/{}/{}/tags",
+      pathArgs: [params.volume_namespace, params.volume_name],
+      query: null,
+      body: params.request,
       errorCodes: null,
     });
   }

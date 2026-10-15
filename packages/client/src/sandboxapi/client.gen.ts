@@ -7,6 +7,7 @@ import type {
   DeleteFilesystemParams,
   DeleteFilesystemTreeParams,
   DeleteNetworkProcessMonitorResponse,
+  Directory,
   DriveListResponse,
   DriveMountRequest,
   DriveMountResponse,
@@ -24,7 +25,6 @@ import type {
   GetFilesystemParams,
   GetFilesystemResponse,
   GetFilesystemSearchParams,
-  GetFilesystemTreeResponse,
   GetNetworkProcessPortsResponse,
   GetProcessResponse,
   GetWatchFilesystemParams,
@@ -42,7 +42,6 @@ import type {
   ProcessRequest,
   ProcessResponse,
   PutFilesystemMultipartPartParams,
-  PutFilesystemTreeResponse,
   QuiesceStatus,
   RerankingResponse,
   SuccessResponse,
@@ -367,8 +366,8 @@ export class ApiClient {
   }
 
   /** Get directory tree */
-  async getFilesystemTree(params: { path: string }): Promise<GetFilesystemTreeResponse> {
-    return this._doJson<GetFilesystemTreeResponse>({
+  async getFilesystemTree(params: { path: string }): Promise<Directory> {
+    return this._doJson<Directory>({
       method: "GET",
       pathFmt: "/filesystem/tree/{}",
       pathArgs: [params.path],
@@ -439,15 +438,23 @@ export class ApiClient {
   }
 
   /** Stream process logs in real time */
-  async getProcessLogsStream(params: { identifier: string }): Promise<Response> {
+  async getProcessLogsStream(params: {
+    identifier: string;
+    accept: "application/x-ndjson" | "text/plain";
+  }): Promise<Response> {
     return this._do({
       method: "GET",
       pathFmt: "/process/{}/logs/stream",
       pathArgs: [params.identifier],
       query: null,
       body: null,
-      accept: "text/plain",
-      errorCodes: null,
+      accept: params.accept,
+      errorCodes: {
+        400: "ErrorResponse",
+        404: "ErrorResponse",
+        409: "ErrorResponse",
+        500: "ErrorResponse",
+      },
     });
   }
 
@@ -687,11 +694,8 @@ export class ApiClient {
   }
 
   /** Create or update directory tree */
-  async putFilesystemTree(params: {
-    path: string;
-    request: TreeRequest;
-  }): Promise<PutFilesystemTreeResponse> {
-    return this._doJson<PutFilesystemTreeResponse>({
+  async putFilesystemTree(params: { path: string; request: TreeRequest }): Promise<Directory> {
+    return this._doJson<Directory>({
       method: "PUT",
       pathFmt: "/filesystem/tree/{}",
       pathArgs: [params.path],

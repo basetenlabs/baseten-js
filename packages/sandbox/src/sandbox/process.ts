@@ -352,7 +352,7 @@ export class SandboxProcess {
     const response = await callSandbox(() =>
       this.#context
         .api(request.callOptions?.signal)
-        .getProcessLogsStream({ identifier: request.identifier }),
+        .getProcessLogsStream({ identifier: request.identifier, accept: "text/plain" }),
     );
     for await (const line of responseLines(response)) {
       if (line.startsWith("[keepalive]")) continue;

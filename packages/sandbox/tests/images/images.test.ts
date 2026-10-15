@@ -74,7 +74,7 @@ function json(request: Recorded): unknown {
 }
 
 function apiImage(status: string, extra: Record<string, unknown> = {}) {
-  return { name: "app", status, tags: [], ...extra };
+  return { name: "app", status, ...extra };
 }
 
 // Answers a push with an upload URL, the upload with 200, and each image get

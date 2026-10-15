@@ -1,7 +1,6 @@
 import type {
   ApiClient as ManagementApiClient,
   SandboxImage as ApiImage,
-  SandboxImageSummary as ApiImageSummary,
   SandboxImageTag as ApiImageTag,
   SandboxLibraryImage as ApiLibraryImage,
 } from "@basetenlabs/client/managementapi";
@@ -180,8 +179,9 @@ export interface ImagePushRequestBase extends ImageWaitOptions {
   /**
    * Scratch disk in megabytes, from 0 to 131072, attached to the temporary
    * build environment for intermediate layers. Set it for a large image that
-   * runs out of space while building or importing. 0, the default, builds in
-   * memory. Teams with HIPAA compliance enabled accept only 0.
+   * runs out of space while building or importing. Unset or 0 builds in
+   * memory, which is the default. Teams with HIPAA compliance enabled accept
+   * only unset or 0.
    */
   volume?: number;
 
@@ -697,9 +697,14 @@ export class ImageClient {
     // returned, so storage rejects the upload unless they go as given. A
     // Blob, in memory or backed by a file, has a known size, so fetch sends
     // the Content-Length storage requires.
+    const headers = new Headers({ "Content-Type": "application/zip" });
+    // set replaces case-insensitively, so a signed header is never sent twice.
+    for (const [key, value] of Object.entries(uploadHeaders ?? {})) {
+      headers.set(key, value);
+    }
     const response = await this.#context.fetch(url, {
       method: "PUT",
-      headers: { "Content-Type": "application/zip", ...uploadHeaders },
+      headers,
       body: zip,
       signal,
     });
@@ -1062,7 +1067,7 @@ function compareNames(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function imageInfoFromApi(image: ApiImage | ApiImageSummary): ImageInfo {
+function imageInfoFromApi(image: ApiImage): ImageInfo {
   return {
     name: image.name,
     status: image.status,

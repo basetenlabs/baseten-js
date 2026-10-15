@@ -1002,6 +1002,43 @@ export type components = {
        */
       volume_sequence: number;
     };
+    /** PatchVolumeRequestV1 */
+    PatchVolumeRequest: {
+      /**
+       * Expires At
+       * @description Time at which the volume expires, in ISO 8601 format, with a UTC offset. It must be in the future and at most ten years ahead. Set it to null to clear the expiration time. A body that sets no field is rejected. When the volume expires, all live versions are deleted, all tags are removed, and the volume disappears from listings. Clearing the expiration time afterward does not restore deleted versions. Each deleted version can be restored until its delete_after time. Setting or clearing the expiration time requires the same permission as deleting the volume.
+       * @example 2030-01-01T00:00:00Z
+       */
+      expires_at?: string | null;
+      /**
+       * Expected Sequence
+       * @description Revision the volume is expected to be at. When set, the update fails with a conflict if the volume has changed since. Take the value from a volume's sequence, or from volume_sequence.
+       */
+      expected_sequence?: number | null;
+    };
+    /** PatchVolumeResponseV1 */
+    PatchVolumeResponse: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Volume
+       * @description Name of the volume, in lowercase.
+       */
+      volume: string;
+      /**
+       * Expires At
+       * @description Volume expiration time in ISO 8601 format. Null when no expiration time is set.
+       */
+      expires_at: string | null;
+      /**
+       * Volume Sequence
+       * @description Revision of the volume after the update.
+       */
+      volume_sequence: number;
+    };
     /** VolumeVersionV1 */
     VolumeVersion: {
       /**
@@ -1258,6 +1295,105 @@ export type components = {
       /**
        * Volume Sequence
        * @description Revision of the volume after the restore.
+       */
+      volume_sequence: number;
+    };
+    /** SetVolumeTagRequestV1 */
+    SetVolumeTagRequest: {
+      /**
+       * Tag
+       * @description Name of the tag to set. Tags are case-sensitive. Setting a tag that already exists overwrites it, and the version it pointed at before stays reachable by digest.
+       * @example nightly
+       */
+      tag: string;
+      /**
+       * Version
+       * @description Version to set the tag on. Address it with `:<tag>` for a tag, `@<digest>` for a full content digest or a prefix of at least 12 hexadecimal characters, or `head` for the version a reference with no tag or digest resolves to.
+       * @example head
+       */
+      version: string;
+      /**
+       * Expires At
+       * @description Time at which the tag expires, in ISO 8601 format, with a UTC offset. It must be in the future and at most ten years ahead. Omit it for a tag with no expiration time of its own. Omitting it also clears the expiration time of an existing tag. Version or volume expiration still deletes the tag. Do not specify it when setting `head`.
+       */
+      expires_at?: string | null;
+      /**
+       * Expected Sequence
+       * @description Revision the volume is expected to be at. When set, the request fails with a conflict if the volume has changed since. Take the value from volume_sequence.
+       */
+      expected_sequence?: number | null;
+    };
+    /** SetVolumeTagResponseV1 */
+    SetVolumeTagResponse: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Volume
+       * @description Name of the volume, in lowercase.
+       */
+      volume: string;
+      /**
+       * Tag
+       * @description Name of the tag that was set, with its original capitalization.
+       */
+      tag: string;
+      /**
+       * Digest
+       * @description Content digest of the version the tag points at, as `b3:<hex>`.
+       */
+      digest: string;
+      /**
+       * Version Ref
+       * @description Full address of the tagged version, as `bdn:<namespace>/<volume>@<digest>`. Paste it into a config.yaml to pin this version, even if the tag is later set on another version.
+       */
+      version_ref: string;
+      /**
+       * Volume Sequence
+       * @description Revision of the volume after the tag was set.
+       */
+      volume_sequence: number;
+      /**
+       * Expires At
+       * @description Tag expiration time in ISO 8601 format. Null when the tag has no expiration time of its own.
+       */
+      expires_at: string | null;
+    };
+    /** DeleteVolumeTagRequestV1 */
+    DeleteVolumeTagRequest: {
+      /**
+       * Expected Sequence
+       * @description Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so it cannot delete a tag someone else has just set on another version. Take the value from volume_sequence.
+       */
+      expected_sequence?: number | null;
+    };
+    /** DeleteVolumeTagResponseV1 */
+    DeleteVolumeTagResponse: {
+      /**
+       * Namespace
+       * @description Namespace the volume belongs to, in lowercase.
+       */
+      namespace: string;
+      /**
+       * Volume
+       * @description Name of the volume, in lowercase.
+       */
+      volume: string;
+      /**
+       * Tag
+       * @description Tag name from the request, with its original capitalization.
+       */
+      tag: string;
+      /**
+       * Deleted
+       * @description Whether the tag existed and was deleted. False when the volume had no tag by that name, which is not an error.
+       */
+      deleted: boolean;
+      /**
+       * Volume Sequence
+       * @description Revision of the volume after the delete.
        */
       volume_sequence: number;
     };
@@ -1943,7 +2079,10 @@ export type components = {
         | components["schemas"]["AuditLogEventSshCertificateSigned"]
         | components["schemas"]["AuditLogEventVolumeDeleted"]
         | components["schemas"]["AuditLogEventVolumeVersionDeleted"]
-        | components["schemas"]["AuditLogEventVolumeVersionRestored"];
+        | components["schemas"]["AuditLogEventVolumeVersionRestored"]
+        | components["schemas"]["AuditLogEventVolumeTagSet"]
+        | components["schemas"]["AuditLogEventVolumeTagDeleted"]
+        | components["schemas"]["AuditLogEventVolumeUpdated"];
       /**
        * @description Surface that issued the action, if known.
        * @default null
@@ -3045,7 +3184,10 @@ export type components = {
       | "SSH_CERTIFICATE_SIGNED"
       | "VOLUME_DELETED"
       | "VOLUME_VERSION_DELETED"
-      | "VOLUME_VERSION_RESTORED";
+      | "VOLUME_VERSION_RESTORED"
+      | "VOLUME_TAG_SET"
+      | "VOLUME_TAG_DELETED"
+      | "VOLUME_UPDATED";
     /**
      * AuditLogEventUserInvitedV1
      * @description A user was invited to the organization.
@@ -3145,6 +3287,63 @@ export type components = {
       volume_name: string;
       /** Versions Deleted */
       versions_deleted: number;
+    };
+    /**
+     * AuditLogEventVolumeTagDeletedV1
+     * @description Deleting a volume tag succeeded. `deleted` is false if the tag was already absent.
+     */
+    AuditLogEventVolumeTagDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "VOLUME_TAG_DELETED";
+      /** Volume Ref */
+      volume_ref: string;
+      /** Tag */
+      tag: string;
+      /** Deleted */
+      deleted: boolean;
+    };
+    /**
+     * AuditLogEventVolumeTagSetV1
+     * @description A volume tag was set on a version.
+     */
+    AuditLogEventVolumeTagSet: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "VOLUME_TAG_SET";
+      /** Volume Ref */
+      volume_ref: string;
+      /** Tag */
+      tag: string;
+      /** Digest */
+      digest: string;
+    };
+    /**
+     * AuditLogEventVolumeUpdatedV1
+     * @description A volume's settings were updated.
+     */
+    AuditLogEventVolumeUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "VOLUME_UPDATED";
+      /** Volume Ref */
+      volume_ref: string;
+      /**
+       * Expires At
+       * @description The volume's expiration time after the update, as an ISO 8601 string. Null when the update cleared it.
+       */
+      expires_at: string | null;
+      /**
+       * Previous Expires At
+       * @description The expiration time the update replaced, as an ISO 8601 string. Null when the volume had none.
+       */
+      previous_expires_at: string | null;
     };
     /**
      * AuditLogEventVolumeVersionDeletedV1
@@ -4376,6 +4575,209 @@ export type components = {
        * @description Metric values per time step covering the window. In summary mode this always contains exactly one value set spanning the whole window.
        */
       metric_values: components["schemas"]["ModelMetricValueSet"][];
+    };
+    /**
+     * StartupAttemptV1
+     * @description One startup attempt of a replica.
+     */
+    StartupAttempt: {
+      /**
+       * Model Id
+       * @description Unique identifier of the model.
+       */
+      model_id: string;
+      /**
+       * Deployment Id
+       * @description Unique identifier of the deployment.
+       */
+      deployment_id: string | null;
+      /**
+       * Deployment Name
+       * @description Name of the deployment.
+       */
+      deployment_name: string;
+      /**
+       * Environment Name
+       * @description Name of the environment. Null when querying a deployment.
+       */
+      environment_name: string | null;
+      /**
+       * Replica Id
+       * @description Identifier of the replica that started.
+       */
+      replica_id: string | null;
+      /**
+       * Started At Epoch Millis
+       * @description Time the attempt started, in epoch milliseconds.
+       */
+      started_at_epoch_millis: number;
+      /**
+       * Ready At Epoch Millis
+       * @description Time the replica became ready, in epoch milliseconds. Null if it never did.
+       */
+      ready_at_epoch_millis: number | null;
+      /**
+       * Duration Ms
+       * @description Duration of the attempt, in milliseconds.
+       */
+      duration_ms: number;
+      /** @description Outcome of the attempt. */
+      outcome: components["schemas"]["StartupOutcome"];
+      /**
+       * Phase Summary
+       * @description Phases recorded during the attempt.
+       */
+      phase_summary: components["schemas"]["StartupPhaseSummary"][];
+    };
+    /**
+     * StartupOutcomeV1
+     * @description Outcome of a whole startup attempt.
+     * @enum {string}
+     */
+    StartupOutcome: "SUCCESS" | "FAILED" | "STALLED";
+    /**
+     * StartupPhaseStatusV1
+     * @description Outcome of one phase, independent of the outcome of the whole startup.
+     * @enum {string}
+     */
+    StartupPhaseStatus: "COMPLETED" | "FAILED";
+    /**
+     * StartupPhaseSummaryV1
+     * @description One phase recorded during a startup attempt.
+     */
+    StartupPhaseSummary: {
+      /** @description The phase. */
+      phase: components["schemas"]["StartupPhase"];
+      /** @description Outcome of the phase. */
+      status: components["schemas"]["StartupPhaseStatus"];
+      /**
+       * Offset Ms
+       * @description Time from the start of the attempt to the start of the phase, in milliseconds.
+       */
+      offset_ms: number;
+      /**
+       * Duration Ms
+       * @description Duration of the phase, in milliseconds. Can be 0 for a phase that finished within a second. Null if the phase did not finish.
+       */
+      duration_ms: number | null;
+    };
+    /**
+     * StartupPhaseV1
+     * @description A stage of a replica startup.
+     *
+     *     - ``SCHEDULING``: waiting for the replica to be placed on a node.
+     *     - ``IMAGE_PULL``: pulling the container image.
+     *     - ``WEIGHT_DOWNLOAD``: downloading model weights.
+     *     - ``CONTAINER_CREATE``: creating and starting the model container, including
+     *       ``CONTAINER_START`` and ``READINESS``.
+     *     - ``CONTAINER_START``: starting the model container.
+     *     - ``READINESS``: waiting for the model to pass its readiness check.
+     *
+     *     ``CONTAINER_START`` and ``READINESS`` are accepted as filters but are reported only as
+     *     part of ``CONTAINER_CREATE``.
+     * @enum {string}
+     */
+    StartupPhase:
+      | "SCHEDULING"
+      | "IMAGE_PULL"
+      | "WEIGHT_DOWNLOAD"
+      | "CONTAINER_CREATE"
+      | "CONTAINER_START"
+      | "READINESS";
+    /**
+     * StartupAttemptsV1
+     * @description A page of startup attempts, newest first by default.
+     */
+    StartupAttempts: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["StartupAttempt"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+      /**
+       * Total Count
+       * @description Number of attempts matching the filters, counted within the 1,000 most recent startups in the window.
+       */
+      total_count: number;
+    };
+    /**
+     * StartupSortFieldV1
+     * @description Field to sort startup attempts by.
+     * @enum {string}
+     */
+    StartupSortField: "OUTCOME" | "STARTED_AT" | "READY_AT" | "DURATION";
+    /**
+     * StartupPercentilesV1
+     * @description A distribution of startup durations.
+     *
+     *     Statistics cover only samples longer than 0 ms and are null when there are none.
+     */
+    StartupPercentiles: {
+      /**
+       * Sample Count
+       * @description Number of startups in the distribution, including those that took 0 ms. A phase that finishes within a second can record 0 ms.
+       */
+      sample_count: number;
+      /**
+       * Mean Ms
+       * @description Mean duration, in milliseconds.
+       */
+      mean_ms: number | null;
+      /**
+       * P50 Ms
+       * @description 50th percentile duration, in milliseconds.
+       */
+      p50_ms: number | null;
+      /**
+       * P90 Ms
+       * @description 90th percentile duration, in milliseconds.
+       */
+      p90_ms: number | null;
+      /**
+       * P95 Ms
+       * @description 95th percentile duration, in milliseconds.
+       */
+      p95_ms: number | null;
+      /**
+       * P99 Ms
+       * @description 99th percentile duration, in milliseconds.
+       */
+      p99_ms: number | null;
+    };
+    /**
+     * StartupPhasePercentilesV1
+     * @description The duration distribution of one startup phase.
+     */
+    StartupPhasePercentiles: {
+      /** @description The phase. */
+      phase: components["schemas"]["StartupPhase"];
+      /** @description Durations of the phase. */
+      duration_ms: components["schemas"]["StartupPercentiles"];
+    };
+    /**
+     * StartupSummaryV1
+     * @description Startup duration distributions over a time window.
+     */
+    StartupSummary: {
+      /**
+       * Start Epoch Millis
+       * @description Start of the returned window.
+       */
+      start_epoch_millis: number;
+      /**
+       * End Epoch Millis
+       * @description End of the returned window.
+       */
+      end_epoch_millis: number;
+      /** @description Durations of whole startups, sampled from the 1,000 most recent in the window. */
+      total_duration_ms: components["schemas"]["StartupPercentiles"];
+      /**
+       * Phase Duration Ms
+       * @description Durations of each phase that was recorded in the window.
+       */
+      phase_duration_ms: components["schemas"]["StartupPhasePercentiles"][];
     };
     /**
      * TerminateReplicaResponseV1
@@ -7178,6 +7580,12 @@ export type components = {
        */
       base_model: string;
       /**
+       * Lora Config Version
+       * @description The run's immutable LoRA config version.
+       * @default null
+       */
+      lora_config_version: string | null;
+      /**
        * Base Url
        * @description The run's base URL.
        */
@@ -7225,14 +7633,16 @@ export type components = {
       created_at: string;
       /**
        * Model Id
-       * @description Hashid of the underlying Baseten model.
+       * @description Hashid of the underlying Baseten model. Null for a serverless sampler.
+       * @default null
        */
-      model_id: string;
+      model_id: string | null;
       /**
        * Deployment Id
-       * @description Hashid of the specific model deployment (version).
+       * @description Hashid of the specific model deployment (version). Null for a serverless sampler.
+       * @default null
        */
-      deployment_id: string;
+      deployment_id: string | null;
       /** @description The sampler's current status. */
       status: components["schemas"]["LoopsSamplerStatus"];
       /** @description The user who owns the sampler. */
@@ -7560,6 +7970,8 @@ export type components = {
        * @description The checkpoint ID.
        */
       id: string;
+      /** @description The immutable LoRA config used to save this checkpoint. Null means the checkpoint is unsupported and cannot be loaded. */
+      lora_config: components["schemas"]["LoopsLoRAConfig"] | null;
       /**
        * Run Id
        * @description The ID of the run that produced the checkpoint.
@@ -7567,6 +7979,28 @@ export type components = {
       run_id: string;
       /** @description Whether this checkpoint is loadable by the sampler or by the run. */
       target: components["schemas"]["TrainerCheckpointTarget"];
+    };
+    /**
+     * LoopsLoRAConfigV1
+     * @description A published LoRA config: which modules the adapter targets and how experts are laid out.
+     */
+    LoopsLoRAConfig: {
+      /**
+       * Config Version
+       * @description The config version, unique per base model.
+       */
+      config_version: string;
+      /**
+       * Targets
+       * @description The module names the LoRA adapter targets.
+       */
+      targets: string[];
+      /**
+       * Expert Layout
+       * @description How routed-expert LoRA weights are laid out. Null when no experts are targeted.
+       * @default null
+       */
+      expert_layout: ("per_expert" | "shared_outer" | "shared_adapter") | null;
     };
     /**
      * ListLoopsCheckpointsResponseV1
@@ -7590,11 +8024,18 @@ export type components = {
        * @example bt://loops:k4q95w5/sampler_weights/step-100
        */
       checkpoint_path: string;
+      /**
+       * Run Id
+       * @description Loops run whose sampler will load the checkpoint. The checkpoint must use the run's LoRA config.
+       * @example k4q95w5
+       */
+      run_id?: string | null;
     };
     /**
      * ValidateLoopsCheckpointResponseV1
      * @description Response for ``POST /v1/loops/checkpoints/validate``. Empty on success;
-     *     inaccessible or malformed paths raise 400.
+     *     inaccessible or malformed paths, and checkpoints of another LoRA config than
+     *     ``run_id``'s, raise 400.
      */
     ValidateLoopsCheckpointResponse: Record<string, unknown>;
     /** DeployLoopsCheckpointRequestV1 */
@@ -8746,6 +9187,12 @@ export type components = {
        */
       model: string | null;
       /**
+       * Team Id
+       * @description Team the usage is attributed to. Null when not grouping by team or when team attribution is unavailable.
+       * @default null
+       */
+      team_id: string | null;
+      /**
        * Input Tokens
        * @description Total input tokens, cached and uncached combined.
        */
@@ -8788,7 +9235,26 @@ export type components = {
      * UsageDimensionV1
      * @enum {string}
      */
-    UsageDimension: "api_key" | "user" | "model";
+    UsageDimension: "api_key" | "user" | "model" | "team";
+    /** EgressRestrictionsV1 */
+    EgressRestrictions: {
+      /**
+       * Fqdn Allow List
+       * @description Allowed outbound FQDNs; '*' wildcards are supported.
+       * @example [
+       *       "*.example.com"
+       *     ]
+       */
+      fqdn_allow_list?: string[] | null;
+      /**
+       * Ip Allow List
+       * @description Allowed outbound IPv4 addresses or CIDR ranges.
+       * @example [
+       *       "1.1.1.1/32"
+       *     ]
+       */
+      ip_allow_list?: string[] | null;
+    };
     /**
      * CreateLLMModelRequestV1
      * @description A request to create a BIS-LLM model
@@ -8887,6 +9353,8 @@ export type components = {
             [key: string]: unknown;
           }[]
         | null;
+      /** @description Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled. */
+      egress_restrictions?: components["schemas"]["EgressRestrictions"] | null;
       /**
        * Name
        * @description Name of the model
@@ -9018,6 +9486,8 @@ export type components = {
             [key: string]: unknown;
           }[]
         | null;
+      /** @description Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled. */
+      egress_restrictions?: components["schemas"]["EgressRestrictions"] | null;
     };
     /** LibraryListingMetadataV1 */
     LibraryListingMetadata: {
@@ -9064,6 +9534,11 @@ export type components = {
        * @description Whether the listing is publicly accessible
        */
       is_public: boolean;
+      /**
+       * Is Listed
+       * @description Whether the listing appears in catalogs; unlisted listings still deploy from a direct link
+       */
+      is_listed: boolean;
       /**
        * Trending
        * @description Whether the listing is trending
@@ -9121,6 +9596,11 @@ export type components = {
        */
       is_public?: boolean;
       /**
+       * Is Listed
+       * @description Whether the listing appears in catalogs; unlisted listings still deploy from a direct link
+       */
+      is_listed?: boolean;
+      /**
        * Closed Source
        * @description Whether the listing is closed source (deployers cannot view or download the Truss, and forks copy mirrored weights instead of re-mirroring from upstream)
        */
@@ -9162,6 +9642,11 @@ export type components = {
        * @description Whether the listing is trending
        */
       trending?: boolean | null;
+      /**
+       * Is Listed
+       * @description Whether the listing appears in catalogs; unlisted listings still deploy from a direct link
+       */
+      is_listed?: boolean | null;
       /** @description Model-level metadata for the listing. When provided, replaces the stored metadata. */
       metadata?: components["schemas"]["LibraryListingMetadata"] | null;
     };
@@ -9303,6 +9788,16 @@ export type components = {
        * @description Human-readable tag for this version
        */
       version_tag: string;
+      /**
+       * Is Listed
+       * @description Whether the listing appears in catalogs; unlisted listings still deploy from a direct link. Only used when creating a new listing.
+       */
+      is_listed?: boolean;
+      /**
+       * Replace Model
+       * @description Allow publishing from a different model than the listing's current one. The listing then points at the new model; earlier versions and existing deployments are unaffected. Fails if the new model already backs another listing.
+       */
+      replace_model?: boolean;
     };
     /**
      * LibraryListingVersionTombstoneV1
@@ -10130,24 +10625,6 @@ export type components = {
        */
       slug: string;
     };
-    /** RouteTargetAnthropicV1 */
-    RouteTargetAnthropic: {
-      /**
-       * @description Target kind for Anthropic. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "ANTHROPIC";
-      /**
-       * Model
-       * @description Model name sent to the provider.
-       */
-      model: string;
-      /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
-       */
-      secret_name: string;
-    };
     /** RouteTargetBasetenModelAPIV1 */
     RouteTargetBasetenModelAPI: {
       /**
@@ -10188,41 +10665,23 @@ export type components = {
        */
       allowed_routes: components["schemas"]["RouteRef"][];
     };
-    /** RouteTargetOpenAIV1 */
-    RouteTargetOpenAI: {
+    /** RouteTargetConnectionV1 */
+    RouteTargetConnection: {
       /**
-       * @description Target kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @description Target kind for a provider reached through a team connection. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      type: "OPENAI";
+      type: "CONNECTION";
       /**
        * Model
        * @description Model name sent to the provider.
        */
       model: string;
       /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
+       * Connection Id
+       * @description Identifier of the team connection authenticating with the provider.
        */
-      secret_name: string;
-    };
-    /** RouteTargetXAIV1 */
-    RouteTargetXAI: {
-      /**
-       * @description Target kind for xAI. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "XAI";
-      /**
-       * Model
-       * @description Model name sent to the provider.
-       */
-      model: string;
-      /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
-       */
-      secret_name: string;
+      connection_id: string;
     };
     /** RouteV1 */
     Route: {
@@ -10262,9 +10721,7 @@ export type components = {
        */
       target:
         | components["schemas"]["RouteTargetBasetenModelAPI"]
-        | components["schemas"]["RouteTargetAnthropic"]
-        | components["schemas"]["RouteTargetOpenAI"]
-        | components["schemas"]["RouteTargetXAI"]
+        | components["schemas"]["RouteTargetConnection"]
         | components["schemas"]["RouteTargetClassifierModelBased"];
       /** @description Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked. */
       metadata: components["schemas"]["ExploreMetadata"] | null;
@@ -10290,26 +10747,8 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
-    /** RouteTargetConfigAnthropicV1 */
-    RouteTargetConfigAnthropic: {
-      /**
-       * @description Target kind for Anthropic. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "ANTHROPIC";
-      /**
-       * Model
-       * @description Model name sent to the provider.
-       */
-      model: string;
-      /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
-       */
-      secret_name: string;
-    };
-    /** RouteTargetConfigBasetenModelAPIV1 */
-    RouteTargetConfigBasetenModelAPI: {
+    /** UpsertRouteTargetBasetenModelAPIV1 */
+    UpsertRouteTargetBasetenModelAPI: {
       /**
        * @description Target kind for a Baseten Model API. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10321,8 +10760,8 @@ export type components = {
        */
       model: string;
     };
-    /** RouteTargetConfigClassifierModelBasedV1 */
-    RouteTargetConfigClassifierModelBased: {
+    /** UpsertRouteTargetClassifierModelBasedV1 */
+    UpsertRouteTargetClassifierModelBased: {
       /**
        * @description Target kind for a classifier-model-based route. Not intended for general use: classifiers are deployed by Baseten's post-training team. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10356,41 +10795,24 @@ export type components = {
        */
       default_route_id: string;
     };
-    /** RouteTargetConfigOpenAIV1 */
-    RouteTargetConfigOpenAI: {
+    /** UpsertRouteTargetConnectionV1 */
+    UpsertRouteTargetConnection: {
       /**
-       * @description Target kind for OpenAI. (enum property replaced by openapi-typescript)
+       * @description Target kind for a provider reached through a team connection. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      type: "OPENAI";
+      type: "CONNECTION";
       /**
        * Model
        * @description Model name sent to the provider.
        */
       model: string;
       /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
+       * Connection Id
+       * @description Identifier of a connection owned by the route's team. Its provider serves the route.
+       * @example abc1234
        */
-      secret_name: string;
-    };
-    /** RouteTargetConfigXAIV1 */
-    RouteTargetConfigXAI: {
-      /**
-       * @description Target kind for xAI. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "XAI";
-      /**
-       * Model
-       * @description Model name sent to the provider.
-       */
-      model: string;
-      /**
-       * Secret Name
-       * @description Name of a credential secret owned by the route's team.
-       */
-      secret_name: string;
+      connection_id: string;
     };
     /** CreateRouteRequestV1 */
     CreateRouteRequest: {
@@ -10408,18 +10830,16 @@ export type components = {
       display_name?: string | null;
       /**
        * Target
-       * @description Upstream target for the route.
+       * @description Upstream target for the route. CONNECTION targets use the provider and credentials of a connection owned by the route's team.
        * @example {
        *       "model": "zai-org/GLM-5.3",
        *       "type": "BASETEN_MODEL_API"
        *     }
        */
       target:
-        | components["schemas"]["RouteTargetConfigBasetenModelAPI"]
-        | components["schemas"]["RouteTargetConfigAnthropic"]
-        | components["schemas"]["RouteTargetConfigOpenAI"]
-        | components["schemas"]["RouteTargetConfigXAI"]
-        | components["schemas"]["RouteTargetConfigClassifierModelBased"];
+        | components["schemas"]["UpsertRouteTargetBasetenModelAPI"]
+        | components["schemas"]["UpsertRouteTargetConnection"]
+        | components["schemas"]["UpsertRouteTargetClassifierModelBased"];
       /**
        * Description
        * @description Short description of the route. Omit for no description; null is not accepted.
@@ -10462,6 +10882,12 @@ export type components = {
        */
       user_id: string | null;
       /**
+       * Team Id
+       * @description ID of the team the usage was metered in. Null when not grouping by TEAM, and for usage metered before it was attributed to teams.
+       * @default null
+       */
+      team_id: string | null;
+      /**
        * Model
        * @description Model name. For external providers, the model name sent to the provider. Null when not grouping by MODEL.
        * @default null
@@ -10472,6 +10898,12 @@ export type components = {
        * @default null
        */
       provider: components["schemas"]["RouteProvider"] | null;
+      /**
+       * Router Id
+       * @description Slug of the intelligent router, matching its name in `GET /v1/routes`. Null when not grouping by ROUTER.
+       * @default null
+       */
+      router_id: string | null;
       /**
        * Cost Usd
        * @description Estimated cost in USD, returned as an exact decimal string. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.
@@ -10498,6 +10930,11 @@ export type components = {
        * @description Output tokens.
        */
       output_tokens: number;
+      /**
+       * Requests
+       * @description Number of requests; with ROUTER, the requests sent through that router. Usage recorded before requests were counted adds zero.
+       */
+      requests: number;
     };
     /** RoutesUsageResponseV1 */
     RoutesUsageResponse: {
@@ -10513,7 +10950,7 @@ export type components = {
      * RouteUsageDimensionV1
      * @enum {string}
      */
-    RouteUsageDimension: "USER" | "MODEL" | "PROVIDER";
+    RouteUsageDimension: "USER" | "TEAM" | "MODEL" | "PROVIDER" | "ROUTER";
     /** RouteEffectiveSpendLimitV1 */
     RouteEffectiveSpendLimit: {
       /**
@@ -10530,24 +10967,41 @@ export type components = {
      * @enum {string}
      */
     RouteSettingSource: "user" | "team";
+    /**
+     * RouteSpendBlockedByV1
+     * @enum {string}
+     */
+    RouteSpendBlockedBy: "member" | "team";
     /** RouteSpendLimitSettingV1 */
     RouteSpendLimitSetting: {
       /**
        * User Monthly Limit Usd
-       * @description Standing spend limit in USD for each UTC calendar month set on the user. Null when the user has no limit of their own.
+       * @description Standing spend limit in USD for each UTC calendar month set on the user in the team. Null when the user has no limit of their own there.
        * @example 200
        */
       user_monthly_limit_usd: string | null;
-      /** @description Per-member limit of the team the user's active Code key belongs to. This limit applies when the user has no limit of their own. Null when there is none. */
+      /**
+       * Month Override Usd
+       * @description Spend limit in USD for the current UTC calendar month set on the user in the team, which supersedes their standing limit. Null when there is none.
+       * @example 300
+       */
+      month_override_usd: string | null;
+      /** @description Per-member limit of the team. This limit applies when the user has no limit of their own. Null when there is none. */
       team_default: components["schemas"]["RouteSpendLimitTeamDefault"] | null;
       /** @description The effective limit enforced for the current month. */
       effective: components["schemas"]["RouteEffectiveSpendLimit"];
+      /**
+       * Team Wide Monthly Limit Usd
+       * @description Team-wide limit of the team in USD for each UTC calendar month. Once all members' spend in the team reaches it, the user's requests in the team are rejected whatever their own limit. Null when there is none.
+       * @example 5000
+       */
+      team_wide_monthly_limit_usd: string | null;
     };
     /** RouteSpendLimitTeamDefaultV1 */
     RouteSpendLimitTeamDefault: {
       /**
        * Team Id
-       * @description ID of the team the user's active Code key belongs to.
+       * @description ID of the team whose per-member limit this is.
        * @example abc1234
        */
       team_id: string;
@@ -10558,8 +11012,20 @@ export type components = {
        */
       per_member_monthly_limit_usd: string;
     };
-    /** RouteUserSettingsV1 */
-    RouteUserSettings: {
+    /** RouteTeamUserSettingsV1 */
+    RouteTeamUserSettings: {
+      /**
+       * Team Id
+       * @description ID of the team.
+       * @example abc1234
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the team.
+       * @example Engineering
+       */
+      team_name: string;
       /**
        * User Id
        * @description ID of the user.
@@ -10572,22 +11038,29 @@ export type components = {
        * @example dev@example.com
        */
       email: string | null;
-      /** @description Spend limit for Baseten Code. Applies to requests with Routes keys the user created; personal API keys are not limited. */
+      /** @description Spend limit for Baseten Code in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited. */
       spend_limit: components["schemas"]["RouteSpendLimitSetting"];
-    };
-    /** UpdateRouteSpendLimitSettingV1 */
-    UpdateRouteSpendLimitSetting: {
       /**
-       * User Monthly Limit Usd
-       * @description Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.
-       * @example 200
+       * Month Spend Usd
+       * @description The user's metered Code spend in USD in the team this UTC calendar month, returned as an exact decimal string.
+       * @example 12.5
        */
-      user_monthly_limit_usd?: string | null;
+      month_spend_usd: string;
+      /**
+       * Is Blocked
+       * @description Whether the user's spend this month reached their limit, or the team's spend reached its team-wide limit, so requests with Routes keys they created in the team are rejected.
+       */
+      is_blocked: boolean;
+      /** @description `member` when the user's spend this month reached their limit, `team` when the team's spend reached its team-wide limit. Null when the user is not blocked. */
+      blocked_by: components["schemas"]["RouteSpendBlockedBy"] | null;
     };
-    /** UpdateRouteUserSettingsRequestV1 */
-    UpdateRouteUserSettingsRequest: {
-      /** @description Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged. */
-      spend_limit?: components["schemas"]["UpdateRouteSpendLimitSetting"] | null;
+    /** RouteUserTeamSettingsListV1 */
+    RouteUserTeamSettingsList: {
+      /**
+       * Teams
+       * @description The user's settings in each team they have a role in and in any team they have Code spend in this month, alphabetical by team name.
+       */
+      teams: components["schemas"]["RouteTeamUserSettings"][];
     };
     /** BackgroundHarnessDefaultsV1 */
     BackgroundHarnessDefaults: {
@@ -10623,10 +11096,16 @@ export type components = {
     RouteTeamSpendLimitSetting: {
       /**
        * Per Member Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
+       * @description Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
        * @example 200
        */
       per_member_monthly_limit_usd: string | null;
+      /**
+       * Team Wide Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.
+       * @example 5000
+       */
+      team_wide_monthly_limit_usd: string | null;
     };
     /** RouteTeamSettingsV1 */
     RouteTeamSettings: {
@@ -10638,7 +11117,7 @@ export type components = {
       team_id: string;
       /** @description Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes. */
       harness_defaults: components["schemas"]["RouteHarnessDefaults"];
-      /** @description Spend limits for Baseten Code for members whose active Code key belongs to this team. */
+      /** @description Spend limits for Baseten Code for members' spend in this team. */
       spend_limit: components["schemas"]["RouteTeamSpendLimitSetting"];
     };
     /** UpdateBackgroundHarnessModelsV1 */
@@ -10680,20 +11159,54 @@ export type components = {
     UpdateRouteTeamSpendLimitSetting: {
       /**
        * Per Member Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
+       * @description Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
        * @example 200
        */
       per_member_monthly_limit_usd?: string | null;
+      /**
+       * Team Wide Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Send null to remove it; omit to leave it unchanged.
+       * @example 5000
+       */
+      team_wide_monthly_limit_usd?: string | null;
     };
     /** UpdateRouteTeamSettingsRequestV1 */
     UpdateRouteTeamSettingsRequest: {
       /** @description Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default. */
       harness_defaults?: components["schemas"]["UpdateRouteHarnessDefaults"] | null;
-      /** @description Spend limit fields to change. Pass null to remove the team's per-member limit; omit to leave it unchanged. */
+      /** @description Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged. */
       spend_limit?: components["schemas"]["UpdateRouteTeamSpendLimitSetting"] | null;
     };
-    /** RouteConnectionAnthropicV1 */
-    RouteConnectionAnthropic: {
+    /** RouteTeamUserSettingsListV1 */
+    RouteTeamUserSettingsList: {
+      /**
+       * Users
+       * @description Settings of each user with a role in the team and of anyone with Code spend in the team this month.
+       */
+      users: components["schemas"]["RouteTeamUserSettings"][];
+    };
+    /** UpdateRouteSpendLimitSettingV1 */
+    UpdateRouteSpendLimitSetting: {
+      /**
+       * User Monthly Limit Usd
+       * @description Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.
+       * @example 200
+       */
+      user_monthly_limit_usd?: string | null;
+      /**
+       * Month Override Usd
+       * @description Spend limit in USD for the current UTC calendar month, which supersedes the standing limit. Send null to remove it; omit to leave it unchanged.
+       * @example 300
+       */
+      month_override_usd?: string | null;
+    };
+    /** UpdateRouteUserSettingsRequestV1 */
+    UpdateRouteUserSettingsRequest: {
+      /** @description Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged. */
+      spend_limit?: components["schemas"]["UpdateRouteSpendLimitSetting"] | null;
+    };
+    /** RouteConnectionConfigAnthropicV1 */
+    RouteConnectionConfigAnthropic: {
       /**
        * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10710,13 +11223,31 @@ export type components = {
        */
       secret_name: string;
     };
-    /** RouteConnectionOpenAIV1 */
-    RouteConnectionOpenAI: {
+    /** RouteConnectionConfigOpenAIV1 */
+    RouteConnectionConfigOpenAI: {
       /**
        * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       provider: "OPENAI";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+    };
+    /** RouteConnectionConfigXAIV1 */
+    RouteConnectionConfigXAI: {
+      /**
+       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "XAI";
       /**
        * Secret Id
        * @description Identifier of the team secret holding the provider API key.
@@ -10745,9 +11276,9 @@ export type components = {
        * @description Provider the connection authenticates with, and the team secret holding its API key.
        */
       config:
-        | components["schemas"]["RouteConnectionAnthropic"]
-        | components["schemas"]["RouteConnectionOpenAI"]
-        | components["schemas"]["RouteConnectionXAI"];
+        | components["schemas"]["RouteConnectionConfigAnthropic"]
+        | components["schemas"]["RouteConnectionConfigOpenAI"]
+        | components["schemas"]["RouteConnectionConfigXAI"];
       /**
        * Created At
        * Format: date-time
@@ -10761,24 +11292,6 @@ export type components = {
        */
       updated_at: string;
     };
-    /** RouteConnectionXAIV1 */
-    RouteConnectionXAI: {
-      /**
-       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      provider: "XAI";
-      /**
-       * Secret Id
-       * @description Identifier of the team secret holding the provider API key.
-       */
-      secret_id: string;
-      /**
-       * Secret Name
-       * @description Name of the team secret holding the provider API key.
-       */
-      secret_name: string;
-    };
     /** RouteConnectionsResponseV1 */
     RouteConnectionsResponse: {
       /**
@@ -10789,8 +11302,8 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
-    /** RouteConnectionConfigAnthropicV1 */
-    RouteConnectionConfigAnthropic: {
+    /** UpsertRouteConnectionConfigAnthropicV1 */
+    UpsertRouteConnectionConfigAnthropic: {
       /**
        * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10802,8 +11315,8 @@ export type components = {
        */
       secret_id: string;
     };
-    /** RouteConnectionConfigOpenAIV1 */
-    RouteConnectionConfigOpenAI: {
+    /** UpsertRouteConnectionConfigOpenAIV1 */
+    UpsertRouteConnectionConfigOpenAI: {
       /**
        * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10815,8 +11328,8 @@ export type components = {
        */
       secret_id: string;
     };
-    /** RouteConnectionConfigXAIV1 */
-    RouteConnectionConfigXAI: {
+    /** UpsertRouteConnectionConfigXAIV1 */
+    UpsertRouteConnectionConfigXAI: {
       /**
        * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10845,9 +11358,9 @@ export type components = {
        *     }
        */
       config:
-        | components["schemas"]["RouteConnectionConfigAnthropic"]
-        | components["schemas"]["RouteConnectionConfigOpenAI"]
-        | components["schemas"]["RouteConnectionConfigXAI"];
+        | components["schemas"]["UpsertRouteConnectionConfigAnthropic"]
+        | components["schemas"]["UpsertRouteConnectionConfigOpenAI"]
+        | components["schemas"]["UpsertRouteConnectionConfigXAI"];
     };
     /** RouteConnectionTombstoneV1 */
     RouteConnectionTombstone: {
@@ -10857,59 +11370,20 @@ export type components = {
        */
       id: string;
     };
-    /** UpdateRouteConnectionConfigAnthropicV1 */
-    UpdateRouteConnectionConfigAnthropic: {
-      /**
-       * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      provider: "ANTHROPIC";
-      /**
-       * Secret Id
-       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
-       */
-      secret_id?: string | null;
-    };
-    /** UpdateRouteConnectionConfigOpenAIV1 */
-    UpdateRouteConnectionConfigOpenAI: {
-      /**
-       * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      provider: "OPENAI";
-      /**
-       * Secret Id
-       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
-       */
-      secret_id?: string | null;
-    };
-    /** UpdateRouteConnectionConfigXAIV1 */
-    UpdateRouteConnectionConfigXAI: {
-      /**
-       * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      provider: "XAI";
-      /**
-       * Secret Id
-       * @description Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.
-       */
-      secret_id?: string | null;
-    };
     /** UpdateRouteConnectionRequestV1 */
     UpdateRouteConnectionRequest: {
       /**
        * Config
-       * @description Connection fields to change. The provider must match the connection and is immutable.
+       * @description Complete new connection configuration, replacing the current one. The provider must match the connection and is immutable.
        * @example {
        *       "provider": "ANTHROPIC",
        *       "secret_id": "abc1234"
        *     }
        */
       config:
-        | components["schemas"]["UpdateRouteConnectionConfigAnthropic"]
-        | components["schemas"]["UpdateRouteConnectionConfigOpenAI"]
-        | components["schemas"]["UpdateRouteConnectionConfigXAI"];
+        | components["schemas"]["UpsertRouteConnectionConfigAnthropic"]
+        | components["schemas"]["UpsertRouteConnectionConfigOpenAI"]
+        | components["schemas"]["UpsertRouteConnectionConfigXAI"];
     };
     /** RouteTombstoneV1 */
     RouteTombstone: {
@@ -10944,11 +11418,9 @@ export type components = {
        */
       target?:
         | (
-            | components["schemas"]["RouteTargetConfigBasetenModelAPI"]
-            | components["schemas"]["RouteTargetConfigAnthropic"]
-            | components["schemas"]["RouteTargetConfigOpenAI"]
-            | components["schemas"]["RouteTargetConfigXAI"]
-            | components["schemas"]["RouteTargetConfigClassifierModelBased"]
+            | components["schemas"]["UpsertRouteTargetBasetenModelAPI"]
+            | components["schemas"]["UpsertRouteTargetConnection"]
+            | components["schemas"]["UpsertRouteTargetClassifierModelBased"]
           )
         | null;
     };
@@ -11497,6 +11969,74 @@ export type components = {
        */
       ok: boolean;
     };
+    SandboxLogs: {
+      sandbox_name: string;
+      /** Format: date-time */
+      start_time: string;
+      /** Format: date-time */
+      end_time: string;
+      logs: components["schemas"]["SandboxLogEntry"][];
+      /** @description Opaque cursor for the next page; null when there are no more entries. */
+      next_cursor: string | null;
+    };
+    SandboxLogEntry: {
+      /** Format: date-time */
+      timestamp: string;
+      message: string;
+      /** @description Numeric log severity. */
+      severity: number;
+      /** @description Associated trace identifier, or an empty string when unavailable. */
+      trace_id: string;
+      /** @description Action or command when present on the log entry. */
+      action?: string;
+    };
+    /** @enum {string} */
+    SandboxMetricMode: "CURRENT" | "SUMMARY" | "SERIES";
+    /** @enum {string} */
+    SandboxMetricName:
+      | "baseten_sandbox_requests_total"
+      | "baseten_sandbox_cpu_usage_cores"
+      | "baseten_sandbox_memory_bytes";
+    SandboxMetrics: {
+      /**
+       * Format: int64
+       * @description Returned window start, snapped outward in SERIES. Equal to end for CURRENT.
+       */
+      start_epoch_millis: number;
+      /**
+       * Format: int64
+       * @description Returned exclusive window end, snapped outward in SERIES. Snapshot timestamp for CURRENT.
+       */
+      end_epoch_millis: number;
+      mode: components["schemas"]["SandboxMetricMode"];
+      /** @description Seconds per SERIES interval; null in CURRENT and SUMMARY. */
+      step_seconds: number | null;
+      metric_descriptors: components["schemas"]["SandboxMetricDescriptor"][];
+      metric_values: components["schemas"]["SandboxMetricValueSet"][];
+    };
+    SandboxMetricDescriptor: {
+      name: components["schemas"]["SandboxMetricName"];
+      /**
+       * @description Requests use COUNT, CPU uses CORES (1 means one fully used core), and memory uses BYTES.
+       * @enum {string}
+       */
+      unit_hint: "COUNT" | "CORES" | "BYTES";
+      /** @enum {string} */
+      kind: "GAUGE" | "COUNTER";
+      /** @description Requests use status=2xx,4xx,5xx; CPU and memory use stat=avg,max. */
+      label_sets: {
+        [key: string]: string;
+      }[];
+    };
+    SandboxMetricValueSet: {
+      /**
+       * Format: int64
+       * @description Start of the SERIES interval or SUMMARY window; snapshot timestamp in CURRENT.
+       */
+      start_epoch_millis: number;
+      /** @description Values indexed first by metric_descriptors, then by that descriptor's label_sets. Null means no sample. */
+      values: (number | null)[][];
+    };
     GetSandboxConfigurationResponse: {
       /** @description Available Carbon-compatible regions, sorted by name. Empty when none are available. */
       regions: components["schemas"]["SandboxRegion"][];
@@ -11527,51 +12067,6 @@ export type components = {
        * @enum {string}
        */
       info_generation: "CARBON";
-    };
-    SandboxLogs: {
-      sandbox_name: string;
-      /** Format: date-time */
-      start_time: string;
-      /** Format: date-time */
-      end_time: string;
-      logs: components["schemas"]["SandboxLogEntry"][];
-      /** @description Opaque cursor for the next page; null when there are no more entries. */
-      next_cursor: string | null;
-    };
-    SandboxLogEntry: {
-      /** Format: date-time */
-      timestamp: string;
-      message: string;
-      /** @description Numeric log severity. */
-      severity: number;
-      /** @description Associated trace identifier, or an empty string when unavailable. */
-      trace_id: string;
-      /** @description Action or command when present on the log entry. */
-      action?: string;
-    };
-    SandboxMetrics: {
-      sandbox_name: string;
-      /** Format: date-time */
-      start_time: string;
-      /** Format: date-time */
-      end_time: string;
-      interval_seconds: number;
-      data: components["schemas"]["SandboxMetricsPoint"][];
-    };
-    SandboxMetricsPoint: {
-      /**
-       * Format: date-time
-       * @description Start of this interval.
-       */
-      timestamp: string;
-      /** @description Request count. Zero without traffic; null for intervals entirely before creation. */
-      requests: number | null;
-      /** @description Peak CPU usage in this interval, where 100 is one full CPU core. Null without a sample. */
-      cpu_percent: number | null;
-      /** @description Memory usage in bytes, averaged per series then maximum across series. Null without a sample. */
-      memory_bytes: number | null;
-      /** @description Fraction of requests returning 4xx or 5xx. Null when there are no requests. */
-      error_rate: number | null;
     };
     SandboxImageBuildLog: {
       /** Format: date-time */
@@ -11909,7 +12404,7 @@ export type components = {
      */
     SandboxEnv: {
       /**
-       * @description Name of the environment variable
+       * @description Name of the environment variable. Must start with a letter or underscore and contain only letters, digits and underscores (^[A-Za-z_][A-Za-z0-9_]*$); create and update reject other names.
        * @example NODE_ENV
        */
       name?: string;
@@ -12149,7 +12644,7 @@ export type components = {
        */
       image?: string;
       /**
-       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).
+       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Must be between 1024 and 262144.
        * @example 4096
        */
       memory?: number;
@@ -12364,7 +12859,7 @@ export type components = {
        */
       image?: string;
       /**
-       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096.
+       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096. Must be between 1024 and 262144.
        * @example 4096
        */
       memory?: number;
@@ -12886,7 +13381,7 @@ export type components = {
     /** @description One page of image repository summaries. Fetch tags through the separate tag listing endpoint. */
     ListSandboxImagesResponse: {
       /** @description Image repositories on this page. */
-      items: components["schemas"]["SandboxImageSummary"][];
+      items: components["schemas"]["SandboxImage"][];
       pagination: components["schemas"]["SandboxApiPagination"];
     };
     /** @description One page of image tags. */
@@ -12946,7 +13441,7 @@ export type components = {
      *       "tag_count": 2
      *     }
      */
-    SandboxImageSummary: {
+    SandboxImage: {
       /**
        * @description Stable repository name supplied when pushing the image.
        * @example base-image
@@ -12987,26 +13482,6 @@ export type components = {
        * @example 2
        */
       readonly tag_count?: number;
-    };
-    /**
-     * @description Sandbox image repository. Get operations return a summary with an empty tags array.
-     * @example {
-     *       "name": "base-image",
-     *       "status": "BUILT",
-     *       "created_at": "2026-09-15T21:20:00Z",
-     *       "updated_at": "2026-09-16T21:25:00Z",
-     *       "last_deployed_at": "2026-09-16T21:26:58.545765901Z",
-     *       "size": 260046848,
-     *       "tag_count": 2,
-     *       "tags": []
-     *     }
-     */
-    SandboxImage: components["schemas"]["SandboxImageSummary"] & {
-      /**
-       * @description Empty for get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.
-       * @example []
-       */
-      tags: components["schemas"]["SandboxImageTag"][];
     };
     /**
      * @description Push a sandbox image from a source archive or an existing registry image.
@@ -13075,7 +13550,7 @@ export type components = {
         [key: string]: string;
       };
       /**
-       * @description Registered image reference including its tag, when available. Tags are assigned by the service; GET /sandboxes/images/{image_name} returns the available tags once processing completes.
+       * @description Registered image reference including its tag, when available. Tags are assigned by the service; GET /sandboxes/images/{image_name}/tags returns the available tags once processing completes.
        * @example b10/base-image:latest
        */
       image?: string;
@@ -13473,6 +13948,66 @@ export type components = {
        */
       metrics?: string[];
     };
+    GetModelsDeploymentsStartupsParams: {
+      /**
+       * Start Epoch Millis
+       * @description Start of the query window, in epoch milliseconds.
+       */
+      start_epoch_millis: number;
+      /**
+       * End Epoch Millis
+       * @description End of the query window, in epoch milliseconds. Must be after the start.
+       */
+      end_epoch_millis: number;
+      /**
+       * Min Duration Ms
+       * @description Only include startups that lasted at least this many milliseconds.
+       */
+      min_duration_ms?: number | null;
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page. Pass the same filters and sort as the request that returned it.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of attempts to return.
+       */
+      limit?: number;
+      /**
+       * Outcomes
+       * @description Only include attempts with one of these outcomes. Repeat to pass several.
+       */
+      outcomes?: components["schemas"]["StartupOutcome"][];
+      /** @description Only include attempts that spent longer than 0 ms in this phase. */
+      phase?: components["schemas"]["StartupPhase"] | null;
+      /**
+       * Search
+       * @description Only include attempts whose replica ID matches exactly, or whose deployment name contains this text (case-insensitive).
+       */
+      search?: string | null;
+      /** @description Field to sort attempts by. Defaults to `STARTED_AT`. */
+      sort_by?: components["schemas"]["StartupSortField"] | null;
+      /** @description Sort direction. Defaults to `desc`. */
+      direction?: components["schemas"]["SortOrder"] | null;
+    };
+    GetModelsDeploymentsStartupsSummaryParams: {
+      /**
+       * Start Epoch Millis
+       * @description Start of the query window, in epoch milliseconds.
+       */
+      start_epoch_millis: number;
+      /**
+       * End Epoch Millis
+       * @description End of the query window, in epoch milliseconds. Must be after the start.
+       */
+      end_epoch_millis: number;
+      /**
+       * Min Duration Ms
+       * @description Only include startups that lasted at least this many milliseconds.
+       */
+      min_duration_ms?: number | null;
+    };
     GetModelsEnvironmentsLogsParams: {
       /**
        * Start Epoch Millis
@@ -13542,6 +14077,66 @@ export type components = {
        * @description Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.
        */
       metrics?: string[];
+    };
+    GetModelsEnvironmentsStartupsParams: {
+      /**
+       * Start Epoch Millis
+       * @description Start of the query window, in epoch milliseconds.
+       */
+      start_epoch_millis: number;
+      /**
+       * End Epoch Millis
+       * @description End of the query window, in epoch milliseconds. Must be after the start.
+       */
+      end_epoch_millis: number;
+      /**
+       * Min Duration Ms
+       * @description Only include startups that lasted at least this many milliseconds.
+       */
+      min_duration_ms?: number | null;
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page. Pass the same filters and sort as the request that returned it.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of attempts to return.
+       */
+      limit?: number;
+      /**
+       * Outcomes
+       * @description Only include attempts with one of these outcomes. Repeat to pass several.
+       */
+      outcomes?: components["schemas"]["StartupOutcome"][];
+      /** @description Only include attempts that spent longer than 0 ms in this phase. */
+      phase?: components["schemas"]["StartupPhase"] | null;
+      /**
+       * Search
+       * @description Only include attempts whose replica ID matches exactly, or whose deployment name contains this text (case-insensitive).
+       */
+      search?: string | null;
+      /** @description Field to sort attempts by. Defaults to `STARTED_AT`. */
+      sort_by?: components["schemas"]["StartupSortField"] | null;
+      /** @description Sort direction. Defaults to `desc`. */
+      direction?: components["schemas"]["SortOrder"] | null;
+    };
+    GetModelsEnvironmentsStartupsSummaryParams: {
+      /**
+       * Start Epoch Millis
+       * @description Start of the query window, in epoch milliseconds.
+       */
+      start_epoch_millis: number;
+      /**
+       * End Epoch Millis
+       * @description End of the query window, in epoch milliseconds. Must be after the start.
+       */
+      end_epoch_millis: number;
+      /**
+       * Min Duration Ms
+       * @description Only include startups that lasted at least this many milliseconds.
+       */
+      min_duration_ms?: number | null;
     };
     GetChainsAuditLogsParams: {
       /**
@@ -13892,7 +14487,7 @@ export type components = {
       bucket_width?: components["schemas"]["BucketWidth"];
       /**
        * Group By
-       * @description Dimensions to break usage down by, repeated once per dimension: api_key, user, model. Defaults to model.
+       * @description Dimensions to break usage down by, repeated once per dimension: api_key, user, model, or team. Defaults to model.
        */
       group_by?: components["schemas"]["UsageDimension"][];
       /**
@@ -13910,6 +14505,11 @@ export type components = {
        * @description Return only usage for these models, repeated once per model.
        */
       models?: string[];
+      /**
+       * Team Ids
+       * @description Return only usage for these teams, repeated once per team. Defaults to all teams you can manage.
+       */
+      team_ids?: string[];
       /**
        * Limit
        * @description Number of time buckets to return. Defaults and maximums depend on bucket_width: 1d defaults to 7 and allows 31, 1h defaults to 24 and allows 168, 1m defaults to 60 and allows 1440.
@@ -14100,6 +14700,11 @@ export type components = {
        */
       limit?: number;
       /**
+       * Team Id
+       * @description Limit usage to a team you can access. Organization admins can view all usage in the team, team admins can view usage in teams they manage, and other members can view only their own usage. Without a team, organization admins see all organization usage, team admins see their managed teams, and other members see their own usage.
+       */
+      team_id?: string | null;
+      /**
        * Start Date
        * @description Inclusive UTC calendar day at the start of the query range. Defaults to the previous UTC date, and is ignored when you pass a cursor.
        */
@@ -14111,7 +14716,7 @@ export type components = {
       end_date?: string | null;
       /**
        * Group By
-       * @description Dimensions to break usage down by, repeated once per dimension: USER, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.
+       * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, or ROUTER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. Defaults to MODEL.
        */
       group_by?: components["schemas"]["RouteUsageDimension"][];
       /**
@@ -14150,12 +14755,20 @@ export type components = {
     GetSandboxMetricsParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
-      /** Format: date-time */
-      start_time: string;
-      /** Format: date-time */
-      end_time: string;
-      /** @enum {integer} */
-      interval_seconds: 10 | 30 | 60 | 300 | 900 | 3600;
+      /** @description Defaults to CURRENT, which rejects start_epoch_millis and end_epoch_millis. SERIES uses a server-selected step of 30 seconds up to 2 hours, 60 seconds up to 1 day, 600 seconds up to 3 days, and 3600 seconds beyond 3 days. */
+      mode?: components["schemas"]["SandboxMetricMode"];
+      /**
+       * Format: int64
+       * @description Unix milliseconds. Defaults to one hour before end; SERIES snaps outward.
+       */
+      start_epoch_millis?: number;
+      /**
+       * Format: int64
+       * @description Exclusive end in Unix milliseconds, default now. Maximum aligned window is 7 days.
+       */
+      end_epoch_millis?: number;
+      /** @description Metric names in response order. Omit to request all three signals. */
+      metrics?: components["schemas"]["SandboxMetricName"][];
     };
     GetSandboxLogsParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -14428,6 +15041,7 @@ export type components = {
     volume_namespace: string;
     volume_name: string;
     volume_version: string;
+    volume_tag: string;
     secret_name: string;
     team_id: string;
     env_name: string;
@@ -14452,6 +15066,14 @@ export type components = {
     route_id: string;
     endpoint_id: string;
     group_id: string;
+    /** @description Defaults to CURRENT, which rejects start_epoch_millis and end_epoch_millis. SERIES uses a server-selected step of 30 seconds up to 2 hours, 60 seconds up to 1 day, 600 seconds up to 3 days, and 3600 seconds beyond 3 days. */
+    SandboxMetricMode: components["schemas"]["SandboxMetricMode"];
+    /** @description Unix milliseconds. Defaults to one hour before end; SERIES snaps outward. */
+    SandboxMetricStart: number;
+    /** @description Exclusive end in Unix milliseconds, default now. Maximum aligned window is 7 days. */
+    SandboxMetricEnd: number;
+    /** @description Metric names in response order. Omit to request all three signals. */
+    SandboxMetricNames: components["schemas"]["SandboxMetricName"][];
     /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
     TeamId: string;
     /** @description Optional team ID. Must match the team_id query parameter when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -14530,6 +15152,8 @@ export type VolumeSyncs = components["schemas"]["VolumeSyncs"];
 export type CreateVolumeSyncRequest = components["schemas"]["CreateVolumeSyncRequest"];
 export type DeleteVolumeRequest = components["schemas"]["DeleteVolumeRequest"];
 export type DeleteVolumeResponse = components["schemas"]["DeleteVolumeResponse"];
+export type PatchVolumeRequest = components["schemas"]["PatchVolumeRequest"];
+export type PatchVolumeResponse = components["schemas"]["PatchVolumeResponse"];
 export type VolumeVersion = components["schemas"]["VolumeVersion"];
 export type ListVolumeVersionsResponse = components["schemas"]["ListVolumeVersionsResponse"];
 export type DeleteVolumeVersionRequest = components["schemas"]["DeleteVolumeVersionRequest"];
@@ -14537,6 +15161,10 @@ export type DeleteVolumeVersionResponse = components["schemas"]["DeleteVolumeVer
 export type VolumeVersionDetail = components["schemas"]["VolumeVersionDetail"];
 export type RestoreVolumeVersionRequest = components["schemas"]["RestoreVolumeVersionRequest"];
 export type RestoreVolumeVersionResponse = components["schemas"]["RestoreVolumeVersionResponse"];
+export type SetVolumeTagRequest = components["schemas"]["SetVolumeTagRequest"];
+export type SetVolumeTagResponse = components["schemas"]["SetVolumeTagResponse"];
+export type DeleteVolumeTagRequest = components["schemas"]["DeleteVolumeTagRequest"];
+export type DeleteVolumeTagResponse = components["schemas"]["DeleteVolumeTagResponse"];
 export type TokenScope = components["schemas"]["TokenScope"];
 export type CreateTokenRequest = components["schemas"]["CreateTokenRequest"];
 export type Token = components["schemas"]["Token"];
@@ -14659,6 +15287,9 @@ export type AuditLogEventUserRoleUpdated = components["schemas"]["AuditLogEventU
 export type AuditLogEventUserTeamRoleUpdated =
   components["schemas"]["AuditLogEventUserTeamRoleUpdated"];
 export type AuditLogEventVolumeDeleted = components["schemas"]["AuditLogEventVolumeDeleted"];
+export type AuditLogEventVolumeTagDeleted = components["schemas"]["AuditLogEventVolumeTagDeleted"];
+export type AuditLogEventVolumeTagSet = components["schemas"]["AuditLogEventVolumeTagSet"];
+export type AuditLogEventVolumeUpdated = components["schemas"]["AuditLogEventVolumeUpdated"];
 export type AuditLogEventVolumeVersionDeleted =
   components["schemas"]["AuditLogEventVolumeVersionDeleted"];
 export type AuditLogEventVolumeVersionRestored =
@@ -14733,6 +15364,16 @@ export type ModelMetricMode = components["schemas"]["ModelMetricMode"];
 export type ModelMetricUnitHint = components["schemas"]["ModelMetricUnitHint"];
 export type ModelMetricValueSet = components["schemas"]["ModelMetricValueSet"];
 export type GetModelMetricsResponse = components["schemas"]["GetModelMetricsResponse"];
+export type StartupAttempt = components["schemas"]["StartupAttempt"];
+export type StartupOutcome = components["schemas"]["StartupOutcome"];
+export type StartupPhaseStatus = components["schemas"]["StartupPhaseStatus"];
+export type StartupPhaseSummary = components["schemas"]["StartupPhaseSummary"];
+export type StartupPhase = components["schemas"]["StartupPhase"];
+export type StartupAttempts = components["schemas"]["StartupAttempts"];
+export type StartupSortField = components["schemas"]["StartupSortField"];
+export type StartupPercentiles = components["schemas"]["StartupPercentiles"];
+export type StartupPhasePercentiles = components["schemas"]["StartupPhasePercentiles"];
+export type StartupSummary = components["schemas"]["StartupSummary"];
 export type TerminateReplicaResponse = components["schemas"]["TerminateReplicaResponse"];
 export type SignSshCertificateRequest = components["schemas"]["SignSSHCertificateRequest"];
 export type SignSshCertificateResponse = components["schemas"]["SignSSHCertificateResponse"];
@@ -14881,6 +15522,7 @@ export type DeactivateLoopsSamplerResponse =
   components["schemas"]["DeactivateLoopsSamplerResponse"];
 export type GetLoopsSamplerResponse = components["schemas"]["GetLoopsSamplerResponse"];
 export type LoopsCheckpoint = components["schemas"]["LoopsCheckpoint"];
+export type LoopsLoRaConfig = components["schemas"]["LoopsLoRAConfig"];
 export type ListLoopsCheckpointsResponse = components["schemas"]["ListLoopsCheckpointsResponse"];
 export type ValidateLoopsCheckpointRequest =
   components["schemas"]["ValidateLoopsCheckpointRequest"];
@@ -14939,6 +15581,7 @@ export type ModelApisUsageBucket = components["schemas"]["ModelApisUsageBucket"]
 export type ModelApisUsageResult = components["schemas"]["ModelApisUsageResult"];
 export type ModelApisUsageResponse = components["schemas"]["ModelApisUsageResponse"];
 export type UsageDimension = components["schemas"]["UsageDimension"];
+export type EgressRestrictions = components["schemas"]["EgressRestrictions"];
 export type CreateLlmModelRequest = components["schemas"]["CreateLLMModelRequest"];
 export type LlmModelHandle = components["schemas"]["LLMModelHandle"];
 export type CreateLlmModelVersionRequest = components["schemas"]["CreateLLMModelVersionRequest"];
@@ -14991,21 +15634,17 @@ export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAP
 export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
 export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
 export type RouteRef = components["schemas"]["RouteRef"];
-export type RouteTargetAnthropic = components["schemas"]["RouteTargetAnthropic"];
 export type RouteTargetBasetenModelApi = components["schemas"]["RouteTargetBasetenModelAPI"];
 export type RouteTargetClassifierModelBased =
   components["schemas"]["RouteTargetClassifierModelBased"];
-export type RouteTargetOpenAi = components["schemas"]["RouteTargetOpenAI"];
-export type RouteTargetXai = components["schemas"]["RouteTargetXAI"];
+export type RouteTargetConnection = components["schemas"]["RouteTargetConnection"];
 export type Route = components["schemas"]["Route"];
 export type RoutesResponse = components["schemas"]["RoutesResponse"];
-export type RouteTargetConfigAnthropic = components["schemas"]["RouteTargetConfigAnthropic"];
-export type RouteTargetConfigBasetenModelApi =
-  components["schemas"]["RouteTargetConfigBasetenModelAPI"];
-export type RouteTargetConfigClassifierModelBased =
-  components["schemas"]["RouteTargetConfigClassifierModelBased"];
-export type RouteTargetConfigOpenAi = components["schemas"]["RouteTargetConfigOpenAI"];
-export type RouteTargetConfigXai = components["schemas"]["RouteTargetConfigXAI"];
+export type UpsertRouteTargetBasetenModelApi =
+  components["schemas"]["UpsertRouteTargetBasetenModelAPI"];
+export type UpsertRouteTargetClassifierModelBased =
+  components["schemas"]["UpsertRouteTargetClassifierModelBased"];
+export type UpsertRouteTargetConnection = components["schemas"]["UpsertRouteTargetConnection"];
 export type CreateRouteRequest = components["schemas"]["CreateRouteRequest"];
 export type RouteProvider = components["schemas"]["RouteProvider"];
 export type RoutesUsageBucket = components["schemas"]["RoutesUsageBucket"];
@@ -15014,12 +15653,11 @@ export type RoutesUsageResponse = components["schemas"]["RoutesUsageResponse"];
 export type RouteUsageDimension = components["schemas"]["RouteUsageDimension"];
 export type RouteEffectiveSpendLimit = components["schemas"]["RouteEffectiveSpendLimit"];
 export type RouteSettingSource = components["schemas"]["RouteSettingSource"];
+export type RouteSpendBlockedBy = components["schemas"]["RouteSpendBlockedBy"];
 export type RouteSpendLimitSetting = components["schemas"]["RouteSpendLimitSetting"];
 export type RouteSpendLimitTeamDefault = components["schemas"]["RouteSpendLimitTeamDefault"];
-export type RouteUserSettings = components["schemas"]["RouteUserSettings"];
-export type UpdateRouteSpendLimitSetting = components["schemas"]["UpdateRouteSpendLimitSetting"];
-export type UpdateRouteUserSettingsRequest =
-  components["schemas"]["UpdateRouteUserSettingsRequest"];
+export type RouteTeamUserSettings = components["schemas"]["RouteTeamUserSettings"];
+export type RouteUserTeamSettingsList = components["schemas"]["RouteUserTeamSettingsList"];
 export type BackgroundHarnessDefaults = components["schemas"]["BackgroundHarnessDefaults"];
 export type PrimaryHarnessDefaults = components["schemas"]["PrimaryHarnessDefaults"];
 export type RouteHarnessDefaults = components["schemas"]["RouteHarnessDefaults"];
@@ -15033,23 +15671,24 @@ export type UpdateRouteTeamSpendLimitSetting =
   components["schemas"]["UpdateRouteTeamSpendLimitSetting"];
 export type UpdateRouteTeamSettingsRequest =
   components["schemas"]["UpdateRouteTeamSettingsRequest"];
-export type RouteConnectionAnthropic = components["schemas"]["RouteConnectionAnthropic"];
-export type RouteConnectionOpenAi = components["schemas"]["RouteConnectionOpenAI"];
-export type RouteConnection = components["schemas"]["RouteConnection"];
-export type RouteConnectionXai = components["schemas"]["RouteConnectionXAI"];
-export type RouteConnectionsResponse = components["schemas"]["RouteConnectionsResponse"];
+export type RouteTeamUserSettingsList = components["schemas"]["RouteTeamUserSettingsList"];
+export type UpdateRouteSpendLimitSetting = components["schemas"]["UpdateRouteSpendLimitSetting"];
+export type UpdateRouteUserSettingsRequest =
+  components["schemas"]["UpdateRouteUserSettingsRequest"];
 export type RouteConnectionConfigAnthropic =
   components["schemas"]["RouteConnectionConfigAnthropic"];
 export type RouteConnectionConfigOpenAi = components["schemas"]["RouteConnectionConfigOpenAI"];
 export type RouteConnectionConfigXai = components["schemas"]["RouteConnectionConfigXAI"];
+export type RouteConnection = components["schemas"]["RouteConnection"];
+export type RouteConnectionsResponse = components["schemas"]["RouteConnectionsResponse"];
+export type UpsertRouteConnectionConfigAnthropic =
+  components["schemas"]["UpsertRouteConnectionConfigAnthropic"];
+export type UpsertRouteConnectionConfigOpenAi =
+  components["schemas"]["UpsertRouteConnectionConfigOpenAI"];
+export type UpsertRouteConnectionConfigXai =
+  components["schemas"]["UpsertRouteConnectionConfigXAI"];
 export type CreateRouteConnectionRequest = components["schemas"]["CreateRouteConnectionRequest"];
 export type RouteConnectionTombstone = components["schemas"]["RouteConnectionTombstone"];
-export type UpdateRouteConnectionConfigAnthropic =
-  components["schemas"]["UpdateRouteConnectionConfigAnthropic"];
-export type UpdateRouteConnectionConfigOpenAi =
-  components["schemas"]["UpdateRouteConnectionConfigOpenAI"];
-export type UpdateRouteConnectionConfigXai =
-  components["schemas"]["UpdateRouteConnectionConfigXAI"];
 export type UpdateRouteConnectionRequest = components["schemas"]["UpdateRouteConnectionRequest"];
 export type RouteTombstone = components["schemas"]["RouteTombstone"];
 export type UpdateRouteRequest = components["schemas"]["UpdateRouteRequest"];
@@ -15083,13 +15722,16 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
+export type SandboxLogs = components["schemas"]["SandboxLogs"];
+export type SandboxLogEntry = components["schemas"]["SandboxLogEntry"];
+export type SandboxMetricMode = components["schemas"]["SandboxMetricMode"];
+export type SandboxMetricName = components["schemas"]["SandboxMetricName"];
+export type SandboxMetrics = components["schemas"]["SandboxMetrics"];
+export type SandboxMetricDescriptor = components["schemas"]["SandboxMetricDescriptor"];
+export type SandboxMetricValueSet = components["schemas"]["SandboxMetricValueSet"];
 export type GetSandboxConfigurationResponse =
   components["schemas"]["GetSandboxConfigurationResponse"];
 export type SandboxRegion = components["schemas"]["SandboxRegion"];
-export type SandboxLogs = components["schemas"]["SandboxLogs"];
-export type SandboxLogEntry = components["schemas"]["SandboxLogEntry"];
-export type SandboxMetrics = components["schemas"]["SandboxMetrics"];
-export type SandboxMetricsPoint = components["schemas"]["SandboxMetricsPoint"];
 export type SandboxImageBuildLog = components["schemas"]["SandboxImageBuildLog"];
 export type SandboxImageBuildLogsResponse = components["schemas"]["SandboxImageBuildLogsResponse"];
 export type SandboxLifecycle = components["schemas"]["SandboxLifecycle"];
@@ -15118,7 +15760,6 @@ export type ListSandboxImagesResponse = components["schemas"]["ListSandboxImages
 export type ListSandboxImageTagsResponse = components["schemas"]["ListSandboxImageTagsResponse"];
 export type SandboxImageStatus = components["schemas"]["SandboxImageStatus"];
 export type SandboxImageTag = components["schemas"]["SandboxImageTag"];
-export type SandboxImageSummary = components["schemas"]["SandboxImageSummary"];
 export type SandboxImage = components["schemas"]["SandboxImage"];
 export type PushSandboxImageRequest = components["schemas"]["PushSandboxImageRequest"];
 export type PushSandboxImageResponse = components["schemas"]["PushSandboxImageResponse"];
@@ -15145,10 +15786,18 @@ export type GetModelsDeploymentsLogsParams =
   components["schemas"]["GetModelsDeploymentsLogsParams"];
 export type GetModelsDeploymentsMetricsParams =
   components["schemas"]["GetModelsDeploymentsMetricsParams"];
+export type GetModelsDeploymentsStartupsParams =
+  components["schemas"]["GetModelsDeploymentsStartupsParams"];
+export type GetModelsDeploymentsStartupsSummaryParams =
+  components["schemas"]["GetModelsDeploymentsStartupsSummaryParams"];
 export type GetModelsEnvironmentsLogsParams =
   components["schemas"]["GetModelsEnvironmentsLogsParams"];
 export type GetModelsEnvironmentsMetricsParams =
   components["schemas"]["GetModelsEnvironmentsMetricsParams"];
+export type GetModelsEnvironmentsStartupsParams =
+  components["schemas"]["GetModelsEnvironmentsStartupsParams"];
+export type GetModelsEnvironmentsStartupsSummaryParams =
+  components["schemas"]["GetModelsEnvironmentsStartupsSummaryParams"];
 export type GetChainsAuditLogsParams = components["schemas"]["GetChainsAuditLogsParams"];
 export type GetChainsDeploymentsChainletsLogsParams =
   components["schemas"]["GetChainsDeploymentsChainletsLogsParams"];

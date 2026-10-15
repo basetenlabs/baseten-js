@@ -653,6 +653,14 @@ export interface BDNVolumeMount {
    * Absolute path where the volume will be mounted at runtime.
    */
   path: string;
+  /**
+   * Relative glob patterns selecting files to mount; empty includes all files.
+   */
+  include?: string[];
+  /**
+   * Relative glob patterns excluding files from the mount; exclusions win.
+   */
+  exclude?: string[];
   [k: string]: unknown;
 }
 /**
