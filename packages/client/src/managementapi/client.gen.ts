@@ -39,6 +39,10 @@ import type {
   CreateRouteConnectionRequest,
   CreateRouteRequest,
   CreateSandboxParams,
+  CreateSandboxPreviewParams,
+  CreateSandboxPreviewRequest,
+  CreateSandboxPreviewTokenParams,
+  CreateSandboxPreviewTokenRequest,
   CreateSandboxRequest,
   CreateTokenRequest,
   CreateTrainingJobRequest,
@@ -54,6 +58,8 @@ import type {
   DeleteImageParams,
   DeleteImageTagParams,
   DeleteSandboxParams,
+  DeleteSandboxPreviewParams,
+  DeleteSandboxPreviewTokenParams,
   DeleteVolumeRequest,
   DeleteVolumeResponse,
   DeleteVolumeTagRequest,
@@ -134,6 +140,7 @@ import type {
   GetSandboxLogsParams,
   GetSandboxMetricsParams,
   GetSandboxParams,
+  GetSandboxPreviewParams,
   GetTeamsLoopsRunsParams,
   GetTeamsLoopsSamplersParams,
   GetTeamsModelsParams,
@@ -176,6 +183,10 @@ import type {
   ListSandboxImageTagsResponse,
   ListSandboxImagesResponse,
   ListSandboxLibraryImagesResponse,
+  ListSandboxPreviewTokensParams,
+  ListSandboxPreviewTokensResponse,
+  ListSandboxPreviewsParams,
+  ListSandboxPreviewsResponse,
   ListSandboxesParams,
   ListSandboxesResponse,
   ListTrainingJobsResponse,
@@ -235,6 +246,8 @@ import type {
   SandboxImageBuildLogsResponse,
   SandboxLogs,
   SandboxMetrics,
+  SandboxPreview,
+  SandboxPreviewToken,
   SearchTrainingJobsRequest,
   SearchTrainingJobsResponse,
   Secret,
@@ -280,6 +293,8 @@ import type {
   UpdateRouteTeamSettingsRequest,
   UpdateRouteUserSettingsRequest,
   UpdateSandboxParams,
+  UpdateSandboxPreviewParams,
+  UpdateSandboxPreviewRequest,
   UpdateSandboxRequest,
   UpdateTrainingJobRequest,
   UpdateTrainingJobResponse,
@@ -362,6 +377,41 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/sandboxes/instances",
       pathArgs: [],
+      query: params.params ?? null,
+      body: params.request,
+      successCodes: [201],
+      errorCodes: null,
+    });
+  }
+
+  /** Create a sandbox preview */
+  async createSandboxPreview(params: {
+    sandbox_name: string;
+    params?: CreateSandboxPreviewParams;
+    request: CreateSandboxPreviewRequest;
+  }): Promise<SandboxPreview> {
+    return this._doJson<SandboxPreview>({
+      method: "POST",
+      pathFmt: "/v1/sandboxes/instances/{}/previews",
+      pathArgs: [params.sandbox_name],
+      query: params.params ?? null,
+      body: params.request,
+      successCodes: [201],
+      errorCodes: null,
+    });
+  }
+
+  /** Create a preview token */
+  async createSandboxPreviewToken(params: {
+    sandbox_name: string;
+    preview_name: string;
+    params?: CreateSandboxPreviewTokenParams;
+    request: CreateSandboxPreviewTokenRequest;
+  }): Promise<SandboxPreviewToken> {
+    return this._doJson<SandboxPreviewToken>({
+      method: "POST",
+      pathFmt: "/v1/sandboxes/instances/{}/previews/{}/tokens",
+      pathArgs: [params.sandbox_name, params.preview_name],
       query: params.params ?? null,
       body: params.request,
       successCodes: [201],
@@ -576,6 +626,40 @@ export class ApiClient {
       query: params.params ?? null,
       body: null,
       successCodes: [202],
+      errorCodes: null,
+    });
+  }
+
+  /** Delete a sandbox preview */
+  async deleteSandboxPreview(params: {
+    sandbox_name: string;
+    preview_name: string;
+    params?: DeleteSandboxPreviewParams;
+  }): Promise<SandboxPreview> {
+    return this._doJson<SandboxPreview>({
+      method: "DELETE",
+      pathFmt: "/v1/sandboxes/instances/{}/previews/{}",
+      pathArgs: [params.sandbox_name, params.preview_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Delete a preview token */
+  async deleteSandboxPreviewToken(params: {
+    sandbox_name: string;
+    preview_name: string;
+    token_name: string;
+    params?: DeleteSandboxPreviewTokenParams;
+  }): Promise<void> {
+    await this._doNoResponse({
+      method: "DELETE",
+      pathFmt: "/v1/sandboxes/instances/{}/previews/{}/tokens/{}",
+      pathArgs: [params.sandbox_name, params.preview_name, params.token_name],
+      query: params.params ?? null,
+      body: null,
+      successCodes: [204],
       errorCodes: null,
     });
   }
@@ -1825,6 +1909,22 @@ export class ApiClient {
     });
   }
 
+  /** Get a sandbox preview */
+  async getSandboxPreview(params: {
+    sandbox_name: string;
+    preview_name: string;
+    params?: GetSandboxPreviewParams;
+  }): Promise<SandboxPreview> {
+    return this._doJson<SandboxPreview>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/instances/{}/previews/{}",
+      pathArgs: [params.sandbox_name, params.preview_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Gets all secrets (metadata only, no plain text keys) */
   async getSecrets(): Promise<Secrets> {
     return this._doJson<Secrets>({
@@ -2324,6 +2424,37 @@ export class ApiClient {
       pathFmt: "/v1/sandboxes/library_images",
       pathArgs: [],
       query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** List sandbox previews */
+  async listSandboxPreviews(params: {
+    sandbox_name: string;
+    params?: ListSandboxPreviewsParams;
+  }): Promise<ListSandboxPreviewsResponse> {
+    return this._doJson<ListSandboxPreviewsResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/instances/{}/previews",
+      pathArgs: [params.sandbox_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** List preview tokens */
+  async listSandboxPreviewTokens(params: {
+    sandbox_name: string;
+    preview_name: string;
+    params?: ListSandboxPreviewTokensParams;
+  }): Promise<ListSandboxPreviewTokensResponse> {
+    return this._doJson<ListSandboxPreviewTokensResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/instances/{}/previews/{}/tokens",
+      pathArgs: [params.sandbox_name, params.preview_name],
+      query: params.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -3821,6 +3952,23 @@ export class ApiClient {
     });
   }
 
+  /** Update a sandbox preview */
+  async updateSandboxPreview(params: {
+    sandbox_name: string;
+    preview_name: string;
+    params?: UpdateSandboxPreviewParams;
+    request: UpdateSandboxPreviewRequest;
+  }): Promise<SandboxPreview> {
+    return this._doJson<SandboxPreview>({
+      method: "PATCH",
+      pathFmt: "/v1/sandboxes/instances/{}/previews/{}",
+      pathArgs: [params.sandbox_name, params.preview_name],
+      query: params.params ?? null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
   private async _do(request: ApiRequest): Promise<Response> {
     let path = request.pathFmt.replace(
       /\{\}/g,
@@ -3886,5 +4034,9 @@ export class ApiClient {
       throw new ResponseError(response.status, `expected a JSON response, got ${contentType}`);
     }
     return (await response.json()) as T;
+  }
+
+  private async _doNoResponse(request: ApiRequest): Promise<void> {
+    await this._do(request);
   }
 }

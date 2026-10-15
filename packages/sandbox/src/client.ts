@@ -435,6 +435,8 @@ export class SandboxClient {
       fetchWithAuth: this.#fetchWithAuth,
       headers: this.#options.headers,
       retries: this.#options.retries,
+      managementApi: (signal) => this.#api(signal),
+      teamId: this.#options.teamId,
     };
   }
 }

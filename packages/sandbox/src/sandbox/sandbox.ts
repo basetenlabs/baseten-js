@@ -1,9 +1,11 @@
 import { SandboxClient as SandboxApiClientOwner } from "@basetenlabs/client";
+import type { ApiClient as ManagementApiClient } from "@basetenlabs/client/managementapi";
 import type { ApiClient as SandboxApiClient } from "@basetenlabs/client/sandboxapi";
 import type { SandboxRetryOptions } from "../common";
 import { resolveRetryOptions } from "../retry";
 import { type SandboxContext, sandboxRequester } from "./context";
 import { SandboxFileSystem } from "./fs";
+import { SandboxPreviews } from "./previews";
 import { SandboxProcess } from "./process";
 
 /** @internal What a {@link SandboxClient} builds a {@link Sandbox} from. */
@@ -16,6 +18,10 @@ export interface SandboxOptions {
   fetchWithAuth: typeof fetch;
   headers: Record<string, string> | undefined;
   retries: SandboxRetryOptions | undefined;
+
+  /** The client's generated management client, sending the given signal on every request. */
+  managementApi(signal: AbortSignal | undefined): ManagementApiClient;
+  teamId: string | undefined;
 }
 
 /**
@@ -28,13 +34,18 @@ export class Sandbox {
   readonly #name: string;
   readonly #url: string;
   readonly #context: SandboxContext;
+  readonly #managementApi: SandboxOptions["managementApi"];
+  readonly #teamId: string | undefined;
   #fs?: SandboxFileSystem;
   #process?: SandboxProcess;
+  #previews?: SandboxPreviews;
 
   /** @internal Built by {@link SandboxClient}. */
   constructor(options: SandboxOptions) {
     this.#name = options.name;
     this.#url = options.url;
+    this.#managementApi = options.managementApi;
+    this.#teamId = options.teamId;
     const { fetchWithAuth, headers } = options;
     const baseUrl = options.url.replace(/\/+$/, "");
     // An empty token leaves Authorization to fetchWithAuth.
@@ -83,6 +94,19 @@ export class Sandbox {
   /** Processes in the sandbox. */
   get process(): SandboxProcess {
     return (this.#process ??= new SandboxProcess(this.#context));
+  }
+
+  /**
+   * The sandbox's previews, which expose its ports on HTTPS URLs. Every call
+   * fails on a sandbox from {@link SandboxClient.sandboxFromUrl}, which has no
+   * name.
+   */
+  get previews(): SandboxPreviews {
+    return (this.#previews ??= new SandboxPreviews({
+      sandboxName: this.#name,
+      api: this.#managementApi,
+      teamId: this.#teamId,
+    }));
   }
 
   /** Drive mounts in the sandbox. Not implemented yet. */

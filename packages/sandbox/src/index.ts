@@ -103,6 +103,20 @@ export {
   type SandboxFileSystemWriteTreeRequest,
 } from "./sandbox/fs";
 export {
+  SandboxPreviews,
+  type SandboxPreviewCreateRequest,
+  type SandboxPreviewCreateTokenRequest,
+  type SandboxPreviewDeleteRequest,
+  type SandboxPreviewDeleteTokenRequest,
+  type SandboxPreviewGetInfoRequest,
+  type SandboxPreviewInfo,
+  type SandboxPreviewListRequest,
+  type SandboxPreviewListTokensRequest,
+  type SandboxPreviewStatus,
+  type SandboxPreviewTokenInfo,
+  type SandboxPreviewUpdateRequest,
+} from "./sandbox/previews";
+export {
   SandboxProcess,
   type SandboxProcessCloseStdinRequest,
   type SandboxProcessExecEvent,

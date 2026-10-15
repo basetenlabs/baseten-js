@@ -11969,6 +11969,37 @@ export type components = {
        */
       ok: boolean;
     };
+    GetSandboxConfigurationResponse: {
+      /** @description Available Carbon-compatible regions, sorted by name. Empty when none are available. */
+      regions: components["schemas"]["SandboxRegion"][];
+    };
+    SandboxRegion: {
+      /**
+       * @description Public region identifier to use when creating a sandbox.
+       * @example us-was-1
+       */
+      name: string;
+      /**
+       * @description Country code.
+       * @example us
+       */
+      country: string;
+      /**
+       * @description Continent code.
+       * @example na
+       */
+      continent: string;
+      /**
+       * @description Region location.
+       * @example Washington
+       */
+      location: string;
+      /**
+       * @description Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration.
+       * @enum {string}
+       */
+      info_generation: "CARBON";
+    };
     SandboxLogs: {
       sandbox_name: string;
       /** Format: date-time */
@@ -12036,37 +12067,6 @@ export type components = {
       start_epoch_millis: number;
       /** @description Values indexed first by metric_descriptors, then by that descriptor's label_sets. Null means no sample. */
       values: (number | null)[][];
-    };
-    GetSandboxConfigurationResponse: {
-      /** @description Available Carbon-compatible regions, sorted by name. Empty when none are available. */
-      regions: components["schemas"]["SandboxRegion"][];
-    };
-    SandboxRegion: {
-      /**
-       * @description Public region identifier to use when creating a sandbox.
-       * @example us-was-1
-       */
-      name: string;
-      /**
-       * @description Country code.
-       * @example us
-       */
-      country: string;
-      /**
-       * @description Continent code.
-       * @example na
-       */
-      continent: string;
-      /**
-       * @description Region location.
-       * @example Washington
-       */
-      location: string;
-      /**
-       * @description Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration.
-       * @enum {string}
-       */
-      info_generation: "CARBON";
     };
     SandboxImageBuildLog: {
       /** Format: date-time */
@@ -13675,6 +13675,151 @@ export type components = {
        */
       message: string;
     };
+    /**
+     * @description Preview status, always uppercase.
+     * @example DEPLOYED
+     * @enum {string}
+     */
+    SandboxPreviewStatus: "DEPLOYING" | "DEPLOYED" | "FAILED" | "DELETING" | "TERMINATED";
+    /**
+     * @description Lifetime counted from the request, using seconds, minutes, hours or composite durations such as 1h30m. Whole days are also supported, for example 7d; days cannot be combined with other units. The preview is deleted when it elapses.
+     * @example 24h
+     */
+    SandboxPreviewTtl: string;
+    /**
+     * @description HTTP headers as name-value pairs.
+     * @example {
+     *       "Access-Control-Allow-Origin": "*"
+     *     }
+     */
+    SandboxPreviewHeaders: {
+      [key: string]: string;
+    };
+    /** @description Mutable preview configuration. ttl and expires_at are mutually exclusive; supplying both returns 400. */
+    SandboxPreviewConfiguration: {
+      /**
+       * @description Whether the URL is reachable without a preview token. Defaults to false.
+       * @example true
+       */
+      public?: boolean;
+      /** @description Headers added to every response served by the preview, for example CORS headers. */
+      response_headers?: components["schemas"]["SandboxPreviewHeaders"];
+      /**
+       * @description Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set.
+       * @example {
+       *       "Authorization": "Bearer app-internal-token"
+       *     }
+       */
+      request_headers?: components["schemas"]["SandboxPreviewHeaders"];
+      ttl?: components["schemas"]["SandboxPreviewTtl"];
+      /**
+       * Format: date-time
+       * @description Time at which the preview is deleted. Must be in the future.
+       * @example 2026-10-19T12:00:00Z
+       */
+      expires_at?: string;
+    };
+    /** @description Preview to create. Only port is required. */
+    CreateSandboxPreviewRequest: components["schemas"]["SandboxPreviewConfiguration"] & {
+      /** @description When true, return the existing preview with this name instead of failing with a conflict. Without name, the name is public-<port> or private-<port>, so the same port and visibility return the same preview. Existing configuration is preserved. Defaults to false when omitted. */
+      create_if_not_exists?: boolean;
+      /**
+       * @description Preview name, unique within the sandbox. When omitted, generated from the sandbox name and port, or public-<port> or private-<port> when create_if_not_exists is true.
+       * @example web
+       */
+      name?: string;
+      /**
+       * @description Sandbox port to expose.
+       * @example 3000
+       */
+      port: number;
+    };
+    /** @description Preview fields to change. name and port cannot be changed. */
+    UpdateSandboxPreviewRequest: components["schemas"]["SandboxPreviewConfiguration"];
+    /** @description Sandbox preview with configuration and server-managed fields at the root. */
+    SandboxPreview: components["schemas"]["SandboxPreviewConfiguration"] & {
+      /**
+       * @description Preview name, used in preview_name path parameters.
+       * @example web
+       */
+      readonly name: string;
+      /**
+       * @description Exposed sandbox port.
+       * @example 3000
+       */
+      readonly port: number;
+      /**
+       * Format: uri
+       * @description HTTPS URL serving the port, including the region label. Use this exact URL. Requests to a private preview need a token.
+       * @example https://a1b2c3d4e5f6g7h8.us-pdx-1.preview.b10.co
+       */
+      readonly url: string;
+      status: components["schemas"]["SandboxPreviewStatus"];
+      /**
+       * @description Region serving the preview, the sandbox's region.
+       * @example us-pdx-1
+       */
+      readonly region?: string;
+      /**
+       * Format: date-time
+       * @example 2026-10-12T12:00:00Z
+       */
+      readonly created_at?: string;
+      /**
+       * Format: date-time
+       * @example 2026-10-12T12:00:00Z
+       */
+      readonly updated_at?: string;
+      /** @example sandbox-automation */
+      readonly created_by?: string;
+      /** @example sandbox-automation */
+      readonly updated_by?: string;
+    };
+    /** @description One page of previews of a sandbox. */
+    ListSandboxPreviewsResponse: {
+      /** @description Resources on this page. */
+      items: components["schemas"]["SandboxPreview"][];
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    CreateSandboxPreviewTokenRequest: {
+      /** @description When true, return an existing unexpired token of this preview that stays valid at least until expires_at instead of creating a new one. Defaults to false when omitted. */
+      create_if_not_exists?: boolean;
+      /**
+       * Format: date-time
+       * @description Time at which the token stops working. Must be in the future.
+       * @example 2026-10-13T12:00:00Z
+       */
+      expires_at: string;
+    };
+    /** @description Access token for a private preview. */
+    SandboxPreviewToken: {
+      /**
+       * @description Token name, used in token_name path parameters.
+       * @example 7f3k2m9q1x8c4v6b0n5z
+       */
+      name: string;
+      /**
+       * @description Value to send as the bl_preview_token query parameter.
+       * @example 7f3k2m9q1x8c4v6b0n5z
+       */
+      token: string;
+      /**
+       * Format: date-time
+       * @example 2026-10-13T12:00:00Z
+       */
+      expires_at: string;
+      /**
+       * @description Whether expires_at has passed.
+       * @example false
+       */
+      expired: boolean;
+    };
+    /** @description One page of tokens of a preview. */
+    ListSandboxPreviewTokensResponse: {
+      /** @description Resources on this page. */
+      items: components["schemas"]["SandboxPreviewToken"][];
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
     GetVolumesParams: {
       /**
        * Cursor
@@ -14831,6 +14976,60 @@ export type components = {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
     };
+    ListSandboxPreviewsParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+    };
+    CreateSandboxPreviewParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    GetSandboxPreviewParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /** @description Reveal request header values for workspace administrators, for example to change one header and send the full set back in a PATCH. Defaults to false. Callers without the admin role receive masked values even when true. */
+      show_secrets?: boolean;
+    };
+    UpdateSandboxPreviewParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    DeleteSandboxPreviewParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    ListSandboxPreviewTokensParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+    };
+    CreateSandboxPreviewTokenParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    DeleteSandboxPreviewTokenParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
     ListImagesParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
@@ -15080,6 +15279,10 @@ export type components = {
     TeamIdHeader: string;
     /** @description Immutable sandbox name returned by creation. */
     SandboxName: string;
+    /** @description Preview name returned by creation. */
+    PreviewName: string;
+    /** @description Token name returned by creation. */
+    PreviewTokenName: string;
     /** @description Image repository name. */
     SandboxImageName: string;
     /** @description Image tag name. */
@@ -15722,6 +15925,9 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
+export type GetSandboxConfigurationResponse =
+  components["schemas"]["GetSandboxConfigurationResponse"];
+export type SandboxRegion = components["schemas"]["SandboxRegion"];
 export type SandboxLogs = components["schemas"]["SandboxLogs"];
 export type SandboxLogEntry = components["schemas"]["SandboxLogEntry"];
 export type SandboxMetricMode = components["schemas"]["SandboxMetricMode"];
@@ -15729,9 +15935,6 @@ export type SandboxMetricName = components["schemas"]["SandboxMetricName"];
 export type SandboxMetrics = components["schemas"]["SandboxMetrics"];
 export type SandboxMetricDescriptor = components["schemas"]["SandboxMetricDescriptor"];
 export type SandboxMetricValueSet = components["schemas"]["SandboxMetricValueSet"];
-export type GetSandboxConfigurationResponse =
-  components["schemas"]["GetSandboxConfigurationResponse"];
-export type SandboxRegion = components["schemas"]["SandboxRegion"];
 export type SandboxImageBuildLog = components["schemas"]["SandboxImageBuildLog"];
 export type SandboxImageBuildLogsResponse = components["schemas"]["SandboxImageBuildLogsResponse"];
 export type SandboxLifecycle = components["schemas"]["SandboxLifecycle"];
@@ -15770,6 +15973,19 @@ export type SandboxLibraryImage = components["schemas"]["SandboxLibraryImage"];
 export type ListSandboxLibraryImagesResponse =
   components["schemas"]["ListSandboxLibraryImagesResponse"];
 export type CleanupSandboxImagesResponse = components["schemas"]["CleanupSandboxImagesResponse"];
+export type SandboxPreviewStatus = components["schemas"]["SandboxPreviewStatus"];
+export type SandboxPreviewTtl = components["schemas"]["SandboxPreviewTtl"];
+export type SandboxPreviewHeaders = components["schemas"]["SandboxPreviewHeaders"];
+export type SandboxPreviewConfiguration = components["schemas"]["SandboxPreviewConfiguration"];
+export type CreateSandboxPreviewRequest = components["schemas"]["CreateSandboxPreviewRequest"];
+export type UpdateSandboxPreviewRequest = components["schemas"]["UpdateSandboxPreviewRequest"];
+export type SandboxPreview = components["schemas"]["SandboxPreview"];
+export type ListSandboxPreviewsResponse = components["schemas"]["ListSandboxPreviewsResponse"];
+export type CreateSandboxPreviewTokenRequest =
+  components["schemas"]["CreateSandboxPreviewTokenRequest"];
+export type SandboxPreviewToken = components["schemas"]["SandboxPreviewToken"];
+export type ListSandboxPreviewTokensResponse =
+  components["schemas"]["ListSandboxPreviewTokensResponse"];
 export type GetVolumesParams = components["schemas"]["GetVolumesParams"];
 export type GetVolumesNamespacesParams = components["schemas"]["GetVolumesNamespacesParams"];
 export type GetVolumesSyncsParams = components["schemas"]["GetVolumesSyncsParams"];
@@ -15838,6 +16054,17 @@ export type CreateSandboxParams = components["schemas"]["CreateSandboxParams"];
 export type GetSandboxParams = components["schemas"]["GetSandboxParams"];
 export type UpdateSandboxParams = components["schemas"]["UpdateSandboxParams"];
 export type DeleteSandboxParams = components["schemas"]["DeleteSandboxParams"];
+export type ListSandboxPreviewsParams = components["schemas"]["ListSandboxPreviewsParams"];
+export type CreateSandboxPreviewParams = components["schemas"]["CreateSandboxPreviewParams"];
+export type GetSandboxPreviewParams = components["schemas"]["GetSandboxPreviewParams"];
+export type UpdateSandboxPreviewParams = components["schemas"]["UpdateSandboxPreviewParams"];
+export type DeleteSandboxPreviewParams = components["schemas"]["DeleteSandboxPreviewParams"];
+export type ListSandboxPreviewTokensParams =
+  components["schemas"]["ListSandboxPreviewTokensParams"];
+export type CreateSandboxPreviewTokenParams =
+  components["schemas"]["CreateSandboxPreviewTokenParams"];
+export type DeleteSandboxPreviewTokenParams =
+  components["schemas"]["DeleteSandboxPreviewTokenParams"];
 export type ListImagesParams = components["schemas"]["ListImagesParams"];
 export type PushImageParams = components["schemas"]["PushImageParams"];
 export type CleanupImagesParams = components["schemas"]["CleanupImagesParams"];
