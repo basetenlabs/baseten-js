@@ -133,8 +133,7 @@ describe.runIf(e2eEnabled())("SandboxPreviews", () => {
 
     // The preview adds its response header, and the app sees the request
     // header the preview adds.
-    // TODO: Use ?preview_token= once the server accepts it.
-    const withToken = `${created.url}?bl_preview_token=${token.token}`;
+    const withToken = `${created.url}?preview_token=${token.token}`;
     const { headers } = await fetchPreview(
       withToken,
       "served with the token and the request header",

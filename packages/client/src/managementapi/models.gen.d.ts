@@ -10612,6 +10612,21 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** RouteClassifierListingRefV1 */
+    RouteClassifierListingRef: {
+      /**
+       * Id
+       * @description Stable classifier identifier.
+       * @example general-v1
+       */
+      id: string;
+      /**
+       * Name
+       * @description Display name of the classifier.
+       * @example General
+       */
+      name: string;
+    };
     /** RouteRefV1 */
     RouteRef: {
       /**
@@ -10638,25 +10653,15 @@ export type components = {
        */
       model: string;
     };
-    /** RouteTargetClassifierModelBasedV1 */
-    RouteTargetClassifierModelBased: {
+    /** RouteTargetClassifierV1 */
+    RouteTargetClassifier: {
       /**
-       * @description Target kind for a classifier-model-based route. (enum property replaced by openapi-typescript)
+       * @description Target kind for a classifier-based route. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      type: "CLASSIFIER_MODEL_BASED";
-      /**
-       * Classifier Model Id
-       * @description ID of the Baseten model that picks a route for each request.
-       * @example abcd123
-       */
-      classifier_model_id: string;
-      /**
-       * Classifier Environment Name
-       * @description Environment of the classifier model. Null for production.
-       * @example production
-       */
-      classifier_environment_name: string | null;
+      type: "CLASSIFIER";
+      /** @description Classifier that picks a route for each request. Null for routers created before classifiers could be selected. */
+      classifier: components["schemas"]["RouteClassifierListingRef"] | null;
       /** @description Route used when the classifier picks none. */
       default_route: components["schemas"]["RouteRef"];
       /**
@@ -10722,7 +10727,7 @@ export type components = {
       target:
         | components["schemas"]["RouteTargetBasetenModelAPI"]
         | components["schemas"]["RouteTargetConnection"]
-        | components["schemas"]["RouteTargetClassifierModelBased"];
+        | components["schemas"]["RouteTargetClassifier"];
       /** @description Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked. */
       metadata: components["schemas"]["ExploreMetadata"] | null;
       /**
@@ -10760,25 +10765,19 @@ export type components = {
        */
       model: string;
     };
-    /** UpsertRouteTargetClassifierModelBasedV1 */
-    UpsertRouteTargetClassifierModelBased: {
+    /** UpsertRouteTargetClassifierV1 */
+    UpsertRouteTargetClassifier: {
       /**
-       * @description Target kind for a classifier-model-based route. Not intended for general use: classifiers are deployed by Baseten's post-training team. (enum property replaced by openapi-typescript)
+       * @description Target kind for a classifier-based route. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
-      type: "CLASSIFIER_MODEL_BASED";
+      type: "CLASSIFIER";
       /**
-       * Classifier Model Id
-       * @description ID of the Baseten model that picks a route for each request. Only classifiers deployed by Baseten's post-training team are supported.
-       * @example abcd123
+       * Classifier Id
+       * @description ID of the classifier that picks a route for each request.
+       * @example general-v1
        */
-      classifier_model_id: string;
-      /**
-       * Classifier Environment Name
-       * @description Environment of the classifier model. Omit for production, which is returned as null.
-       * @example production
-       */
-      classifier_environment_name?: string | null;
+      classifier_id: string;
       /**
        * Allowed Route Ids
        * @description IDs of the routes the classifier may pick. All must belong to the route's team and must not be routers themselves.
@@ -10839,7 +10838,7 @@ export type components = {
       target:
         | components["schemas"]["UpsertRouteTargetBasetenModelAPI"]
         | components["schemas"]["UpsertRouteTargetConnection"]
-        | components["schemas"]["UpsertRouteTargetClassifierModelBased"];
+        | components["schemas"]["UpsertRouteTargetClassifier"];
       /**
        * Description
        * @description Short description of the route. Omit for no description; null is not accepted.
@@ -11038,11 +11037,11 @@ export type components = {
        * @example dev@example.com
        */
       email: string | null;
-      /** @description Spend limit for Baseten Code in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited. */
+      /** @description Spend limit for Baseten Grid in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited. */
       spend_limit: components["schemas"]["RouteSpendLimitSetting"];
       /**
        * Month Spend Usd
-       * @description The user's metered Code spend in USD in the team this UTC calendar month, returned as an exact decimal string.
+       * @description The user's metered Grid spend in USD in the team this UTC calendar month, returned as an exact decimal string.
        * @example 12.5
        */
       month_spend_usd: string;
@@ -11058,7 +11057,7 @@ export type components = {
     RouteUserTeamSettingsList: {
       /**
        * Teams
-       * @description The user's settings in each team they have a role in and in any team they have Code spend in this month, alphabetical by team name.
+       * @description The user's settings in each team they have a role in and in any team they have Grid spend in this month, alphabetical by team name.
        */
       teams: components["schemas"]["RouteTeamUserSettings"][];
     };
@@ -11096,13 +11095,13 @@ export type components = {
     RouteTeamSpendLimitSetting: {
       /**
        * Per Member Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
+       * @description Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
        * @example 200
        */
       per_member_monthly_limit_usd: string | null;
       /**
        * Team Wide Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.
+       * @description Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.
        * @example 5000
        */
       team_wide_monthly_limit_usd: string | null;
@@ -11117,7 +11116,7 @@ export type components = {
       team_id: string;
       /** @description Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes. */
       harness_defaults: components["schemas"]["RouteHarnessDefaults"];
-      /** @description Spend limits for Baseten Code for members' spend in this team. */
+      /** @description Spend limits for Baseten Grid for members' spend in this team. */
       spend_limit: components["schemas"]["RouteTeamSpendLimitSetting"];
     };
     /** UpdateBackgroundHarnessModelsV1 */
@@ -11159,13 +11158,13 @@ export type components = {
     UpdateRouteTeamSpendLimitSetting: {
       /**
        * Per Member Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
+       * @description Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
        * @example 200
        */
       per_member_monthly_limit_usd?: string | null;
       /**
        * Team Wide Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Send null to remove it; omit to leave it unchanged.
+       * @description Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Send null to remove it; omit to leave it unchanged.
        * @example 5000
        */
       team_wide_monthly_limit_usd?: string | null;
@@ -11181,7 +11180,7 @@ export type components = {
     RouteTeamUserSettingsList: {
       /**
        * Users
-       * @description Settings of each user with a role in the team and of anyone with Code spend in the team this month.
+       * @description Settings of each user with a role in the team and of anyone with Grid spend in the team this month.
        */
       users: components["schemas"]["RouteTeamUserSettings"][];
     };
@@ -11414,13 +11413,13 @@ export type components = {
       display_name?: string | null;
       /**
        * Target
-       * @description Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER_MODEL_BASED configuration of a router route is mutable.
+       * @description Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER configuration of a router route is mutable.
        */
       target?:
         | (
             | components["schemas"]["UpsertRouteTargetBasetenModelAPI"]
             | components["schemas"]["UpsertRouteTargetConnection"]
-            | components["schemas"]["UpsertRouteTargetClassifierModelBased"]
+            | components["schemas"]["UpsertRouteTargetClassifier"]
           )
         | null;
     };
@@ -11969,37 +11968,6 @@ export type components = {
        */
       ok: boolean;
     };
-    GetSandboxConfigurationResponse: {
-      /** @description Available Carbon-compatible regions, sorted by name. Empty when none are available. */
-      regions: components["schemas"]["SandboxRegion"][];
-    };
-    SandboxRegion: {
-      /**
-       * @description Public region identifier to use when creating a sandbox.
-       * @example us-was-1
-       */
-      name: string;
-      /**
-       * @description Country code.
-       * @example us
-       */
-      country: string;
-      /**
-       * @description Continent code.
-       * @example na
-       */
-      continent: string;
-      /**
-       * @description Region location.
-       * @example Washington
-       */
-      location: string;
-      /**
-       * @description Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration.
-       * @enum {string}
-       */
-      info_generation: "CARBON";
-    };
     SandboxLogs: {
       sandbox_name: string;
       /** Format: date-time */
@@ -12067,6 +12035,37 @@ export type components = {
       start_epoch_millis: number;
       /** @description Values indexed first by metric_descriptors, then by that descriptor's label_sets. Null means no sample. */
       values: (number | null)[][];
+    };
+    GetSandboxConfigurationResponse: {
+      /** @description Available Carbon-compatible regions, sorted by name. Empty when none are available. */
+      regions: components["schemas"]["SandboxRegion"][];
+    };
+    SandboxRegion: {
+      /**
+       * @description Public region identifier to use when creating a sandbox.
+       * @example us-was-1
+       */
+      name: string;
+      /**
+       * @description Country code.
+       * @example us
+       */
+      country: string;
+      /**
+       * @description Continent code.
+       * @example na
+       */
+      continent: string;
+      /**
+       * @description Region location.
+       * @example Washington
+       */
+      location: string;
+      /**
+       * @description Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration.
+       * @enum {string}
+       */
+      info_generation: "CARBON";
     };
     SandboxImageBuildLog: {
       /** Format: date-time */
@@ -15836,17 +15835,16 @@ export type ExploreCostValues = components["schemas"]["ExploreCostValues"];
 export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAPIFormats"];
 export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
 export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
+export type RouteClassifierListingRef = components["schemas"]["RouteClassifierListingRef"];
 export type RouteRef = components["schemas"]["RouteRef"];
 export type RouteTargetBasetenModelApi = components["schemas"]["RouteTargetBasetenModelAPI"];
-export type RouteTargetClassifierModelBased =
-  components["schemas"]["RouteTargetClassifierModelBased"];
+export type RouteTargetClassifier = components["schemas"]["RouteTargetClassifier"];
 export type RouteTargetConnection = components["schemas"]["RouteTargetConnection"];
 export type Route = components["schemas"]["Route"];
 export type RoutesResponse = components["schemas"]["RoutesResponse"];
 export type UpsertRouteTargetBasetenModelApi =
   components["schemas"]["UpsertRouteTargetBasetenModelAPI"];
-export type UpsertRouteTargetClassifierModelBased =
-  components["schemas"]["UpsertRouteTargetClassifierModelBased"];
+export type UpsertRouteTargetClassifier = components["schemas"]["UpsertRouteTargetClassifier"];
 export type UpsertRouteTargetConnection = components["schemas"]["UpsertRouteTargetConnection"];
 export type CreateRouteRequest = components["schemas"]["CreateRouteRequest"];
 export type RouteProvider = components["schemas"]["RouteProvider"];
@@ -15925,9 +15923,6 @@ export type CreateApiKeyForGroupRequest = components["schemas"]["CreateApiKeyFor
 export type CreateApiKeyForGroupResponse = components["schemas"]["CreateApiKeyForGroupResponse"];
 export type RegisterApiKeyRequest = components["schemas"]["RegisterAPIKeyRequest"];
 export type RegisterApiKeyResponse = components["schemas"]["RegisterAPIKeyResponse"];
-export type GetSandboxConfigurationResponse =
-  components["schemas"]["GetSandboxConfigurationResponse"];
-export type SandboxRegion = components["schemas"]["SandboxRegion"];
 export type SandboxLogs = components["schemas"]["SandboxLogs"];
 export type SandboxLogEntry = components["schemas"]["SandboxLogEntry"];
 export type SandboxMetricMode = components["schemas"]["SandboxMetricMode"];
@@ -15935,6 +15930,9 @@ export type SandboxMetricName = components["schemas"]["SandboxMetricName"];
 export type SandboxMetrics = components["schemas"]["SandboxMetrics"];
 export type SandboxMetricDescriptor = components["schemas"]["SandboxMetricDescriptor"];
 export type SandboxMetricValueSet = components["schemas"]["SandboxMetricValueSet"];
+export type GetSandboxConfigurationResponse =
+  components["schemas"]["GetSandboxConfigurationResponse"];
+export type SandboxRegion = components["schemas"]["SandboxRegion"];
 export type SandboxImageBuildLog = components["schemas"]["SandboxImageBuildLog"];
 export type SandboxImageBuildLogsResponse = components["schemas"]["SandboxImageBuildLogsResponse"];
 export type SandboxLifecycle = components["schemas"]["SandboxLifecycle"];
