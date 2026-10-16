@@ -195,7 +195,8 @@ export interface SandboxPreviewCreateTokenRequest {
 
   /**
    * Returns an existing unexpired token of the preview that stays valid at
-   * least until `expiresAt`, instead of creating one.
+   * least until `expiresAt`, instead of creating one. A token created
+   * moments before may not be found yet, so a new one may be created anyway.
    */
   createIfNotExists?: boolean;
 

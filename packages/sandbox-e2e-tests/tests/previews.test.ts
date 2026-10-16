@@ -118,18 +118,23 @@ describe.runIf(e2eEnabled())("SandboxPreviews", () => {
       expiresAt: new Date(Date.now() + 3_600_000),
     });
     expect(token.expired).toBe(false);
+    // The server may not find the token just created yet, so the result may
+    // be that token or a new one, either valid at least as long as asked.
+    const reusedUntil = new Date(Date.now() + 1_800_000);
     const reused = await sandbox.previews.createToken({
       previewName: name,
-      expiresAt: new Date(Date.now() + 1_800_000),
+      expiresAt: reusedUntil,
       createIfNotExists: true,
     });
-    expect(reused.name).toBe(token.name);
+    expect(reused.expired).toBe(false);
+    expect(reused.expiresAt.getTime()).toBeGreaterThanOrEqual(reusedUntil.getTime() - 60_000);
 
     const tokenNames: string[] = [];
     for await (const info of sandbox.previews.listTokens({ previewName: name })) {
       tokenNames.push(info.name);
     }
     expect(tokenNames).toContain(token.name);
+    expect(tokenNames).toContain(reused.name);
 
     // The preview adds its response header, and the app sees the request
     // header the preview adds.
