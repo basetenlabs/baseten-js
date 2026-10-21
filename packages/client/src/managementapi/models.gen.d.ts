@@ -2489,22 +2489,6 @@ export type components = {
      * @description A model environment was created.
      */
     AuditLogEventEnvironmentCreated: {
-      /** Min Replica */
-      min_replica: number;
-      /** Max Replica */
-      max_replica: number;
-      /** Concurrency Target */
-      concurrency_target: number;
-      /** Autoscaling Window */
-      autoscaling_window: number | null;
-      /** Scale Down Delay */
-      scale_down_delay: number | null;
-      /** Target Utilization Percentage */
-      target_utilization_percentage: number | null;
-      /** Target In Flight Tokens */
-      target_in_flight_tokens: number | null;
-      /** Max Scale Down Rate */
-      max_scale_down_rate: number | null;
       /** Redeploy On Promotion */
       redeploy_on_promotion: boolean | null;
       /** Rolling Deploy */
@@ -2521,6 +2505,22 @@ export type components = {
       replica_overhead_percent: number | null;
       /** Promotion Cleanup Strategy */
       promotion_cleanup_strategy: string | null;
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
       /** Ramp Up While Promoting */
       ramp_up_while_promoting: boolean | null;
       /** Ramp Up Duration Seconds */
@@ -2570,22 +2570,6 @@ export type components = {
      *     snapshots. Not itself a payload in the discriminated union.
      */
     AuditLogEventEnvironmentSettings: {
-      /** Min Replica */
-      min_replica: number;
-      /** Max Replica */
-      max_replica: number;
-      /** Concurrency Target */
-      concurrency_target: number;
-      /** Autoscaling Window */
-      autoscaling_window: number | null;
-      /** Scale Down Delay */
-      scale_down_delay: number | null;
-      /** Target Utilization Percentage */
-      target_utilization_percentage: number | null;
-      /** Target In Flight Tokens */
-      target_in_flight_tokens: number | null;
-      /** Max Scale Down Rate */
-      max_scale_down_rate: number | null;
       /** Redeploy On Promotion */
       redeploy_on_promotion: boolean | null;
       /** Rolling Deploy */
@@ -2602,6 +2586,22 @@ export type components = {
       replica_overhead_percent: number | null;
       /** Promotion Cleanup Strategy */
       promotion_cleanup_strategy: string | null;
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
       /** Ramp Up While Promoting */
       ramp_up_while_promoting: boolean | null;
       /** Ramp Up Duration Seconds */
@@ -2621,22 +2621,6 @@ export type components = {
     AuditLogEventEnvironmentUpdated: {
       /** Schedules */
       schedules: components["schemas"]["AuditLogEventAutoscalingScheduleChange"][] | null;
-      /** Min Replica */
-      min_replica: number;
-      /** Max Replica */
-      max_replica: number;
-      /** Concurrency Target */
-      concurrency_target: number;
-      /** Autoscaling Window */
-      autoscaling_window: number | null;
-      /** Scale Down Delay */
-      scale_down_delay: number | null;
-      /** Target Utilization Percentage */
-      target_utilization_percentage: number | null;
-      /** Target In Flight Tokens */
-      target_in_flight_tokens: number | null;
-      /** Max Scale Down Rate */
-      max_scale_down_rate: number | null;
       /** Redeploy On Promotion */
       redeploy_on_promotion: boolean | null;
       /** Rolling Deploy */
@@ -2653,6 +2637,22 @@ export type components = {
       replica_overhead_percent: number | null;
       /** Promotion Cleanup Strategy */
       promotion_cleanup_strategy: string | null;
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
       /** Ramp Up While Promoting */
       ramp_up_while_promoting: boolean | null;
       /** Ramp Up Duration Seconds */
@@ -2908,6 +2908,11 @@ export type components = {
       environment_name: string | null;
       /** Environment Id */
       environment_id: string | null;
+      /** Region Update */
+      region_update: string | null;
+      promotion_settings_override:
+        | components["schemas"]["AuditLogEventPromotionSettingsOverride"]
+        | null;
     };
     /**
      * AuditLogEventModelDeploymentRequestBackpressureSettingsChangedV1
@@ -2999,6 +3004,29 @@ export type components = {
       model_name: string;
       /** Previous Name */
       previous_name: string | null;
+    };
+    /**
+     * AuditLogEventPromotionSettingsOverrideV1
+     * @description Promotion settings overridden for one promotion. Null means the environment's value. Not
+     *     itself a payload in the discriminated union.
+     */
+    AuditLogEventPromotionSettingsOverride: {
+      /** Redeploy On Promotion */
+      redeploy_on_promotion: boolean | null;
+      /** Rolling Deploy */
+      rolling_deploy: boolean | null;
+      /** Rolling Deploy Strategy */
+      rolling_deploy_strategy: string | null;
+      /** Max Unavailable Percent */
+      max_unavailable_percent: number | null;
+      /** Max Surge Percent */
+      max_surge_percent: number | null;
+      /** Stabilization Time Seconds */
+      stabilization_time_seconds: number | null;
+      /** Replica Overhead Percent */
+      replica_overhead_percent: number | null;
+      /** Promotion Cleanup Strategy */
+      promotion_cleanup_strategy: string | null;
     };
     /** AuditLogEventProviderConnectionCreatedV1 */
     AuditLogEventProviderConnectionCreated: {
@@ -3962,6 +3990,293 @@ export type components = {
       policy?: components["schemas"]["RequestBackpressurePolicy"] | null;
     };
     /**
+     * AutoscalingScheduleSettingsRequestV1
+     * @description A complete set of raw autoscaling overrides for a schedule.
+     */
+    AutoscalingScheduleSettingsRequest: {
+      /**
+       * Min Replica
+       * @description Minimum number of replicas
+       */
+      min_replica: number;
+      /**
+       * Max Replica
+       * @description Maximum number of replicas
+       */
+      max_replica: number;
+      /**
+       * Autoscaling Window
+       * @description Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.
+       */
+      autoscaling_window: number | null;
+      /**
+       * Scale Down Delay
+       * @description Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.
+       */
+      scale_down_delay: number | null;
+      /**
+       * Concurrency Target
+       * @description Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.
+       */
+      concurrency_target: number | null;
+      /**
+       * Target Utilization Percentage
+       * @description Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.
+       */
+      target_utilization_percentage: number | null;
+      /**
+       * Target In Flight Tokens
+       * @description Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.
+       */
+      target_in_flight_tokens: number | null;
+      /**
+       * Max Scale Down Rate
+       * @description Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.
+       */
+      max_scale_down_rate: number | null;
+    };
+    /**
+     * AutoscalingScheduleUpsertV1
+     * @description A complete recurring schedule submitted for create or replacement.
+     */
+    AutoscalingScheduleUpsert: {
+      /**
+       * Id
+       * @description Stable schedule identifier. Omit this field to create a schedule.
+       */
+      id?: string | null;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
+      /**
+       * @description Recurring schedule cadence (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "DAILY" | "HOURLY";
+      /**
+       * Weekdays
+       * @description Weekdays on which the schedule runs
+       */
+      weekdays: components["schemas"]["AutoscalingScheduleWeekday"][];
+      /**
+       * Start Hour
+       * @description Start hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
+       */
+      start_hour?: number | null;
+      /**
+       * Start Minute
+       * @description Start minute of the schedule window
+       */
+      start_minute: number;
+      /**
+       * End Hour
+       * @description End hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
+       */
+      end_hour?: number | null;
+      /**
+       * End Minute
+       * @description End minute of the schedule window
+       */
+      end_minute: number;
+    };
+    /**
+     * AutoscalingScheduleWeekdayV1
+     * @enum {string}
+     */
+    AutoscalingScheduleWeekday:
+      | "SUNDAY"
+      | "MONDAY"
+      | "TUESDAY"
+      | "WEDNESDAY"
+      | "THURSDAY"
+      | "FRIDAY"
+      | "SATURDAY";
+    /**
+     * OneTimeAutoscalingScheduleUpsertV1
+     * @description A complete one-time schedule submitted for create or replacement.
+     */
+    OneTimeAutoscalingScheduleUpsert: {
+      /**
+       * Id
+       * @description Stable schedule identifier. Omit this field to create a schedule.
+       */
+      id?: string | null;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
+      /**
+       * @description One-time schedule cadence (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "ONE_TIME";
+      /**
+       * Start At
+       * Format: date-time
+       * @description Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.
+       */
+      start_at: string;
+      /**
+       * End At
+       * Format: date-time
+       * @description Exclusive end of the schedule window in ISO 8601 format
+       */
+      end_at: string;
+    };
+    /**
+     * PromotionCleanupStrategyV1
+     * @description The promotion cleanup strategy.
+     * @enum {string}
+     */
+    PromotionCleanupStrategy: "KEEP" | "SCALE_TO_ZERO" | "DEACTIVATE";
+    /**
+     * PromotionEnvironmentSettingsUpdateV1
+     * @description Changes to an environment's settings, applied to a promoted deployment.
+     */
+    PromotionEnvironmentSettingsUpdate: {
+      /**
+       * Region
+       * @description Region for the promoted deployment, from `GET /v1/teams/{team_id}/regions`. Use an empty string for Global. If omitted, the deployment keeps its region. Regional environments only accept Global deployments.
+       */
+      region?: string | null;
+      /**
+       * Instance Type Id
+       * @description Instance type for the promoted deployment, from `GET /v1/instance_types`.
+       */
+      instance_type_id?: string | null;
+      /** @description Autoscaling settings for the promoted deployment. */
+      autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
+      /** @description Request backpressure settings for the promoted deployment. */
+      request_backpressure_settings?:
+        | components["schemas"]["UpdateRequestBackpressureSettings"]
+        | null;
+      /** @description Autoscaling schedule changes for the environment, applied when the promotion completes. */
+      autoscaling_schedule_settings?:
+        | components["schemas"]["UpdateAutoscalingScheduleSettings"]
+        | null;
+      /** @description Promotion settings for the environment, also used for this promotion. */
+      promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
+    };
+    /**
+     * RollingDeployStrategyV1
+     * @description The rolling deploy strategy.
+     * @enum {string}
+     */
+    RollingDeployStrategy: "REPLICA";
+    /**
+     * UpdateAutoscalingScheduleSettingsV1
+     * @description Partial mutation of an environment's autoscaling schedule collection.
+     */
+    UpdateAutoscalingScheduleSettings: {
+      /**
+       * Timezone
+       * @description IANA timezone shared by the resulting collection. Omission preserves the current timezone; null is allowed only when deleting every schedule.
+       */
+      timezone?: string | null;
+      /**
+       * Schedules
+       * @description Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.
+       */
+      schedules?: (
+        | components["schemas"]["AutoscalingScheduleUpsert"]
+        | components["schemas"]["OneTimeAutoscalingScheduleUpsert"]
+      )[];
+      /**
+       * Delete Schedules
+       * @description Stable identifiers of schedules to delete. To clear all schedules, include every existing schedule identifier.
+       */
+      delete_schedules?: string[];
+    };
+    /**
+     * UpdatePromotionSettingsV1
+     * @description Promotion settings for model promotion
+     */
+    UpdatePromotionSettings: {
+      /**
+       * Redeploy On Promotion
+       * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
+       * @example true
+       */
+      redeploy_on_promotion?: boolean | null;
+      /**
+       * Rolling Deploy
+       * @description Whether the environment should rely on rolling deploy orchestration.
+       * @example true
+       */
+      rolling_deploy?: boolean | null;
+      /**
+       * @description The cleanup strategy to use after a promotion completes.
+       * @example SCALE_TO_ZERO
+       */
+      promotion_cleanup_strategy?: components["schemas"]["PromotionCleanupStrategy"] | null;
+      /** @description Rolling deploy configuration for promotions */
+      rolling_deploy_config?: components["schemas"]["UpdateRollingDeployConfig"] | null;
+      /**
+       * Ramp Up While Promoting
+       * @description Whether to ramp up traffic while promoting
+       * @example true
+       */
+      ramp_up_while_promoting?: boolean | null;
+      /**
+       * Ramp Up Duration Seconds
+       * @description Duration of the ramp up in seconds
+       * @example 600
+       */
+      ramp_up_duration_seconds?: number | null;
+    };
+    /**
+     * UpdateRollingDeployConfigV1
+     * @description Rolling deploy config for promoting chains and oracles
+     */
+    UpdateRollingDeployConfig: {
+      /**
+       * @description The rolling deploy strategy to use for promotions.
+       * @example REPLICA
+       */
+      rolling_deploy_strategy?: components["schemas"]["RollingDeployStrategy"] | null;
+      /**
+       * Max Surge Percent
+       * @description The maximum surge percentage for rolling deploys.
+       * @example 25
+       */
+      max_surge_percent?: number | null;
+      /**
+       * Max Unavailable Percent
+       * @description The maximum unavailable percentage for rolling deploys.
+       * @example 10
+       */
+      max_unavailable_percent?: number | null;
+      /**
+       * Stabilization Time Seconds
+       * @description The stabilization time in seconds for rolling deploys.
+       * @example 300
+       */
+      stabilization_time_seconds?: number | null;
+      /**
+       * Replica Overhead Percent
+       * @description The replica overhead percentage for rolling deploys.
+       * @example 0
+       */
+      replica_overhead_percent?: number | null;
+    };
+    /**
      * PromoteRequestV1
      * @description A request to promote a deployment to production.
      */
@@ -3978,6 +4293,27 @@ export type components = {
        * @example true
        */
       preserve_env_instance_type?: boolean;
+      /**
+       * @description Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.
+       * @example {
+       *       "autoscaling_settings": {
+       *         "max_replica": 4,
+       *         "min_replica": 2
+       *       }
+       *     }
+       */
+      environment_settings_update?:
+        | components["schemas"]["PromotionEnvironmentSettingsUpdate"]
+        | null;
+      /**
+       * @description Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.
+       * @example {
+       *       "rolling_deploy_config": {
+       *         "max_surge_percent": 50
+       *       }
+       *     }
+       */
+      promotion_settings_override?: components["schemas"]["UpdatePromotionSettings"] | null;
     };
     /**
      * ActivateResponseV1
@@ -4522,9 +4858,19 @@ export type components = {
      *     - ``COUNT``: a dimensionless tally of discrete things.
      *     - ``RATIO``: a dimensionless ratio. Usually in ``[0, 1]`` but may exceed 1
      *       (e.g. CPU usage in cores = cpu-seconds/second).
+     *     - ``CELSIUS``: a temperature in degrees Celsius.
+     *     - ``WATTS``: power draw in watts.
      * @enum {string}
      */
-    ModelMetricUnitHint: "PER_SECOND" | "SECONDS" | "BYTES" | "MEBIBYTES" | "COUNT" | "RATIO";
+    ModelMetricUnitHint:
+      | "PER_SECOND"
+      | "SECONDS"
+      | "BYTES"
+      | "MEBIBYTES"
+      | "COUNT"
+      | "RATIO"
+      | "CELSIUS"
+      | "WATTS";
     /**
      * ModelMetricValueSetV1
      * @description The metric values for one time step. ``values`` is aligned by index to the
@@ -4939,18 +5285,6 @@ export type components = {
        */
       end_minute: number;
     };
-    /**
-     * AutoscalingScheduleWeekdayV1
-     * @enum {string}
-     */
-    AutoscalingScheduleWeekday:
-      | "SUNDAY"
-      | "MONDAY"
-      | "TUESDAY"
-      | "WEDNESDAY"
-      | "THURSDAY"
-      | "FRIDAY"
-      | "SATURDAY";
     /** EnvironmentAutoscalingSchedulesV1 */
     EnvironmentAutoscalingSchedules: {
       /**
@@ -4969,6 +5303,14 @@ export type components = {
       )[];
       /** @description Autoscaling state on the current serving deployment, or null when no deployment exists */
       applied_state: components["schemas"]["AutoscalingScheduleState"] | null;
+    };
+    /** EnvironmentTrafficRoutingV1 */
+    EnvironmentTrafficRouting: {
+      /**
+       * Rules
+       * @description The environment's active rules
+       */
+      rules: components["schemas"]["TrafficRoutingRule"][];
     };
     /**
      * EnvironmentV1
@@ -5006,7 +5348,7 @@ export type components = {
       /** @description Autoscaling settings for the environment */
       autoscaling_settings: components["schemas"]["AutoscalingSettings"];
       /** @description Promotion settings for the environment */
-      promotion_settings: components["schemas"]["PromotionSettings"];
+      promotion_settings: components["schemas"]["ModelPromotionSettings"];
       /** @description Instance type for the environment */
       instance_type: components["schemas"]["InstanceType"];
       /** @description Request backpressure settings for the environment. */
@@ -5016,6 +5358,11 @@ export type components = {
        * @default null
        */
       autoscaling_schedules: components["schemas"]["EnvironmentAutoscalingSchedules"] | null;
+      /**
+       * @description The environment's traffic routing rules. In development.
+       * @default null
+       */
+      traffic_routing: components["schemas"]["EnvironmentTrafficRouting"] | null;
     };
     /**
      * InProgressPromotionStatusV1
@@ -5054,6 +5401,51 @@ export type components = {
        */
       rolling_deploy: boolean | null;
     };
+    /**
+     * ModelPromotionSettingsV1
+     * @description Promotion settings for promoting models
+     */
+    ModelPromotionSettings: {
+      /**
+       * Redeploy On Promotion
+       * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
+       * @default false
+       * @example true
+       */
+      redeploy_on_promotion: boolean | null;
+      /**
+       * Rolling Deploy
+       * @description Whether the environment should rely on rolling deploy orchestration.
+       * @default false
+       * @example true
+       */
+      rolling_deploy: boolean | null;
+      /**
+       * @description The cleanup strategy to use after a promotion completes.
+       * @default SCALE_TO_ZERO
+       * @example SCALE_TO_ZERO
+       */
+      promotion_cleanup_strategy: components["schemas"]["PromotionCleanupStrategy"] | null;
+      /**
+       * @description Rolling deploy configuration for promotions
+       * @default null
+       */
+      rolling_deploy_config: components["schemas"]["RollingDeployConfig"] | null;
+      /**
+       * Ramp Up While Promoting
+       * @deprecated
+       * @description Deprecated: models don't support canary promotions. Use `rolling_deploy`.
+       * @default false
+       */
+      ramp_up_while_promoting: boolean | null;
+      /**
+       * Ramp Up Duration Seconds
+       * @deprecated
+       * @description Deprecated: models don't support canary promotions.
+       * @default 600
+       */
+      ramp_up_duration_seconds: number | null;
+    };
     /** OneTimeAutoscalingScheduleV1 */
     OneTimeAutoscalingSchedule: {
       /**
@@ -5090,57 +5482,6 @@ export type components = {
        * @description Exclusive end of the schedule window
        */
       end_at: string;
-    };
-    /**
-     * PromotionCleanupStrategyV1
-     * @description The promotion cleanup strategy.
-     * @enum {string}
-     */
-    PromotionCleanupStrategy: "KEEP" | "SCALE_TO_ZERO" | "DEACTIVATE";
-    /**
-     * PromotionSettingsV1
-     * @description Promotion settings for promoting chains and oracles
-     */
-    PromotionSettings: {
-      /**
-       * Redeploy On Promotion
-       * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
-       * @default false
-       * @example true
-       */
-      redeploy_on_promotion: boolean | null;
-      /**
-       * Rolling Deploy
-       * @description Whether the environment should rely on rolling deploy orchestration.
-       * @default false
-       * @example true
-       */
-      rolling_deploy: boolean | null;
-      /**
-       * @description The cleanup strategy to use after a promotion completes.
-       * @default SCALE_TO_ZERO
-       * @example SCALE_TO_ZERO
-       */
-      promotion_cleanup_strategy: components["schemas"]["PromotionCleanupStrategy"] | null;
-      /**
-       * @description Rolling deploy configuration for promotions
-       * @default null
-       */
-      rolling_deploy_config: components["schemas"]["RollingDeployConfig"] | null;
-      /**
-       * Ramp Up While Promoting
-       * @description Whether to ramp up traffic while promoting
-       * @default false
-       * @example true
-       */
-      ramp_up_while_promoting: boolean | null;
-      /**
-       * Ramp Up Duration Seconds
-       * @description Duration of the ramp up in seconds
-       * @default 600
-       * @example 600
-       */
-      ramp_up_duration_seconds: number | null;
     };
     /**
      * RollingDeployConfigV1
@@ -5183,11 +5524,76 @@ export type components = {
       replica_overhead_percent: number;
     };
     /**
-     * RollingDeployStrategyV1
-     * @description The rolling deploy strategy.
+     * TrafficRoutingRuleShadowSamplingModeV1
+     * @description How a shadow rule picks which requests to shadow. RANDOM picks each request
+     *     independently. USER_SESSION keeps a whole session together, so every request in a sampled
+     *     session is shadowed.
      * @enum {string}
      */
-    RollingDeployStrategy: "REPLICA";
+    TrafficRoutingRuleShadowSamplingMode: "RANDOM" | "USER_SESSION";
+    /**
+     * TrafficRoutingRuleV1
+     * @description A traffic routing rule on an environment.
+     */
+    TrafficRoutingRule: {
+      /**
+       * Id
+       * @description Unique identifier of the rule
+       */
+      id: string;
+      /**
+       * Type
+       * @description Rule type. A shadow rule sends a copy of the environment's traffic to its target.
+       * @constant
+       */
+      type: "SHADOW";
+      /**
+       * Targets
+       * @description Where the rule sends traffic. Empty if the target has been deleted.
+       */
+      targets: components["schemas"]["TrafficRoutingTarget"][];
+      /**
+       * Percent Traffic
+       * @description Percentage of the environment's traffic shadowed
+       */
+      percent_traffic: number;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description When the rule stops, in ISO 8601 format
+       */
+      expires_at: string;
+      /** @description How requests are picked for shadowing */
+      sampling_mode: components["schemas"]["TrafficRoutingRuleShadowSamplingMode"];
+      /**
+       * Propagate Client Cancellation
+       * @description Whether a shadow request is cancelled when the original client disconnects
+       */
+      propagate_client_cancellation: boolean;
+    };
+    /**
+     * TrafficRoutingTargetV1
+     * @description Where a rule sends traffic. Exactly one of deployment_id and environment is set.
+     */
+    TrafficRoutingTarget: {
+      /**
+       * Model Id
+       * @description ID of the target's model
+       */
+      model_id: string;
+      /**
+       * Deployment Id
+       * @description ID of the target deployment
+       * @default null
+       */
+      deployment_id: string | null;
+      /**
+       * Environment
+       * @description Name of the target environment. Traffic goes to whichever deployment the environment is serving.
+       * @default null
+       */
+      environment: string | null;
+    };
     /**
      * EnvironmentsV1
      * @description list of environments
@@ -5197,10 +5603,10 @@ export type components = {
       environments: components["schemas"]["Environment"][];
     };
     /**
-     * UpdatePromotionSettingsV1
-     * @description Promotion settings for model promotion
+     * UpdateModelPromotionSettingsV1
+     * @description Promotion settings to update for a model environment
      */
-    UpdatePromotionSettings: {
+    UpdateModelPromotionSettings: {
       /**
        * Redeploy On Promotion
        * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
@@ -5222,51 +5628,16 @@ export type components = {
       rolling_deploy_config?: components["schemas"]["UpdateRollingDeployConfig"] | null;
       /**
        * Ramp Up While Promoting
-       * @description Whether to ramp up traffic while promoting
-       * @example true
+       * @deprecated
+       * @description Deprecated: models don't support canary promotions, and `true` is rejected. Use `rolling_deploy`.
        */
       ramp_up_while_promoting?: boolean | null;
       /**
        * Ramp Up Duration Seconds
-       * @description Duration of the ramp up in seconds
-       * @example 600
+       * @deprecated
+       * @description Deprecated: models don't support canary promotions.
        */
       ramp_up_duration_seconds?: number | null;
-    };
-    /**
-     * UpdateRollingDeployConfigV1
-     * @description Rolling deploy config for promoting chains and oracles
-     */
-    UpdateRollingDeployConfig: {
-      /**
-       * @description The rolling deploy strategy to use for promotions.
-       * @example REPLICA
-       */
-      rolling_deploy_strategy?: components["schemas"]["RollingDeployStrategy"] | null;
-      /**
-       * Max Surge Percent
-       * @description The maximum surge percentage for rolling deploys.
-       * @example 25
-       */
-      max_surge_percent?: number | null;
-      /**
-       * Max Unavailable Percent
-       * @description The maximum unavailable percentage for rolling deploys.
-       * @example 10
-       */
-      max_unavailable_percent?: number | null;
-      /**
-       * Stabilization Time Seconds
-       * @description The stabilization time in seconds for rolling deploys.
-       * @example 300
-       */
-      stabilization_time_seconds?: number | null;
-      /**
-       * Replica Overhead Percent
-       * @description The replica overhead percentage for rolling deploys.
-       * @example 0
-       */
-      replica_overhead_percent?: number | null;
     };
     /**
      * CreateEnvironmentRequestV1
@@ -5297,14 +5668,14 @@ export type components = {
        * @description Promotion settings for the environment. New Model environments use rolling promotions by default. Set `rolling_deploy` to `false` to opt out.
        * @example {
        *       "promotion_cleanup_strategy": null,
-       *       "ramp_up_duration_seconds": 600,
-       *       "ramp_up_while_promoting": true,
+       *       "ramp_up_duration_seconds": null,
+       *       "ramp_up_while_promoting": null,
        *       "redeploy_on_promotion": true,
        *       "rolling_deploy": false,
        *       "rolling_deploy_config": null
        *     }
        */
-      promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
+      promotion_settings?: components["schemas"]["UpdateModelPromotionSettings"] | null;
       /** @description Request backpressure settings for the environment. */
       request_backpressure_settings?:
         | components["schemas"]["UpdateRequestBackpressureSettings"]
@@ -5332,167 +5703,76 @@ export type components = {
       deleted: boolean;
     };
     /**
-     * AutoscalingScheduleSettingsRequestV1
-     * @description A complete set of raw autoscaling overrides for a schedule.
+     * TrafficRoutingRuleUpsertV1
+     * @description A complete rule to create or replace.
      */
-    AutoscalingScheduleSettingsRequest: {
-      /**
-       * Min Replica
-       * @description Minimum number of replicas
-       */
-      min_replica: number;
-      /**
-       * Max Replica
-       * @description Maximum number of replicas
-       */
-      max_replica: number;
-      /**
-       * Autoscaling Window
-       * @description Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.
-       */
-      autoscaling_window: number | null;
-      /**
-       * Scale Down Delay
-       * @description Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.
-       */
-      scale_down_delay: number | null;
-      /**
-       * Concurrency Target
-       * @description Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.
-       */
-      concurrency_target: number | null;
-      /**
-       * Target Utilization Percentage
-       * @description Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.
-       */
-      target_utilization_percentage: number | null;
-      /**
-       * Target In Flight Tokens
-       * @description Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.
-       */
-      target_in_flight_tokens: number | null;
-      /**
-       * Max Scale Down Rate
-       * @description Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.
-       */
-      max_scale_down_rate: number | null;
-    };
-    /**
-     * AutoscalingScheduleUpsertV1
-     * @description A complete recurring schedule submitted for create or replacement.
-     */
-    AutoscalingScheduleUpsert: {
+    TrafficRoutingRuleUpsert: {
       /**
        * Id
-       * @description Stable schedule identifier. Omit this field to create a schedule.
+       * @description Omit to create a rule, or pass an existing rule's ID to replace it. A replace can't change the target: delete the rule and create a new one instead.
        */
       id?: string | null;
       /**
-       * Name
-       * @description Name of the schedule
+       * Type
+       * @description Rule type. A shadow rule sends a copy of the environment's traffic to its target.
+       * @constant
        */
-      name: string;
+      type: "SHADOW";
       /**
-       * Enabled
-       * @description Whether the schedule is enabled
+       * Targets
+       * @description Where the rule sends traffic. Exactly one target.
        */
-      enabled: boolean;
-      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
-      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
+      targets: components["schemas"]["TrafficRoutingTargetUpsert"][];
       /**
-       * @description Recurring schedule cadence (enum property replaced by openapi-typescript)
-       * @enum {string}
+       * Percent Traffic
+       * @description Percentage of the environment's traffic to shadow
        */
-      cadence: "DAILY" | "HOURLY";
+      percent_traffic: number;
       /**
-       * Weekdays
-       * @description Weekdays on which the schedule runs
+       * Expires At
+       * Format: date-time
+       * @description When the rule stops, in ISO 8601 format with a timezone, at most 7 days out
        */
-      weekdays: components["schemas"]["AutoscalingScheduleWeekday"][];
+      expires_at: string;
+      /** @description How requests are picked for shadowing */
+      sampling_mode: components["schemas"]["TrafficRoutingRuleShadowSamplingMode"];
       /**
-       * Start Hour
-       * @description Start hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
+       * Propagate Client Cancellation
+       * @description Whether a shadow request is cancelled when the original client disconnects
        */
-      start_hour?: number | null;
-      /**
-       * Start Minute
-       * @description Start minute of the schedule window
-       */
-      start_minute: number;
-      /**
-       * End Hour
-       * @description End hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
-       */
-      end_hour?: number | null;
-      /**
-       * End Minute
-       * @description End minute of the schedule window
-       */
-      end_minute: number;
+      propagate_client_cancellation: boolean;
     };
     /**
-     * OneTimeAutoscalingScheduleUpsertV1
-     * @description A complete one-time schedule submitted for create or replacement.
+     * TrafficRoutingTargetUpsertV1
+     * @description Where a rule sends traffic. Set exactly one of deployment_id and environment.
      */
-    OneTimeAutoscalingScheduleUpsert: {
+    TrafficRoutingTargetUpsert: {
       /**
-       * Id
-       * @description Stable schedule identifier. Omit this field to create a schedule.
+       * Deployment Id
+       * @description ID of the target deployment
        */
-      id?: string | null;
+      deployment_id?: string | null;
       /**
-       * Name
-       * @description Name of the schedule
+       * Environment
+       * @description Name of the target environment. Traffic goes to whichever deployment the environment is serving.
        */
-      name: string;
-      /**
-       * Enabled
-       * @description Whether the schedule is enabled
-       */
-      enabled: boolean;
-      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
-      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
-      /**
-       * @description One-time schedule cadence (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      cadence: "ONE_TIME";
-      /**
-       * Start At
-       * Format: date-time
-       * @description Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.
-       */
-      start_at: string;
-      /**
-       * End At
-       * Format: date-time
-       * @description Exclusive end of the schedule window in ISO 8601 format
-       */
-      end_at: string;
+      environment?: string | null;
     };
     /**
-     * UpdateAutoscalingScheduleSettingsV1
-     * @description Partial mutation of an environment's autoscaling schedule collection.
+     * UpdateTrafficRoutingSettingsV1
+     * @description Partial update of an environment's traffic routing rules.
      */
-    UpdateAutoscalingScheduleSettings: {
+    UpdateTrafficRoutingSettings: {
       /**
-       * Timezone
-       * @description IANA timezone shared by the resulting collection. Omission preserves the current timezone; null is allowed only when deleting every schedule.
+       * Rules
+       * @description Complete rules to create or replace. Existing rules omitted here are unchanged.
        */
-      timezone?: string | null;
+      rules?: components["schemas"]["TrafficRoutingRuleUpsert"][];
       /**
-       * Schedules
-       * @description Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.
+       * Delete Rules
+       * @description IDs of rules to delete
        */
-      schedules?: (
-        | components["schemas"]["AutoscalingScheduleUpsert"]
-        | components["schemas"]["OneTimeAutoscalingScheduleUpsert"]
-      )[];
-      /**
-       * Delete Schedules
-       * @description Stable identifiers of schedules to delete. To clear all schedules, include every existing schedule identifier.
-       */
-      delete_schedules?: string[];
+      delete_rules?: string[];
     };
     /**
      * UpdateEnvironmentRequestV1
@@ -5517,14 +5797,14 @@ export type components = {
        * @description Promotion settings for the environment
        * @example {
        *       "promotion_cleanup_strategy": null,
-       *       "ramp_up_duration_seconds": 600,
-       *       "ramp_up_while_promoting": true,
+       *       "ramp_up_duration_seconds": null,
+       *       "ramp_up_while_promoting": null,
        *       "redeploy_on_promotion": true,
-       *       "rolling_deploy": null,
+       *       "rolling_deploy": true,
        *       "rolling_deploy_config": null
        *     }
        */
-      promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
+      promotion_settings?: components["schemas"]["UpdateModelPromotionSettings"] | null;
       /**
        * @description Partial autoscaling schedule collection update. Omitted collection fields and existing schedules are unchanged; each submitted schedule is a complete create or replacement.
        * @example {
@@ -5576,6 +5856,31 @@ export type components = {
       request_backpressure_settings?:
         | components["schemas"]["UpdateRequestBackpressureSettings"]
         | null;
+      /**
+       * @description Partial traffic routing rule update. Each submitted rule is a complete create or replace. Deletes are applied first. In development.
+       * @example {
+       *       "rules": [
+       *         {
+       *           "expires_at": "2026-10-13T18:00:00Z",
+       *           "percent_traffic": 25,
+       *           "propagate_client_cancellation": true,
+       *           "sampling_mode": "USER_SESSION",
+       *           "targets": [
+       *             {
+       *               "deployment_id": "abc123"
+       *             }
+       *           ],
+       *           "type": "SHADOW"
+       *         }
+       *       ]
+       *     }
+       * @example {
+       *       "delete_rules": [
+       *         "rule-id"
+       *       ]
+       *     }
+       */
+      traffic_routing_settings?: components["schemas"]["UpdateTrafficRoutingSettings"] | null;
     };
     /**
      * UpdateEnvironmentResponseV1
@@ -5618,6 +5923,27 @@ export type components = {
        * @example true
        */
       preserve_env_instance_type?: boolean;
+      /**
+       * @description Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.
+       * @example {
+       *       "autoscaling_settings": {
+       *         "max_replica": 4,
+       *         "min_replica": 2
+       *       }
+       *     }
+       */
+      environment_settings_update?:
+        | components["schemas"]["PromotionEnvironmentSettingsUpdate"]
+        | null;
+      /**
+       * @description Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.
+       * @example {
+       *       "rolling_deploy_config": {
+       *         "max_surge_percent": 50
+       *       }
+       *     }
+       */
+      promotion_settings_override?: components["schemas"]["UpdatePromotionSettings"] | null;
     };
     /**
      * CancelPromotionStatusV1
@@ -5911,6 +6237,51 @@ export type components = {
       instance_type: components["schemas"]["InstanceType"];
     };
     /**
+     * PromotionSettingsV1
+     * @description Promotion settings for promoting chains and oracles
+     */
+    PromotionSettings: {
+      /**
+       * Redeploy On Promotion
+       * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
+       * @default false
+       * @example true
+       */
+      redeploy_on_promotion: boolean | null;
+      /**
+       * Rolling Deploy
+       * @description Whether the environment should rely on rolling deploy orchestration.
+       * @default false
+       * @example true
+       */
+      rolling_deploy: boolean | null;
+      /**
+       * @description The cleanup strategy to use after a promotion completes.
+       * @default SCALE_TO_ZERO
+       * @example SCALE_TO_ZERO
+       */
+      promotion_cleanup_strategy: components["schemas"]["PromotionCleanupStrategy"] | null;
+      /**
+       * @description Rolling deploy configuration for promotions
+       * @default null
+       */
+      rolling_deploy_config: components["schemas"]["RollingDeployConfig"] | null;
+      /**
+       * Ramp Up While Promoting
+       * @description Whether to ramp up traffic while promoting
+       * @default false
+       * @example true
+       */
+      ramp_up_while_promoting: boolean | null;
+      /**
+       * Ramp Up Duration Seconds
+       * @description Duration of the ramp up in seconds
+       * @default 600
+       * @example 600
+       */
+      ramp_up_duration_seconds: number | null;
+    };
+    /**
      * ChainEnvironmentV1
      * @description Environment for oracles.
      */
@@ -6181,7 +6552,7 @@ export type components = {
       current_status: string;
       /**
        * Error Message
-       * @description Error message if the training job failed.
+       * @description Error message if the training job failed. While the job is pending, a hint when switching it to spot capacity would let it start sooner.
        * @default null
        */
       error_message: string | null;
@@ -7987,7 +8358,7 @@ export type components = {
     LoopsLoRAConfig: {
       /**
        * Config Version
-       * @description The config version, unique per base model.
+       * @description The config version, like v1.
        */
       config_version: string;
       /**
@@ -9513,6 +9884,8 @@ export type components = {
       description?: string | null;
       /** Trending */
       trending?: boolean;
+      /** Model Family */
+      model_family?: string | null;
     };
     /**
      * LibraryListingV1
@@ -10612,8 +10985,8 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
-    /** RouteClassifierListingRefV1 */
-    RouteClassifierListingRef: {
+    /** GridClassifierV1 */
+    GridClassifier: {
       /**
        * Id
        * @description Stable classifier identifier.
@@ -10627,8 +11000,8 @@ export type components = {
        */
       name: string;
     };
-    /** RouteRefV1 */
-    RouteRef: {
+    /** GridRouteRefV1 */
+    GridRouteRef: {
       /**
        * Id
        * @description Stable route identifier.
@@ -10640,8 +11013,8 @@ export type components = {
        */
       slug: string;
     };
-    /** RouteTargetBasetenModelAPIV1 */
-    RouteTargetBasetenModelAPI: {
+    /** GridRouteTargetBasetenModelAPIV1 */
+    GridRouteTargetBasetenModelAPI: {
       /**
        * @description Target kind for a Baseten Model API. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10653,25 +11026,25 @@ export type components = {
        */
       model: string;
     };
-    /** RouteTargetClassifierV1 */
-    RouteTargetClassifier: {
+    /** GridRouteTargetClassifierV1 */
+    GridRouteTargetClassifier: {
       /**
        * @description Target kind for a classifier-based route. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       type: "CLASSIFIER";
       /** @description Classifier that picks a route for each request. Null for routers created before classifiers could be selected. */
-      classifier: components["schemas"]["RouteClassifierListingRef"] | null;
+      classifier: components["schemas"]["GridClassifier"] | null;
       /** @description Route used when the classifier picks none. */
-      default_route: components["schemas"]["RouteRef"];
+      default_route: components["schemas"]["GridRouteRef"];
       /**
        * Allowed Routes
        * @description Routes the classifier may pick, in creation order.
        */
-      allowed_routes: components["schemas"]["RouteRef"][];
+      allowed_routes: components["schemas"]["GridRouteRef"][];
     };
-    /** RouteTargetConnectionV1 */
-    RouteTargetConnection: {
+    /** GridRouteTargetConnectionV1 */
+    GridRouteTargetConnection: {
       /**
        * @description Target kind for a provider reached through a team connection. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10688,8 +11061,8 @@ export type components = {
        */
       connection_id: string;
     };
-    /** RouteV1 */
-    Route: {
+    /** GridRouteV1 */
+    GridRoute: {
       /**
        * Id
        * @description Stable route identifier.
@@ -10725,9 +11098,9 @@ export type components = {
        * @description Configured upstream target.
        */
       target:
-        | components["schemas"]["RouteTargetBasetenModelAPI"]
-        | components["schemas"]["RouteTargetConnection"]
-        | components["schemas"]["RouteTargetClassifier"];
+        | components["schemas"]["GridRouteTargetBasetenModelAPI"]
+        | components["schemas"]["GridRouteTargetConnection"]
+        | components["schemas"]["GridRouteTargetClassifier"];
       /** @description Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked. */
       metadata: components["schemas"]["ExploreMetadata"] | null;
       /**
@@ -10742,18 +11115,18 @@ export type components = {
        */
       created_at: string;
     };
-    /** RoutesResponseV1 */
-    RoutesResponse: {
+    /** GridRoutesResponseV1 */
+    GridRoutesResponse: {
       /**
        * Items
        * @description Items in this page.
        */
-      items: components["schemas"]["Route"][];
+      items: components["schemas"]["GridRoute"][];
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
-    /** UpsertRouteTargetBasetenModelAPIV1 */
-    UpsertRouteTargetBasetenModelAPI: {
+    /** UpsertGridRouteTargetBasetenModelAPIV1 */
+    UpsertGridRouteTargetBasetenModelAPI: {
       /**
        * @description Target kind for a Baseten Model API. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10765,8 +11138,8 @@ export type components = {
        */
       model: string;
     };
-    /** UpsertRouteTargetClassifierV1 */
-    UpsertRouteTargetClassifier: {
+    /** UpsertGridRouteTargetClassifierV1 */
+    UpsertGridRouteTargetClassifier: {
       /**
        * @description Target kind for a classifier-based route. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10794,8 +11167,8 @@ export type components = {
        */
       default_route_id: string;
     };
-    /** UpsertRouteTargetConnectionV1 */
-    UpsertRouteTargetConnection: {
+    /** UpsertGridRouteTargetConnectionV1 */
+    UpsertGridRouteTargetConnection: {
       /**
        * @description Target kind for a provider reached through a team connection. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -10813,8 +11186,8 @@ export type components = {
        */
       connection_id: string;
     };
-    /** CreateRouteRequestV1 */
-    CreateRouteRequest: {
+    /** CreateGridRouteRequestV1 */
+    CreateGridRouteRequest: {
       /**
        * Team Id
        * @description Identifier of the team that owns the route.
@@ -10836,9 +11209,9 @@ export type components = {
        *     }
        */
       target:
-        | components["schemas"]["UpsertRouteTargetBasetenModelAPI"]
-        | components["schemas"]["UpsertRouteTargetConnection"]
-        | components["schemas"]["UpsertRouteTargetClassifier"];
+        | components["schemas"]["UpsertGridRouteTargetBasetenModelAPI"]
+        | components["schemas"]["UpsertGridRouteTargetConnection"]
+        | components["schemas"]["UpsertGridRouteTargetClassifier"];
       /**
        * Description
        * @description Short description of the route. Omit for no description; null is not accepted.
@@ -10847,19 +11220,19 @@ export type components = {
       description?: string | null;
     };
     /**
-     * RouteProviderV1
+     * GridProviderV1
      * @description Upstream provider of a route target, named like the route target types.
      * @enum {string}
      */
-    RouteProvider:
+    GridProvider:
       | "BASETEN_MODEL_API"
       | "OPENAI"
       | "ANTHROPIC"
       | "XAI"
       | "VERTEX"
       | "OPENAI_COMPATIBLE";
-    /** RoutesUsageBucketV1 */
-    RoutesUsageBucket: {
+    /** GridRouteUsageBucketV1 */
+    GridRouteUsageBucket: {
       /**
        * Date
        * Format: date
@@ -10870,10 +11243,10 @@ export type components = {
        * Results
        * @description Usage broken down by the requested dimensions. Empty when there is no usage.
        */
-      results: components["schemas"]["RoutesUsageResult"][];
+      results: components["schemas"]["GridRouteUsageResult"][];
     };
-    /** RoutesUsageResultV1 */
-    RoutesUsageResult: {
+    /** GridRouteUsageResultV1 */
+    GridRouteUsageResult: {
       /**
        * User Id
        * @description ID of the user who created the Routes key. Null when not grouping by USER.
@@ -10887,6 +11260,12 @@ export type components = {
        */
       team_id: string | null;
       /**
+       * Team Name
+       * @description Name of the team the usage was metered in. Null when `team_id` is null.
+       * @default null
+       */
+      team_name: string | null;
+      /**
        * Model
        * @description Model name. For external providers, the model name sent to the provider. Null when not grouping by MODEL.
        * @default null
@@ -10896,10 +11275,10 @@ export type components = {
        * @description Provider that served the requests. Null when not grouping by PROVIDER.
        * @default null
        */
-      provider: components["schemas"]["RouteProvider"] | null;
+      provider: components["schemas"]["GridProvider"] | null;
       /**
        * Router Id
-       * @description Slug of the intelligent router, matching its name in `GET /v1/routes`. Null when not grouping by ROUTER.
+       * @description Slug of the intelligent router, matching its name in `GET /v1/grid/routes`. Null when not grouping by ROUTER.
        * @default null
        */
       router_id: string | null;
@@ -10935,23 +11314,194 @@ export type components = {
        */
       requests: number;
     };
-    /** RoutesUsageResponseV1 */
-    RoutesUsageResponse: {
+    /** GridRouteUsageResponseV1 */
+    GridRouteUsageResponse: {
       /**
        * Items
        * @description Items in this page.
        */
-      items: components["schemas"]["RoutesUsageBucket"][];
+      items: components["schemas"]["GridRouteUsageBucket"][];
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
     /**
-     * RouteUsageDimensionV1
+     * GridRouteUsageDimensionV1
      * @enum {string}
      */
-    RouteUsageDimension: "USER" | "TEAM" | "MODEL" | "PROVIDER" | "ROUTER";
-    /** RouteEffectiveSpendLimitV1 */
-    RouteEffectiveSpendLimit: {
+    GridRouteUsageDimension: "USER" | "TEAM" | "MODEL" | "PROVIDER" | "ROUTER";
+    /** GridRouteTombstoneV1 */
+    GridRouteTombstone: {
+      /**
+       * Id
+       * @description Stable identifier of the deleted route.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name of the deleted route.
+       */
+      name: string;
+    };
+    /** UpdateGridRouteRequestV1 */
+    UpdateGridRouteRequest: {
+      /**
+       * Description
+       * @description New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.
+       * @example Assistant for code review and debugging.
+       */
+      description?: string | null;
+      /**
+       * Display Name
+       * @description New display label. Omit to keep the current label; null is not accepted.
+       * @example Assistant
+       */
+      display_name?: string | null;
+      /**
+       * Target
+       * @description Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER configuration of a router route is mutable.
+       */
+      target?:
+        | (
+            | components["schemas"]["UpsertGridRouteTargetBasetenModelAPI"]
+            | components["schemas"]["UpsertGridRouteTargetConnection"]
+            | components["schemas"]["UpsertGridRouteTargetClassifier"]
+          )
+        | null;
+    };
+    /** GridBackgroundHarnessDefaultsV1 */
+    GridBackgroundHarnessDefaults: {
+      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
+      primary: components["schemas"]["GridHarnessModel"] | null;
+      /** @description Route for background tasks, such as session titles. Null when the team has no route to use. */
+      background: components["schemas"]["GridHarnessModel"] | null;
+    };
+    /** GridHarnessDefaultsV1 */
+    GridHarnessDefaults: {
+      /** @description Default models for Claude Code. */
+      claude_code: components["schemas"]["GridBackgroundHarnessDefaults"];
+      /** @description Default models for OpenCode. */
+      opencode: components["schemas"]["GridBackgroundHarnessDefaults"];
+      /** @description Default models for Codex. */
+      codex: components["schemas"]["GridPrimaryHarnessDefaults"];
+      /** @description Default models for Pi. */
+      pi: components["schemas"]["GridPrimaryHarnessDefaults"];
+    };
+    /** GridHarnessModelV1 */
+    GridHarnessModel: {
+      /** @description Where this role's route comes from. `team` covers both a route a team admin set and the default chosen from the team's Model API routes. */
+      source: components["schemas"]["GridSettingSource"];
+      /** @description Route to use for this role. */
+      route: components["schemas"]["GridRoute"];
+    };
+    /** GridPrimaryHarnessDefaultsV1 */
+    GridPrimaryHarnessDefaults: {
+      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
+      primary: components["schemas"]["GridHarnessModel"] | null;
+    };
+    /**
+     * GridSettingSourceV1
+     * @enum {string}
+     */
+    GridSettingSource: "user" | "team";
+    /** GridTeamSpendLimitSettingV1 */
+    GridTeamSpendLimitSetting: {
+      /**
+       * Per Member Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
+       * @example 200
+       */
+      per_member_monthly_limit_usd: string | null;
+      /**
+       * Team Wide Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.
+       * @example 5000
+       */
+      team_wide_monthly_limit_usd: string | null;
+    };
+    /** GridTeamSettingsV1 */
+    GridTeamSettings: {
+      /**
+       * Team Id
+       * @description ID of the team.
+       * @example abc1234
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the team.
+       * @example Engineering
+       */
+      team_name: string;
+      /** @description Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes. */
+      harness_defaults: components["schemas"]["GridHarnessDefaults"];
+      /** @description Spend limits for Baseten Grid for members' spend in this team. */
+      spend_limit: components["schemas"]["GridTeamSpendLimitSetting"];
+    };
+    /** UpdateGridBackgroundHarnessModelsV1 */
+    UpdateGridBackgroundHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+      /**
+       * Background
+       * @description Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.
+       * @example def5678
+       */
+      background?: string | null;
+    };
+    /** UpdateGridHarnessDefaultsV1 */
+    UpdateGridHarnessDefaults: {
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      claude_code?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      opencode?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      codex?: components["schemas"]["UpdateGridPrimaryHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      pi?: components["schemas"]["UpdateGridPrimaryHarnessModels"] | null;
+    };
+    /** UpdateGridPrimaryHarnessModelsV1 */
+    UpdateGridPrimaryHarnessModels: {
+      /**
+       * Primary
+       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
+       * @example abc1234
+       */
+      primary?: string | null;
+    };
+    /** UpdateGridTeamSpendLimitSettingV1 */
+    UpdateGridTeamSpendLimitSetting: {
+      /**
+       * Per Member Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
+       * @example 200
+       */
+      per_member_monthly_limit_usd?: string | null;
+      /**
+       * Team Wide Monthly Limit Usd
+       * @description Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Send null to remove it; omit to leave it unchanged.
+       * @example 5000
+       */
+      team_wide_monthly_limit_usd?: string | null;
+    };
+    /** UpdateGridTeamSettingsRequestV1 */
+    UpdateGridTeamSettingsRequest: {
+      /** @description Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default. */
+      harness_defaults?: components["schemas"]["UpdateGridHarnessDefaults"] | null;
+      /** @description Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged. */
+      spend_limit?: components["schemas"]["UpdateGridTeamSpendLimitSetting"] | null;
+      /**
+       * Team Id
+       * @description ID of the team. When omitted, the team you belong to; required when you belong to several.
+       * @example abc1234
+       */
+      team_id?: string | null;
+    };
+    /** GridEffectiveSpendLimitV1 */
+    GridEffectiveSpendLimit: {
       /**
        * Monthly Limit Usd
        * @description Spend limit in USD enforced for the current UTC calendar month: the user's own limit, else the team default. Null when no limit applies.
@@ -10959,20 +11509,15 @@ export type components = {
        */
       monthly_limit_usd: string | null;
       /** @description Where the limit comes from: `user` when it is set on the user, `team` when it is the team default. Null when no limit applies. */
-      source: components["schemas"]["RouteSettingSource"] | null;
+      source: components["schemas"]["GridSettingSource"] | null;
     };
     /**
-     * RouteSettingSourceV1
+     * GridSpendBlockedByV1
      * @enum {string}
      */
-    RouteSettingSource: "user" | "team";
-    /**
-     * RouteSpendBlockedByV1
-     * @enum {string}
-     */
-    RouteSpendBlockedBy: "member" | "team";
-    /** RouteSpendLimitSettingV1 */
-    RouteSpendLimitSetting: {
+    GridSpendBlockedBy: "member" | "team";
+    /** GridSpendLimitSettingV1 */
+    GridSpendLimitSetting: {
       /**
        * User Monthly Limit Usd
        * @description Standing spend limit in USD for each UTC calendar month set on the user in the team. Null when the user has no limit of their own there.
@@ -10986,9 +11531,9 @@ export type components = {
        */
       month_override_usd: string | null;
       /** @description Per-member limit of the team. This limit applies when the user has no limit of their own. Null when there is none. */
-      team_default: components["schemas"]["RouteSpendLimitTeamDefault"] | null;
+      team_default: components["schemas"]["GridSpendLimitTeamDefault"] | null;
       /** @description The effective limit enforced for the current month. */
-      effective: components["schemas"]["RouteEffectiveSpendLimit"];
+      effective: components["schemas"]["GridEffectiveSpendLimit"];
       /**
        * Team Wide Monthly Limit Usd
        * @description Team-wide limit of the team in USD for each UTC calendar month. Once all members' spend in the team reaches it, the user's requests in the team are rejected whatever their own limit. Null when there is none.
@@ -10996,8 +11541,8 @@ export type components = {
        */
       team_wide_monthly_limit_usd: string | null;
     };
-    /** RouteSpendLimitTeamDefaultV1 */
-    RouteSpendLimitTeamDefault: {
+    /** GridSpendLimitTeamDefaultV1 */
+    GridSpendLimitTeamDefault: {
       /**
        * Team Id
        * @description ID of the team whose per-member limit this is.
@@ -11005,14 +11550,20 @@ export type components = {
        */
       team_id: string;
       /**
+       * Team Name
+       * @description Name of the team.
+       * @example Engineering
+       */
+      team_name: string;
+      /**
        * Per Member Monthly Limit Usd
        * @description The team's per-member spend limit in USD for each UTC calendar month.
        * @example 100
        */
       per_member_monthly_limit_usd: string;
     };
-    /** RouteTeamUserSettingsV1 */
-    RouteTeamUserSettings: {
+    /** GridTeamUserSettingsV1 */
+    GridTeamUserSettings: {
       /**
        * Team Id
        * @description ID of the team.
@@ -11038,7 +11589,7 @@ export type components = {
        */
       email: string | null;
       /** @description Spend limit for Baseten Grid in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited. */
-      spend_limit: components["schemas"]["RouteSpendLimitSetting"];
+      spend_limit: components["schemas"]["GridSpendLimitSetting"];
       /**
        * Month Spend Usd
        * @description The user's metered Grid spend in USD in the team this UTC calendar month, returned as an exact decimal string.
@@ -11051,141 +11602,20 @@ export type components = {
        */
       is_blocked: boolean;
       /** @description `member` when the user's spend this month reached their limit, `team` when the team's spend reached its team-wide limit. Null when the user is not blocked. */
-      blocked_by: components["schemas"]["RouteSpendBlockedBy"] | null;
+      blocked_by: components["schemas"]["GridSpendBlockedBy"] | null;
     };
-    /** RouteUserTeamSettingsListV1 */
-    RouteUserTeamSettingsList: {
+    /** GridTeamUserSettingsListV1 */
+    GridTeamUserSettingsList: {
       /**
-       * Teams
-       * @description The user's settings in each team they have a role in and in any team they have Grid spend in this month, alphabetical by team name.
+       * Items
+       * @description Items in this page.
        */
-      teams: components["schemas"]["RouteTeamUserSettings"][];
+      items: components["schemas"]["GridTeamUserSettings"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
     };
-    /** BackgroundHarnessDefaultsV1 */
-    BackgroundHarnessDefaults: {
-      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
-      primary: components["schemas"]["RouteHarnessModel"] | null;
-      /** @description Route for background tasks, such as session titles. Null when the team has no route to use. */
-      background: components["schemas"]["RouteHarnessModel"] | null;
-    };
-    /** PrimaryHarnessDefaultsV1 */
-    PrimaryHarnessDefaults: {
-      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
-      primary: components["schemas"]["RouteHarnessModel"] | null;
-    };
-    /** RouteHarnessDefaultsV1 */
-    RouteHarnessDefaults: {
-      /** @description Default models for Claude Code. */
-      claude_code: components["schemas"]["BackgroundHarnessDefaults"];
-      /** @description Default models for OpenCode. */
-      opencode: components["schemas"]["BackgroundHarnessDefaults"];
-      /** @description Default models for Codex. */
-      codex: components["schemas"]["PrimaryHarnessDefaults"];
-      /** @description Default models for Pi. */
-      pi: components["schemas"]["PrimaryHarnessDefaults"];
-    };
-    /** RouteHarnessModelV1 */
-    RouteHarnessModel: {
-      /** @description Where this role's route comes from. `team` covers both a route a team admin set and the default chosen from the team's Model API routes. */
-      source: components["schemas"]["RouteSettingSource"];
-      /** @description Route to use for this role. */
-      route: components["schemas"]["Route"];
-    };
-    /** RouteTeamSpendLimitSettingV1 */
-    RouteTeamSpendLimitSetting: {
-      /**
-       * Per Member Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.
-       * @example 200
-       */
-      per_member_monthly_limit_usd: string | null;
-      /**
-       * Team Wide Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.
-       * @example 5000
-       */
-      team_wide_monthly_limit_usd: string | null;
-    };
-    /** RouteTeamSettingsV1 */
-    RouteTeamSettings: {
-      /**
-       * Team Id
-       * @description ID of the team.
-       * @example abc1234
-       */
-      team_id: string;
-      /** @description Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes. */
-      harness_defaults: components["schemas"]["RouteHarnessDefaults"];
-      /** @description Spend limits for Baseten Grid for members' spend in this team. */
-      spend_limit: components["schemas"]["RouteTeamSpendLimitSetting"];
-    };
-    /** UpdateBackgroundHarnessModelsV1 */
-    UpdateBackgroundHarnessModels: {
-      /**
-       * Primary
-       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
-       * @example abc1234
-       */
-      primary?: string | null;
-      /**
-       * Background
-       * @description Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.
-       * @example def5678
-       */
-      background?: string | null;
-    };
-    /** UpdatePrimaryHarnessModelsV1 */
-    UpdatePrimaryHarnessModels: {
-      /**
-       * Primary
-       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
-       * @example abc1234
-       */
-      primary?: string | null;
-    };
-    /** UpdateRouteHarnessDefaultsV1 */
-    UpdateRouteHarnessDefaults: {
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      claude_code?: components["schemas"]["UpdateBackgroundHarnessModels"] | null;
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      opencode?: components["schemas"]["UpdateBackgroundHarnessModels"] | null;
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      codex?: components["schemas"]["UpdatePrimaryHarnessModels"] | null;
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      pi?: components["schemas"]["UpdatePrimaryHarnessModels"] | null;
-    };
-    /** UpdateRouteTeamSpendLimitSettingV1 */
-    UpdateRouteTeamSpendLimitSetting: {
-      /**
-       * Per Member Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.
-       * @example 200
-       */
-      per_member_monthly_limit_usd?: string | null;
-      /**
-       * Team Wide Monthly Limit Usd
-       * @description Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Send null to remove it; omit to leave it unchanged.
-       * @example 5000
-       */
-      team_wide_monthly_limit_usd?: string | null;
-    };
-    /** UpdateRouteTeamSettingsRequestV1 */
-    UpdateRouteTeamSettingsRequest: {
-      /** @description Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default. */
-      harness_defaults?: components["schemas"]["UpdateRouteHarnessDefaults"] | null;
-      /** @description Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged. */
-      spend_limit?: components["schemas"]["UpdateRouteTeamSpendLimitSetting"] | null;
-    };
-    /** RouteTeamUserSettingsListV1 */
-    RouteTeamUserSettingsList: {
-      /**
-       * Users
-       * @description Settings of each user with a role in the team and of anyone with Grid spend in the team this month.
-       */
-      users: components["schemas"]["RouteTeamUserSettings"][];
-    };
-    /** UpdateRouteSpendLimitSettingV1 */
-    UpdateRouteSpendLimitSetting: {
+    /** UpdateGridSpendLimitSettingV1 */
+    UpdateGridSpendLimitSetting: {
       /**
        * User Monthly Limit Usd
        * @description Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.
@@ -11199,13 +11629,19 @@ export type components = {
        */
       month_override_usd?: string | null;
     };
-    /** UpdateRouteUserSettingsRequestV1 */
-    UpdateRouteUserSettingsRequest: {
+    /** UpdateGridUserSettingsRequestV1 */
+    UpdateGridUserSettingsRequest: {
       /** @description Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged. */
-      spend_limit?: components["schemas"]["UpdateRouteSpendLimitSetting"] | null;
+      spend_limit?: components["schemas"]["UpdateGridSpendLimitSetting"] | null;
+      /**
+       * Team Id
+       * @description ID of the team. When omitted, the team you belong to; required when you belong to several.
+       * @example abc1234
+       */
+      team_id?: string | null;
     };
-    /** RouteConnectionConfigAnthropicV1 */
-    RouteConnectionConfigAnthropic: {
+    /** GridConnectionConfigAnthropicV1 */
+    GridConnectionConfigAnthropic: {
       /**
        * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -11222,8 +11658,8 @@ export type components = {
        */
       secret_name: string;
     };
-    /** RouteConnectionConfigOpenAIV1 */
-    RouteConnectionConfigOpenAI: {
+    /** GridConnectionConfigOpenAIV1 */
+    GridConnectionConfigOpenAI: {
       /**
        * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -11240,8 +11676,8 @@ export type components = {
        */
       secret_name: string;
     };
-    /** RouteConnectionConfigXAIV1 */
-    RouteConnectionConfigXAI: {
+    /** GridConnectionConfigXAIV1 */
+    GridConnectionConfigXAI: {
       /**
        * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
        * @enum {string}
@@ -11258,8 +11694,8 @@ export type components = {
        */
       secret_name: string;
     };
-    /** RouteConnectionV1 */
-    RouteConnection: {
+    /** GridConnectionV1 */
+    GridConnection: {
       /**
        * Id
        * @description Stable connection identifier.
@@ -11271,13 +11707,18 @@ export type components = {
        */
       team_id: string;
       /**
+       * Team Name
+       * @description Name of the team that owns the connection.
+       */
+      team_name: string;
+      /**
        * Config
        * @description Provider the connection authenticates with, and the team secret holding its API key.
        */
       config:
-        | components["schemas"]["RouteConnectionConfigAnthropic"]
-        | components["schemas"]["RouteConnectionConfigOpenAI"]
-        | components["schemas"]["RouteConnectionConfigXAI"];
+        | components["schemas"]["GridConnectionConfigAnthropic"]
+        | components["schemas"]["GridConnectionConfigOpenAI"]
+        | components["schemas"]["GridConnectionConfigXAI"];
       /**
        * Created At
        * Format: date-time
@@ -11291,57 +11732,60 @@ export type components = {
        */
       updated_at: string;
     };
-    /** RouteConnectionsResponseV1 */
-    RouteConnectionsResponse: {
+    /** GridConnectionsResponseV1 */
+    GridConnectionsResponse: {
       /**
        * Items
        * @description Items in this page.
        */
-      items: components["schemas"]["RouteConnection"][];
+      items: components["schemas"]["GridConnection"][];
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
-    /** UpsertRouteConnectionConfigAnthropicV1 */
-    UpsertRouteConnectionConfigAnthropic: {
+    /** UpsertGridConnectionConfigAnthropicV1 */
+    UpsertGridConnectionConfigAnthropic: {
       /**
        * @description Provider kind for Anthropic. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       provider: "ANTHROPIC";
       /**
-       * Secret Id
-       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       * Secret Name
+       * @description Name of an existing secret, owned by the same team, that holds the provider API key.
+       * @example anthropic-key
        */
-      secret_id: string;
+      secret_name: string;
     };
-    /** UpsertRouteConnectionConfigOpenAIV1 */
-    UpsertRouteConnectionConfigOpenAI: {
+    /** UpsertGridConnectionConfigOpenAIV1 */
+    UpsertGridConnectionConfigOpenAI: {
       /**
        * @description Provider kind for OpenAI. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       provider: "OPENAI";
       /**
-       * Secret Id
-       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       * Secret Name
+       * @description Name of an existing secret, owned by the same team, that holds the provider API key.
+       * @example anthropic-key
        */
-      secret_id: string;
+      secret_name: string;
     };
-    /** UpsertRouteConnectionConfigXAIV1 */
-    UpsertRouteConnectionConfigXAI: {
+    /** UpsertGridConnectionConfigXAIV1 */
+    UpsertGridConnectionConfigXAI: {
       /**
        * @description Provider kind for xAI. (enum property replaced by openapi-typescript)
        * @enum {string}
        */
       provider: "XAI";
       /**
-       * Secret Id
-       * @description Identifier of an existing secret, owned by the same team, that holds the provider API key.
+       * Secret Name
+       * @description Name of an existing secret, owned by the same team, that holds the provider API key.
+       * @example anthropic-key
        */
-      secret_id: string;
+      secret_name: string;
     };
-    /** CreateRouteConnectionRequestV1 */
-    CreateRouteConnectionRequest: {
+    /** CreateGridConnectionRequestV1 */
+    CreateGridConnectionRequest: {
       /**
        * Team Id
        * @description Identifier of the team that owns the connection.
@@ -11353,75 +11797,46 @@ export type components = {
        * @description Provider the connection authenticates with, and the team secret holding its API key.
        * @example {
        *       "provider": "ANTHROPIC",
-       *       "secret_id": "abc1234"
+       *       "secret_name": "anthropic-key"
        *     }
        */
       config:
-        | components["schemas"]["UpsertRouteConnectionConfigAnthropic"]
-        | components["schemas"]["UpsertRouteConnectionConfigOpenAI"]
-        | components["schemas"]["UpsertRouteConnectionConfigXAI"];
+        | components["schemas"]["UpsertGridConnectionConfigAnthropic"]
+        | components["schemas"]["UpsertGridConnectionConfigOpenAI"]
+        | components["schemas"]["UpsertGridConnectionConfigXAI"];
     };
-    /** RouteConnectionTombstoneV1 */
-    RouteConnectionTombstone: {
+    /** GridConnectionTombstoneV1 */
+    GridConnectionTombstone: {
       /**
        * Id
        * @description Stable identifier of the deleted connection.
        */
       id: string;
     };
-    /** UpdateRouteConnectionRequestV1 */
-    UpdateRouteConnectionRequest: {
+    /** UpdateGridConnectionRequestV1 */
+    UpdateGridConnectionRequest: {
       /**
        * Config
        * @description Complete new connection configuration, replacing the current one. The provider must match the connection and is immutable.
        * @example {
        *       "provider": "ANTHROPIC",
-       *       "secret_id": "abc1234"
+       *       "secret_name": "anthropic-key"
        *     }
        */
       config:
-        | components["schemas"]["UpsertRouteConnectionConfigAnthropic"]
-        | components["schemas"]["UpsertRouteConnectionConfigOpenAI"]
-        | components["schemas"]["UpsertRouteConnectionConfigXAI"];
+        | components["schemas"]["UpsertGridConnectionConfigAnthropic"]
+        | components["schemas"]["UpsertGridConnectionConfigOpenAI"]
+        | components["schemas"]["UpsertGridConnectionConfigXAI"];
     };
-    /** RouteTombstoneV1 */
-    RouteTombstone: {
+    /** GridClassifiersResponseV1 */
+    GridClassifiersResponse: {
       /**
-       * Id
-       * @description Stable identifier of the deleted route.
+       * Items
+       * @description Items in this page.
        */
-      id: string;
-      /**
-       * Name
-       * @description Name of the deleted route.
-       */
-      name: string;
-    };
-    /** UpdateRouteRequestV1 */
-    UpdateRouteRequest: {
-      /**
-       * Description
-       * @description New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.
-       * @example Assistant for code review and debugging.
-       */
-      description?: string | null;
-      /**
-       * Display Name
-       * @description New display label. Omit to keep the current label; null is not accepted.
-       * @example Assistant
-       */
-      display_name?: string | null;
-      /**
-       * Target
-       * @description Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER configuration of a router route is mutable.
-       */
-      target?:
-        | (
-            | components["schemas"]["UpsertRouteTargetBasetenModelAPI"]
-            | components["schemas"]["UpsertRouteTargetConnection"]
-            | components["schemas"]["UpsertRouteTargetClassifier"]
-          )
-        | null;
+      items: components["schemas"]["GridClassifier"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
     };
     /**
      * EndpointTargetV1
@@ -14810,7 +15225,7 @@ export type components = {
        */
       q?: string | null;
     };
-    GetRoutesParams: {
+    GetGridRoutesParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -14823,16 +15238,21 @@ export type components = {
       limit?: number;
       /**
        * Team Id
-       * @description Identifier of the team whose routes to list.
+       * @description Limit routes to this team. Without it, routes from every team where you can invoke routes.
        */
       team_id?: string | null;
+      /**
+       * For Harnesses
+       * @description Set by harness setup and sync. Returns routes from exactly one team: `team_id`, else the team you belong to; when you belong to several and name none, the request fails with a 400.
+       */
+      for_harnesses?: boolean;
       /**
        * Name
        * @description Filter by exact route name. Preserved by the cursor; if repeated, must match the original filter.
        */
       name?: string | null;
     };
-    GetRoutesUsageParams: {
+    GetGridRoutesUsageParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -14862,7 +15282,7 @@ export type components = {
        * Group By
        * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, or ROUTER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. Defaults to MODEL.
        */
-      group_by?: components["schemas"]["RouteUsageDimension"][];
+      group_by?: components["schemas"]["GridRouteUsageDimension"][];
       /**
        * User Ids
        * @description Return only usage from Routes keys created by these user IDs, repeated once per ID.
@@ -14877,9 +15297,17 @@ export type components = {
        * Providers
        * @description Return only usage for these providers, repeated once per provider.
        */
-      providers?: components["schemas"]["RouteProvider"][];
+      providers?: components["schemas"]["GridProvider"][];
     };
-    GetRoutesConnectionsParams: {
+    GetGridTeamSettingsParams: {
+      /**
+       * Team Id
+       * @description ID of the team. When omitted, the team you belong to; required when you belong to several.
+       * @example abc1234
+       */
+      team_id?: string | null;
+    };
+    GetGridTeamSettingsUsersParams: {
       /**
        * Cursor
        * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
@@ -14892,9 +15320,47 @@ export type components = {
       limit?: number;
       /**
        * Team Id
-       * @description Identifier of the team whose connections to list.
+       * @description Limit the list to this team. Without it, the members of every team you administer, one row per team.
+       * @example abc1234
        */
       team_id?: string | null;
+    };
+    GetGridTeamSettingsUsersUserIdParams: {
+      /**
+       * Team Id
+       * @description ID of the team. When omitted, the team you belong to; required when you belong to several.
+       * @example abc1234
+       */
+      team_id?: string | null;
+    };
+    GetGridConnectionsParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Team Id
+       * @description Limit connections to this team. Without it, connections from every team where you can invoke routes.
+       */
+      team_id?: string | null;
+    };
+    GetGridClassifiersParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
     };
     GetSandboxMetricsParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -15260,8 +15726,9 @@ export type components = {
     user_defined_listing_id: string;
     version_tag: string;
     user_id: string;
-    connection_id: string;
     route_id: string;
+    connection_id: string;
+    classifier_id: string;
     endpoint_id: string;
     group_id: string;
     /** @description Defaults to CURRENT, which rejects start_epoch_millis and end_epoch_millis. SERIES uses a server-selected step of 30 seconds up to 2 hours, 60 seconds up to 1 day, 600 seconds up to 3 days, and 3600 seconds beyond 3 days. */
@@ -15466,6 +15933,8 @@ export type AuditLogEventModelDeploymentRetried =
 export type AuditLogEventModelPromotionControlAction =
   components["schemas"]["AuditLogEventModelPromotionControlAction"];
 export type AuditLogEventModelRenamed = components["schemas"]["AuditLogEventModelRenamed"];
+export type AuditLogEventPromotionSettingsOverride =
+  components["schemas"]["AuditLogEventPromotionSettingsOverride"];
 export type AuditLogEventProviderConnectionCreated =
   components["schemas"]["AuditLogEventProviderConnectionCreated"];
 export type AuditLogEventProviderConnectionDeleted =
@@ -15533,6 +16002,20 @@ export type UpdateAutoscalingSettingsResponse =
   components["schemas"]["UpdateAutoscalingSettingsResponse"];
 export type UpdateRequestBackpressureSettings =
   components["schemas"]["UpdateRequestBackpressureSettings"];
+export type AutoscalingScheduleSettingsRequest =
+  components["schemas"]["AutoscalingScheduleSettingsRequest"];
+export type AutoscalingScheduleUpsert = components["schemas"]["AutoscalingScheduleUpsert"];
+export type AutoscalingScheduleWeekday = components["schemas"]["AutoscalingScheduleWeekday"];
+export type OneTimeAutoscalingScheduleUpsert =
+  components["schemas"]["OneTimeAutoscalingScheduleUpsert"];
+export type PromotionCleanupStrategy = components["schemas"]["PromotionCleanupStrategy"];
+export type PromotionEnvironmentSettingsUpdate =
+  components["schemas"]["PromotionEnvironmentSettingsUpdate"];
+export type RollingDeployStrategy = components["schemas"]["RollingDeployStrategy"];
+export type UpdateAutoscalingScheduleSettings =
+  components["schemas"]["UpdateAutoscalingScheduleSettings"];
+export type UpdatePromotionSettings = components["schemas"]["UpdatePromotionSettings"];
+export type UpdateRollingDeployConfig = components["schemas"]["UpdateRollingDeployConfig"];
 export type PromoteRequest = components["schemas"]["PromoteRequest"];
 export type ActivateResponse = components["schemas"]["ActivateResponse"];
 export type DeactivateResponse = components["schemas"]["DeactivateResponse"];
@@ -15582,29 +16065,26 @@ export type SignSshCertificateResponse = components["schemas"]["SignSSHCertifica
 export type AutoscalingScheduleSettings = components["schemas"]["AutoscalingScheduleSettings"];
 export type AutoscalingScheduleState = components["schemas"]["AutoscalingScheduleState"];
 export type AutoscalingSchedule = components["schemas"]["AutoscalingSchedule"];
-export type AutoscalingScheduleWeekday = components["schemas"]["AutoscalingScheduleWeekday"];
 export type EnvironmentAutoscalingSchedules =
   components["schemas"]["EnvironmentAutoscalingSchedules"];
+export type EnvironmentTrafficRouting = components["schemas"]["EnvironmentTrafficRouting"];
 export type Environment = components["schemas"]["Environment"];
 export type InProgressPromotionStatus = components["schemas"]["InProgressPromotionStatus"];
 export type InProgressPromotion = components["schemas"]["InProgressPromotion"];
+export type ModelPromotionSettings = components["schemas"]["ModelPromotionSettings"];
 export type OneTimeAutoscalingSchedule = components["schemas"]["OneTimeAutoscalingSchedule"];
-export type PromotionCleanupStrategy = components["schemas"]["PromotionCleanupStrategy"];
-export type PromotionSettings = components["schemas"]["PromotionSettings"];
 export type RollingDeployConfig = components["schemas"]["RollingDeployConfig"];
-export type RollingDeployStrategy = components["schemas"]["RollingDeployStrategy"];
+export type TrafficRoutingRuleShadowSamplingMode =
+  components["schemas"]["TrafficRoutingRuleShadowSamplingMode"];
+export type TrafficRoutingRule = components["schemas"]["TrafficRoutingRule"];
+export type TrafficRoutingTarget = components["schemas"]["TrafficRoutingTarget"];
 export type Environments = components["schemas"]["Environments"];
-export type UpdatePromotionSettings = components["schemas"]["UpdatePromotionSettings"];
-export type UpdateRollingDeployConfig = components["schemas"]["UpdateRollingDeployConfig"];
+export type UpdateModelPromotionSettings = components["schemas"]["UpdateModelPromotionSettings"];
 export type CreateEnvironmentRequest = components["schemas"]["CreateEnvironmentRequest"];
 export type EnvironmentTombstone = components["schemas"]["EnvironmentTombstone"];
-export type AutoscalingScheduleSettingsRequest =
-  components["schemas"]["AutoscalingScheduleSettingsRequest"];
-export type AutoscalingScheduleUpsert = components["schemas"]["AutoscalingScheduleUpsert"];
-export type OneTimeAutoscalingScheduleUpsert =
-  components["schemas"]["OneTimeAutoscalingScheduleUpsert"];
-export type UpdateAutoscalingScheduleSettings =
-  components["schemas"]["UpdateAutoscalingScheduleSettings"];
+export type TrafficRoutingRuleUpsert = components["schemas"]["TrafficRoutingRuleUpsert"];
+export type TrafficRoutingTargetUpsert = components["schemas"]["TrafficRoutingTargetUpsert"];
+export type UpdateTrafficRoutingSettings = components["schemas"]["UpdateTrafficRoutingSettings"];
 export type UpdateEnvironmentRequest = components["schemas"]["UpdateEnvironmentRequest"];
 export type UpdateEnvironmentResponse = components["schemas"]["UpdateEnvironmentResponse"];
 export type PromoteToEnvironmentRequest = components["schemas"]["PromoteToEnvironmentRequest"];
@@ -15622,6 +16102,7 @@ export type ChainletEnvironmentSettingsRequest =
   components["schemas"]["ChainletEnvironmentSettingsRequest"];
 export type CreateChainEnvironmentRequest = components["schemas"]["CreateChainEnvironmentRequest"];
 export type ChainletEnvironmentSettings = components["schemas"]["ChainletEnvironmentSettings"];
+export type PromotionSettings = components["schemas"]["PromotionSettings"];
 export type ChainEnvironment = components["schemas"]["ChainEnvironment"];
 export type UpdateChainEnvironmentRequest = components["schemas"]["UpdateChainEnvironmentRequest"];
 export type UpdateChainEnvironmentResponse =
@@ -15835,64 +16316,65 @@ export type ExploreCostValues = components["schemas"]["ExploreCostValues"];
 export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAPIFormats"];
 export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
 export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
-export type RouteClassifierListingRef = components["schemas"]["RouteClassifierListingRef"];
-export type RouteRef = components["schemas"]["RouteRef"];
-export type RouteTargetBasetenModelApi = components["schemas"]["RouteTargetBasetenModelAPI"];
-export type RouteTargetClassifier = components["schemas"]["RouteTargetClassifier"];
-export type RouteTargetConnection = components["schemas"]["RouteTargetConnection"];
-export type Route = components["schemas"]["Route"];
-export type RoutesResponse = components["schemas"]["RoutesResponse"];
-export type UpsertRouteTargetBasetenModelApi =
-  components["schemas"]["UpsertRouteTargetBasetenModelAPI"];
-export type UpsertRouteTargetClassifier = components["schemas"]["UpsertRouteTargetClassifier"];
-export type UpsertRouteTargetConnection = components["schemas"]["UpsertRouteTargetConnection"];
-export type CreateRouteRequest = components["schemas"]["CreateRouteRequest"];
-export type RouteProvider = components["schemas"]["RouteProvider"];
-export type RoutesUsageBucket = components["schemas"]["RoutesUsageBucket"];
-export type RoutesUsageResult = components["schemas"]["RoutesUsageResult"];
-export type RoutesUsageResponse = components["schemas"]["RoutesUsageResponse"];
-export type RouteUsageDimension = components["schemas"]["RouteUsageDimension"];
-export type RouteEffectiveSpendLimit = components["schemas"]["RouteEffectiveSpendLimit"];
-export type RouteSettingSource = components["schemas"]["RouteSettingSource"];
-export type RouteSpendBlockedBy = components["schemas"]["RouteSpendBlockedBy"];
-export type RouteSpendLimitSetting = components["schemas"]["RouteSpendLimitSetting"];
-export type RouteSpendLimitTeamDefault = components["schemas"]["RouteSpendLimitTeamDefault"];
-export type RouteTeamUserSettings = components["schemas"]["RouteTeamUserSettings"];
-export type RouteUserTeamSettingsList = components["schemas"]["RouteUserTeamSettingsList"];
-export type BackgroundHarnessDefaults = components["schemas"]["BackgroundHarnessDefaults"];
-export type PrimaryHarnessDefaults = components["schemas"]["PrimaryHarnessDefaults"];
-export type RouteHarnessDefaults = components["schemas"]["RouteHarnessDefaults"];
-export type RouteHarnessModel = components["schemas"]["RouteHarnessModel"];
-export type RouteTeamSpendLimitSetting = components["schemas"]["RouteTeamSpendLimitSetting"];
-export type RouteTeamSettings = components["schemas"]["RouteTeamSettings"];
-export type UpdateBackgroundHarnessModels = components["schemas"]["UpdateBackgroundHarnessModels"];
-export type UpdatePrimaryHarnessModels = components["schemas"]["UpdatePrimaryHarnessModels"];
-export type UpdateRouteHarnessDefaults = components["schemas"]["UpdateRouteHarnessDefaults"];
-export type UpdateRouteTeamSpendLimitSetting =
-  components["schemas"]["UpdateRouteTeamSpendLimitSetting"];
-export type UpdateRouteTeamSettingsRequest =
-  components["schemas"]["UpdateRouteTeamSettingsRequest"];
-export type RouteTeamUserSettingsList = components["schemas"]["RouteTeamUserSettingsList"];
-export type UpdateRouteSpendLimitSetting = components["schemas"]["UpdateRouteSpendLimitSetting"];
-export type UpdateRouteUserSettingsRequest =
-  components["schemas"]["UpdateRouteUserSettingsRequest"];
-export type RouteConnectionConfigAnthropic =
-  components["schemas"]["RouteConnectionConfigAnthropic"];
-export type RouteConnectionConfigOpenAi = components["schemas"]["RouteConnectionConfigOpenAI"];
-export type RouteConnectionConfigXai = components["schemas"]["RouteConnectionConfigXAI"];
-export type RouteConnection = components["schemas"]["RouteConnection"];
-export type RouteConnectionsResponse = components["schemas"]["RouteConnectionsResponse"];
-export type UpsertRouteConnectionConfigAnthropic =
-  components["schemas"]["UpsertRouteConnectionConfigAnthropic"];
-export type UpsertRouteConnectionConfigOpenAi =
-  components["schemas"]["UpsertRouteConnectionConfigOpenAI"];
-export type UpsertRouteConnectionConfigXai =
-  components["schemas"]["UpsertRouteConnectionConfigXAI"];
-export type CreateRouteConnectionRequest = components["schemas"]["CreateRouteConnectionRequest"];
-export type RouteConnectionTombstone = components["schemas"]["RouteConnectionTombstone"];
-export type UpdateRouteConnectionRequest = components["schemas"]["UpdateRouteConnectionRequest"];
-export type RouteTombstone = components["schemas"]["RouteTombstone"];
-export type UpdateRouteRequest = components["schemas"]["UpdateRouteRequest"];
+export type GridClassifier = components["schemas"]["GridClassifier"];
+export type GridRouteRef = components["schemas"]["GridRouteRef"];
+export type GridRouteTargetBasetenModelApi =
+  components["schemas"]["GridRouteTargetBasetenModelAPI"];
+export type GridRouteTargetClassifier = components["schemas"]["GridRouteTargetClassifier"];
+export type GridRouteTargetConnection = components["schemas"]["GridRouteTargetConnection"];
+export type GridRoute = components["schemas"]["GridRoute"];
+export type GridRoutesResponse = components["schemas"]["GridRoutesResponse"];
+export type UpsertGridRouteTargetBasetenModelApi =
+  components["schemas"]["UpsertGridRouteTargetBasetenModelAPI"];
+export type UpsertGridRouteTargetClassifier =
+  components["schemas"]["UpsertGridRouteTargetClassifier"];
+export type UpsertGridRouteTargetConnection =
+  components["schemas"]["UpsertGridRouteTargetConnection"];
+export type CreateGridRouteRequest = components["schemas"]["CreateGridRouteRequest"];
+export type GridProvider = components["schemas"]["GridProvider"];
+export type GridRouteUsageBucket = components["schemas"]["GridRouteUsageBucket"];
+export type GridRouteUsageResult = components["schemas"]["GridRouteUsageResult"];
+export type GridRouteUsageResponse = components["schemas"]["GridRouteUsageResponse"];
+export type GridRouteUsageDimension = components["schemas"]["GridRouteUsageDimension"];
+export type GridRouteTombstone = components["schemas"]["GridRouteTombstone"];
+export type UpdateGridRouteRequest = components["schemas"]["UpdateGridRouteRequest"];
+export type GridBackgroundHarnessDefaults = components["schemas"]["GridBackgroundHarnessDefaults"];
+export type GridHarnessDefaults = components["schemas"]["GridHarnessDefaults"];
+export type GridHarnessModel = components["schemas"]["GridHarnessModel"];
+export type GridPrimaryHarnessDefaults = components["schemas"]["GridPrimaryHarnessDefaults"];
+export type GridSettingSource = components["schemas"]["GridSettingSource"];
+export type GridTeamSpendLimitSetting = components["schemas"]["GridTeamSpendLimitSetting"];
+export type GridTeamSettings = components["schemas"]["GridTeamSettings"];
+export type UpdateGridBackgroundHarnessModels =
+  components["schemas"]["UpdateGridBackgroundHarnessModels"];
+export type UpdateGridHarnessDefaults = components["schemas"]["UpdateGridHarnessDefaults"];
+export type UpdateGridPrimaryHarnessModels =
+  components["schemas"]["UpdateGridPrimaryHarnessModels"];
+export type UpdateGridTeamSpendLimitSetting =
+  components["schemas"]["UpdateGridTeamSpendLimitSetting"];
+export type UpdateGridTeamSettingsRequest = components["schemas"]["UpdateGridTeamSettingsRequest"];
+export type GridEffectiveSpendLimit = components["schemas"]["GridEffectiveSpendLimit"];
+export type GridSpendBlockedBy = components["schemas"]["GridSpendBlockedBy"];
+export type GridSpendLimitSetting = components["schemas"]["GridSpendLimitSetting"];
+export type GridSpendLimitTeamDefault = components["schemas"]["GridSpendLimitTeamDefault"];
+export type GridTeamUserSettings = components["schemas"]["GridTeamUserSettings"];
+export type GridTeamUserSettingsList = components["schemas"]["GridTeamUserSettingsList"];
+export type UpdateGridSpendLimitSetting = components["schemas"]["UpdateGridSpendLimitSetting"];
+export type UpdateGridUserSettingsRequest = components["schemas"]["UpdateGridUserSettingsRequest"];
+export type GridConnectionConfigAnthropic = components["schemas"]["GridConnectionConfigAnthropic"];
+export type GridConnectionConfigOpenAi = components["schemas"]["GridConnectionConfigOpenAI"];
+export type GridConnectionConfigXai = components["schemas"]["GridConnectionConfigXAI"];
+export type GridConnection = components["schemas"]["GridConnection"];
+export type GridConnectionsResponse = components["schemas"]["GridConnectionsResponse"];
+export type UpsertGridConnectionConfigAnthropic =
+  components["schemas"]["UpsertGridConnectionConfigAnthropic"];
+export type UpsertGridConnectionConfigOpenAi =
+  components["schemas"]["UpsertGridConnectionConfigOpenAI"];
+export type UpsertGridConnectionConfigXai = components["schemas"]["UpsertGridConnectionConfigXAI"];
+export type CreateGridConnectionRequest = components["schemas"]["CreateGridConnectionRequest"];
+export type GridConnectionTombstone = components["schemas"]["GridConnectionTombstone"];
+export type UpdateGridConnectionRequest = components["schemas"]["UpdateGridConnectionRequest"];
+export type GridClassifiersResponse = components["schemas"]["GridClassifiersResponse"];
 export type EndpointTarget = components["schemas"]["EndpointTarget"];
 export type Endpoint = components["schemas"]["Endpoint"];
 export type SharedEndpointRegion = components["schemas"]["SharedEndpointRegion"];
@@ -16042,9 +16524,15 @@ export type GetBillingToolCallUsageParams = components["schemas"]["GetBillingToo
 export type GetUsersParams = components["schemas"]["GetUsersParams"];
 export type GetGatewayEventsParams = components["schemas"]["GetGatewayEventsParams"];
 export type GetExploreMetadataParams = components["schemas"]["GetExploreMetadataParams"];
-export type GetRoutesParams = components["schemas"]["GetRoutesParams"];
-export type GetRoutesUsageParams = components["schemas"]["GetRoutesUsageParams"];
-export type GetRoutesConnectionsParams = components["schemas"]["GetRoutesConnectionsParams"];
+export type GetGridRoutesParams = components["schemas"]["GetGridRoutesParams"];
+export type GetGridRoutesUsageParams = components["schemas"]["GetGridRoutesUsageParams"];
+export type GetGridTeamSettingsParams = components["schemas"]["GetGridTeamSettingsParams"];
+export type GetGridTeamSettingsUsersParams =
+  components["schemas"]["GetGridTeamSettingsUsersParams"];
+export type GetGridTeamSettingsUsersUserIdParams =
+  components["schemas"]["GetGridTeamSettingsUsersUserIdParams"];
+export type GetGridConnectionsParams = components["schemas"]["GetGridConnectionsParams"];
+export type GetGridClassifiersParams = components["schemas"]["GetGridClassifiersParams"];
 export type GetSandboxMetricsParams = components["schemas"]["GetSandboxMetricsParams"];
 export type GetSandboxLogsParams = components["schemas"]["GetSandboxLogsParams"];
 export type ListSandboxesParams = components["schemas"]["ListSandboxesParams"];

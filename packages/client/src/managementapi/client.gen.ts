@@ -23,6 +23,8 @@ import type {
   CreateDeploymentPatchResponse,
   CreateEndpointRequest,
   CreateEnvironmentRequest,
+  CreateGridConnectionRequest,
+  CreateGridRouteRequest,
   CreateGroupRequest,
   CreateLibraryListingRequest,
   CreateLibraryListingVersionRequest,
@@ -36,8 +38,6 @@ import type {
   CreateLoopsTrainerRequest,
   CreateModelDeploymentRequest,
   CreateModelRequest,
-  CreateRouteConnectionRequest,
-  CreateRouteRequest,
   CreateSandboxParams,
   CreateSandboxPreviewParams,
   CreateSandboxPreviewRequest,
@@ -99,6 +99,13 @@ import type {
   GetDeploymentPatchesStateResponse,
   GetExploreMetadataParams,
   GetGatewayEventsParams,
+  GetGridClassifiersParams,
+  GetGridConnectionsParams,
+  GetGridRoutesParams,
+  GetGridRoutesUsageParams,
+  GetGridTeamSettingsParams,
+  GetGridTeamSettingsUsersParams,
+  GetGridTeamSettingsUsersUserIdParams,
   GetImageBuildLogsParams,
   GetImageParams,
   GetLogsResponse,
@@ -133,9 +140,6 @@ import type {
   GetModelsEnvironmentsStartupsParams,
   GetModelsEnvironmentsStartupsSummaryParams,
   GetModelsParams,
-  GetRoutesConnectionsParams,
-  GetRoutesParams,
-  GetRoutesUsageParams,
   GetSandboxConfigurationResponse,
   GetSandboxLogsParams,
   GetSandboxMetricsParams,
@@ -162,6 +166,18 @@ import type {
   GetVolumesParams,
   GetVolumesSyncsParams,
   GetVolumesVersionsParams,
+  GridClassifier,
+  GridClassifiersResponse,
+  GridConnection,
+  GridConnectionTombstone,
+  GridConnectionsResponse,
+  GridRoute,
+  GridRouteTombstone,
+  GridRouteUsageResponse,
+  GridRoutesResponse,
+  GridTeamSettings,
+  GridTeamUserSettings,
+  GridTeamUserSettingsList,
   Group,
   GroupsResponse,
   InstanceTypePrices,
@@ -230,17 +246,6 @@ import type {
   RestoreVolumeVersionRequest,
   RestoreVolumeVersionResponse,
   RetryDeploymentResponse,
-  Route,
-  RouteConnection,
-  RouteConnectionTombstone,
-  RouteConnectionsResponse,
-  RouteTeamSettings,
-  RouteTeamUserSettings,
-  RouteTeamUserSettingsList,
-  RouteTombstone,
-  RouteUserTeamSettingsList,
-  RoutesResponse,
-  RoutesUsageResponse,
   Sandbox,
   SandboxImage,
   SandboxImageBuildLogsResponse,
@@ -283,15 +288,15 @@ import type {
   UpdateEnvironmentGroupRequest,
   UpdateEnvironmentRequest,
   UpdateEnvironmentResponse,
+  UpdateGridConnectionRequest,
+  UpdateGridRouteRequest,
+  UpdateGridTeamSettingsRequest,
+  UpdateGridUserSettingsRequest,
   UpdateGroupRequest,
   UpdateLibraryListingRequest,
   UpdateLibraryListingVersionRequest,
   UpdateModelRequest,
   UpdateRequestBackpressureSettings,
-  UpdateRouteConnectionRequest,
-  UpdateRouteRequest,
-  UpdateRouteTeamSettingsRequest,
-  UpdateRouteUserSettingsRequest,
   UpdateSandboxParams,
   UpdateSandboxPreviewParams,
   UpdateSandboxPreviewRequest,
@@ -470,6 +475,30 @@ export class ApiClient {
     });
   }
 
+  /** Deletes a connection */
+  async deleteGridConnections(params: { connection_id: string }): Promise<GridConnectionTombstone> {
+    return this._doJson<GridConnectionTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/grid/connections/{}",
+      pathArgs: [params.connection_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes a route */
+  async deleteGridRoutes(params: { route_id: string }): Promise<GridRouteTombstone> {
+    return this._doJson<GridRouteTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/grid/routes/{}",
+      pathArgs: [params.route_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Delete a sandbox image */
   async deleteImage(params: {
     image_name: string;
@@ -582,32 +611,6 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/models/{}/environments/{}",
       pathArgs: [params.model_id, params.env_name],
-      query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Deletes a route */
-  async deleteRoutes(params: { route_id: string }): Promise<RouteTombstone> {
-    return this._doJson<RouteTombstone>({
-      method: "DELETE",
-      pathFmt: "/v1/routes/{}",
-      pathArgs: [params.route_id],
-      query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Deletes a connection */
-  async deleteRoutesConnections(params: {
-    connection_id: string;
-  }): Promise<RouteConnectionTombstone> {
-    return this._doJson<RouteConnectionTombstone>({
-      method: "DELETE",
-      pathFmt: "/v1/routes/connections/{}",
-      pathArgs: [params.connection_id],
       query: null,
       body: null,
       errorCodes: null,
@@ -1092,6 +1095,127 @@ export class ApiClient {
       pathFmt: "/v1/gateway/groups/{}",
       pathArgs: [params.group_id],
       query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists classifiers available for intelligent routes */
+  async getGridClassifiers(params?: {
+    params?: GetGridClassifiersParams;
+  }): Promise<GridClassifiersResponse> {
+    return this._doJson<GridClassifiersResponse>({
+      method: "GET",
+      pathFmt: "/v1/grid/classifiers",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a classifier available for intelligent routes */
+  async getGridClassifiersClassifierId(params: { classifier_id: string }): Promise<GridClassifier> {
+    return this._doJson<GridClassifier>({
+      method: "GET",
+      pathFmt: "/v1/grid/classifiers/{}",
+      pathArgs: [params.classifier_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists connections */
+  async getGridConnections(params?: {
+    params?: GetGridConnectionsParams;
+  }): Promise<GridConnectionsResponse> {
+    return this._doJson<GridConnectionsResponse>({
+      method: "GET",
+      pathFmt: "/v1/grid/connections",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists routes */
+  async getGridRoutes(params?: { params?: GetGridRoutesParams }): Promise<GridRoutesResponse> {
+    return this._doJson<GridRoutesResponse>({
+      method: "GET",
+      pathFmt: "/v1/grid/routes",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a route */
+  async getGridRoutesRouteId(params: { route_id: string }): Promise<GridRoute> {
+    return this._doJson<GridRoute>({
+      method: "GET",
+      pathFmt: "/v1/grid/routes/{}",
+      pathArgs: [params.route_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets daily Grid usage and estimated costs */
+  async getGridRoutesUsage(params?: {
+    params?: GetGridRoutesUsageParams;
+  }): Promise<GridRouteUsageResponse> {
+    return this._doJson<GridRouteUsageResponse>({
+      method: "GET",
+      pathFmt: "/v1/grid/routes/usage",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a team's Grid settings by team ID or your only team */
+  async getGridTeamSettings(params?: {
+    params?: GetGridTeamSettingsParams;
+  }): Promise<GridTeamSettings> {
+    return this._doJson<GridTeamSettings>({
+      method: "GET",
+      pathFmt: "/v1/grid/team_settings",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists members' Grid settings */
+  async getGridTeamSettingsUsers(params?: {
+    params?: GetGridTeamSettingsUsersParams;
+  }): Promise<GridTeamUserSettingsList> {
+    return this._doJson<GridTeamUserSettingsList>({
+      method: "GET",
+      pathFmt: "/v1/grid/team_settings/users",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a user's Grid settings by team ID or your only team */
+  async getGridTeamSettingsUsersUserId(params: {
+    user_id: string;
+    params?: GetGridTeamSettingsUsersUserIdParams;
+  }): Promise<GridTeamUserSettings> {
+    return this._doJson<GridTeamUserSettings>({
+      method: "GET",
+      pathFmt: "/v1/grid/team_settings/users/{}",
+      pathArgs: [params.user_id],
+      query: params.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -1745,111 +1869,6 @@ export class ApiClient {
       pathFmt: "/v1/regions",
       pathArgs: [],
       query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Lists routes */
-  async getRoutes(params?: { params?: GetRoutesParams }): Promise<RoutesResponse> {
-    return this._doJson<RoutesResponse>({
-      method: "GET",
-      pathFmt: "/v1/routes",
-      pathArgs: [],
-      query: params?.params ?? null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Lists connections */
-  async getRoutesConnections(params?: {
-    params?: GetRoutesConnectionsParams;
-  }): Promise<RouteConnectionsResponse> {
-    return this._doJson<RouteConnectionsResponse>({
-      method: "GET",
-      pathFmt: "/v1/routes/connections",
-      pathArgs: [],
-      query: params?.params ?? null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Gets a route */
-  async getRoutesRouteId(params: { route_id: string }): Promise<Route> {
-    return this._doJson<Route>({
-      method: "GET",
-      pathFmt: "/v1/routes/{}",
-      pathArgs: [params.route_id],
-      query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Gets a team's route settings */
-  async getRoutesSettingsTeams(params: { team_id: string }): Promise<RouteTeamSettings> {
-    return this._doJson<RouteTeamSettings>({
-      method: "GET",
-      pathFmt: "/v1/routes/settings/teams/{}",
-      pathArgs: [params.team_id],
-      query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Lists users' route settings in a team */
-  async getRoutesSettingsTeamsUsers(params: {
-    team_id: string;
-  }): Promise<RouteTeamUserSettingsList> {
-    return this._doJson<RouteTeamUserSettingsList>({
-      method: "GET",
-      pathFmt: "/v1/routes/settings/teams/{}/users",
-      pathArgs: [params.team_id],
-      query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Gets a user's route settings in a team */
-  async getRoutesSettingsTeamsUsersUserId(params: {
-    team_id: string;
-    user_id: string;
-  }): Promise<RouteTeamUserSettings> {
-    return this._doJson<RouteTeamUserSettings>({
-      method: "GET",
-      pathFmt: "/v1/routes/settings/teams/{}/users/{}",
-      pathArgs: [params.team_id, params.user_id],
-      query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Lists a user's route settings in each of their teams */
-  async getRoutesSettingsUsersTeams(params: {
-    user_id: string;
-  }): Promise<RouteUserTeamSettingsList> {
-    return this._doJson<RouteUserTeamSettingsList>({
-      method: "GET",
-      pathFmt: "/v1/routes/settings/users/{}/teams",
-      pathArgs: [params.user_id],
-      query: null,
-      body: null,
-      errorCodes: null,
-    });
-  }
-
-  /** Gets daily route usage and estimated costs */
-  async getRoutesUsage(params?: { params?: GetRoutesUsageParams }): Promise<RoutesUsageResponse> {
-    return this._doJson<RoutesUsageResponse>({
-      method: "GET",
-      pathFmt: "/v1/routes/usage",
-      pathArgs: [],
-      query: params?.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -2537,6 +2556,65 @@ export class ApiClient {
     });
   }
 
+  /** Updates a connection */
+  async patchGridConnections(params: {
+    connection_id: string;
+    request: UpdateGridConnectionRequest;
+  }): Promise<GridConnection> {
+    return this._doJson<GridConnection>({
+      method: "PATCH",
+      pathFmt: "/v1/grid/connections/{}",
+      pathArgs: [params.connection_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a route */
+  async patchGridRoutes(params: {
+    route_id: string;
+    request: UpdateGridRouteRequest;
+  }): Promise<GridRoute> {
+    return this._doJson<GridRoute>({
+      method: "PATCH",
+      pathFmt: "/v1/grid/routes/{}",
+      pathArgs: [params.route_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a team's Grid settings by team ID or your only team */
+  async patchGridTeamSettings(params: {
+    request: UpdateGridTeamSettingsRequest;
+  }): Promise<GridTeamSettings> {
+    return this._doJson<GridTeamSettings>({
+      method: "PATCH",
+      pathFmt: "/v1/grid/team_settings",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Updates a user's Grid settings by team ID or your only team */
+  async patchGridTeamSettingsUsers(params: {
+    user_id: string;
+    request: UpdateGridUserSettingsRequest;
+  }): Promise<GridTeamUserSettings> {
+    return this._doJson<GridTeamUserSettings>({
+      method: "PATCH",
+      pathFmt: "/v1/grid/team_settings/users/{}",
+      pathArgs: [params.user_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
   /** Updates a library listing */
   async patchLibraryListings(params: {
     user_defined_listing_id: string;
@@ -2682,64 +2760,6 @@ export class ApiClient {
       method: "PATCH",
       pathFmt: "/v1/models/{}/environments/{}",
       pathArgs: [params.model_id, params.env_name],
-      query: null,
-      body: params.request,
-      errorCodes: null,
-    });
-  }
-
-  /** Updates a route */
-  async patchRoutes(params: { route_id: string; request: UpdateRouteRequest }): Promise<Route> {
-    return this._doJson<Route>({
-      method: "PATCH",
-      pathFmt: "/v1/routes/{}",
-      pathArgs: [params.route_id],
-      query: null,
-      body: params.request,
-      errorCodes: null,
-    });
-  }
-
-  /** Updates a connection */
-  async patchRoutesConnections(params: {
-    connection_id: string;
-    request: UpdateRouteConnectionRequest;
-  }): Promise<RouteConnection> {
-    return this._doJson<RouteConnection>({
-      method: "PATCH",
-      pathFmt: "/v1/routes/connections/{}",
-      pathArgs: [params.connection_id],
-      query: null,
-      body: params.request,
-      errorCodes: null,
-    });
-  }
-
-  /** Updates a team's route settings */
-  async patchRoutesSettingsTeams(params: {
-    team_id: string;
-    request: UpdateRouteTeamSettingsRequest;
-  }): Promise<RouteTeamSettings> {
-    return this._doJson<RouteTeamSettings>({
-      method: "PATCH",
-      pathFmt: "/v1/routes/settings/teams/{}",
-      pathArgs: [params.team_id],
-      query: null,
-      body: params.request,
-      errorCodes: null,
-    });
-  }
-
-  /** Updates a user's route settings in a team */
-  async patchRoutesSettingsTeamsUsers(params: {
-    team_id: string;
-    user_id: string;
-    request: UpdateRouteUserSettingsRequest;
-  }): Promise<RouteTeamUserSettings> {
-    return this._doJson<RouteTeamUserSettings>({
-      method: "PATCH",
-      pathFmt: "/v1/routes/settings/teams/{}/users/{}",
-      pathArgs: [params.team_id, params.user_id],
       query: null,
       body: params.request,
       errorCodes: null,
@@ -2947,6 +2967,32 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/gateway/groups/{}/api_keys/register",
       pathArgs: [params.group_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a connection */
+  async postGridConnections(params: {
+    request: CreateGridConnectionRequest;
+  }): Promise<GridConnection> {
+    return this._doJson<GridConnection>({
+      method: "POST",
+      pathFmt: "/v1/grid/connections",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a route */
+  async postGridRoutes(params: { request: CreateGridRouteRequest }): Promise<GridRoute> {
+    return this._doJson<GridRoute>({
+      method: "POST",
+      pathFmt: "/v1/grid/routes",
+      pathArgs: [],
       query: null,
       body: params.request,
       errorCodes: null,
@@ -3538,32 +3584,6 @@ export class ApiClient {
     return this._doJson<PrepareModelUploadResponse>({
       method: "POST",
       pathFmt: "/v1/prepare_model_upload",
-      pathArgs: [],
-      query: null,
-      body: params.request,
-      errorCodes: null,
-    });
-  }
-
-  /** Creates a route */
-  async postRoutes(params: { request: CreateRouteRequest }): Promise<Route> {
-    return this._doJson<Route>({
-      method: "POST",
-      pathFmt: "/v1/routes",
-      pathArgs: [],
-      query: null,
-      body: params.request,
-      errorCodes: null,
-    });
-  }
-
-  /** Creates a connection */
-  async postRoutesConnections(params: {
-    request: CreateRouteConnectionRequest;
-  }): Promise<RouteConnection> {
-    return this._doJson<RouteConnection>({
-      method: "POST",
-      pathFmt: "/v1/routes/connections",
       pathArgs: [],
       query: null,
       body: params.request,
