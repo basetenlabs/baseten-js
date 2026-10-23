@@ -101,11 +101,32 @@ export class ApiClient {
   private readonly baseUrl: string;
   private readonly headers: Record<string, string>;
   private readonly fetchImpl: typeof fetch;
+  private readonly signal?: AbortSignal;
 
-  constructor(options: { baseUrl: string; headers: Record<string, string>; fetch?: typeof fetch }) {
+  constructor(options: {
+    baseUrl: string;
+    headers: Record<string, string>;
+    fetch?: typeof fetch;
+    signal?: AbortSignal;
+  }) {
     this.baseUrl = options.baseUrl;
     this.headers = options.headers;
     this.fetchImpl = options.fetch ?? globalThis.fetch;
+    this.signal = options.signal;
+  }
+
+  /**
+   * Returns a derived client sharing baseUrl, headers, and fetch, with the
+   * given AbortSignal folded into every request.
+   */
+  withSignal(signal: AbortSignal | undefined): ApiClient {
+    if (signal === this.signal) return this;
+    return new ApiClient({
+      baseUrl: this.baseUrl,
+      headers: this.headers,
+      fetch: this.fetchImpl,
+      signal,
+    });
   }
 
   /** Detach a drive from a local path */
@@ -749,6 +770,7 @@ export class ApiClient {
     const init: RequestInit = {
       method: request.method,
       headers: { ...this.headers },
+      ...(this.signal !== undefined ? { signal: this.signal } : {}),
     };
     const headers = init.headers as Record<string, string>;
     if (request.accept !== undefined) {
