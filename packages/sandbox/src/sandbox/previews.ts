@@ -4,7 +4,7 @@ import type {
   SandboxPreviewToken as ApiSandboxPreviewToken,
 } from "@basetenlabs/client/managementapi";
 import { callControlPlane, paginate } from "../client";
-import { type CallOptions, formatDuration, parseDuration } from "../common";
+import { type CallOptions, formatDuration } from "../common";
 import { optionalDate } from "../info";
 
 /**
@@ -46,12 +46,6 @@ export interface SandboxPreviewInfo {
    * as `"****"` unless read with {@link SandboxPreviewGetInfoRequest.showSecrets}.
    */
   requestHeaders: Record<string, string>;
-
-  /**
-   * Lifetime in milliseconds set by the last create or update that had one,
-   * counted from that request. `expiresAt` is when the preview is deleted.
-   */
-  ttlMs?: number;
 
   /** When the preview is deleted, when it expires. */
   expiresAt?: Date;
@@ -400,10 +394,6 @@ function previewInfoFromApi(preview: ApiSandboxPreview): SandboxPreviewInfo {
     public: preview.public ?? false,
     responseHeaders: { ...preview.response_headers },
     requestHeaders: { ...preview.request_headers },
-    ttlMs:
-      preview.ttl === undefined || preview.ttl === ""
-        ? undefined
-        : parseDuration(preview.ttl, "preview TTL"),
     expiresAt: optionalDate(preview.expires_at),
     region: preview.region,
     createdAt: optionalDate(preview.created_at),

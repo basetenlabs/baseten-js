@@ -111,6 +111,12 @@ export type components = {
       files: components["schemas"]["File"][];
       name: string;
       path: string;
+      /**
+       * @description Recursive is true when files and subdirectories hold every level below
+       *     path (tree read with recursive=true). Older APIs ignore that parameter
+       *     and omit this field, so clients can tell a one-level listing apart.
+       */
+      recursive?: boolean;
       /** @description @name Subdirectories */
       subdirectories: components["schemas"]["Subdirectory"][];
     };
@@ -266,6 +272,8 @@ export type components = {
       uploaded?: boolean;
     };
     File: {
+      /** @description Content is set only by a tree read with content=true, for regular files. */
+      content?: string;
       group: string;
       lastModified: string;
       name: string;
@@ -784,6 +792,22 @@ export type components = {
       /** @description Delete directory recursively */
       recursive?: boolean;
     };
+    GetFilesystemTreeParams: {
+      /** @description List every file and directory below the path, not only its direct children (default: false) */
+      recursive?: boolean;
+      /** @description Include the content of each regular file, as UTF-8 text (default: false) */
+      content?: boolean;
+      /** @description Comma-separated glob patterns matched against file names (e.g., *.json,*.md). Directories are not filtered. */
+      patterns?: string;
+      /** @description Comma-separated directory names to skip with everything below them (default: none) */
+      excludeDirs?: string;
+      /** @description Skip files and directories whose name starts with a dot (default: false) */
+      excludeHidden?: boolean;
+      /** @description Fail with 422 when more files match (default: 10000 with recursive or content, otherwise unlimited; at most 100000) */
+      maxFiles?: number;
+      /** @description With content=true, fail with 422 when the matching files hold more bytes (default: 33554432, 32 MiB; at most 268435456, 256 MiB) */
+      maxBytes?: number;
+    };
     GetWatchFilesystemParams: {
       /** @description Comma-separated substrings; events whose full path contains one are skipped */
       ignore?: string;
@@ -873,6 +897,7 @@ export type GetFilesystemSearchParams = components["schemas"]["GetFilesystemSear
 export type DeleteFilesystemParams = components["schemas"]["DeleteFilesystemParams"];
 export type GetFilesystemParams = components["schemas"]["GetFilesystemParams"];
 export type DeleteFilesystemTreeParams = components["schemas"]["DeleteFilesystemTreeParams"];
+export type GetFilesystemTreeParams = components["schemas"]["GetFilesystemTreeParams"];
 export type GetWatchFilesystemParams = components["schemas"]["GetWatchFilesystemParams"];
 export type GetFilesystemResponse = components["schemas"]["GetFilesystemResponse"];
 export type DeleteNetworkProcessMonitorResponse =

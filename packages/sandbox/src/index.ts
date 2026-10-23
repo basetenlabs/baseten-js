@@ -24,6 +24,7 @@ export type {
   SandboxEnvValue,
   SandboxExpirationAction,
   SandboxExpirationPolicy,
+  SandboxFileSystemOptions,
   SandboxInfo,
   SandboxLifecycle,
   SandboxNetwork,

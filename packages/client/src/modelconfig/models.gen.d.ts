@@ -156,11 +156,13 @@ export interface ModelConfig {
     [k: string]: string;
   };
   /**
-   * Declare secrets your model needs at runtime, such as API keys or access tokens. Use null as a placeholder; store actual values in your organization settings.
+   * Declare names of secrets your model needs at runtime, such as API keys or access tokens. Store actual values in your organization settings.
    */
-  secrets?: {
-    [k: string]: string | null;
-  };
+  secrets?:
+    | string[]
+    | {
+        [k: string]: string | null;
+      };
   resources?: Resources;
   runtime?: Runtime;
   build?: Build;
@@ -501,6 +503,10 @@ export interface DockerServer {
    * Skip the build step and deploy the base image as-is. Baseten copies the image to its container registry without running docker build or modifying the image in any way.
    */
   no_build?: boolean | null;
+  /**
+   * Reject requirements, requirements_file, system_packages, and build_commands. The base image must already contain them.
+   */
+  rebuild_free?: boolean | null;
   [k: string]: unknown;
 }
 export interface ModelRepo {

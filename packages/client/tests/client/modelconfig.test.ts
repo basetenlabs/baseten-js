@@ -31,9 +31,7 @@ secrets:
     expect(cfg.requirements).toEqual(["vllm==0.5.4"]);
     expect(cfg.resources?.accelerator).toBe("A100");
     expect(cfg.runtime?.predict_concurrency).toBe(128);
-    expect(cfg.secrets).toBeDefined();
-    expect("hf_access_token" in cfg.secrets!).toBe(true);
-    expect(cfg.secrets!.hf_access_token).toBeNull();
+    expect(cfg.secrets).toEqual({ hf_access_token: null });
   });
 
   it("parses a whisper config", () => {
@@ -96,10 +94,7 @@ resources:
         "explicit": "actual-value"
       }
     }`) as ModelConfig;
-    expect(cfg.secrets).toBeDefined();
-    expect(cfg.secrets!.placeholder).toBeNull();
-    expect(cfg.secrets!.explicit).toBe("actual-value");
-    expect("missing" in cfg.secrets!).toBe(false);
+    expect(cfg.secrets).toEqual({ placeholder: null, explicit: "actual-value" });
 
     const encoded = JSON.parse(JSON.stringify(cfg.secrets));
     expect(encoded.placeholder).toBeNull();

@@ -25,6 +25,7 @@ import type {
   GetFilesystemParams,
   GetFilesystemResponse,
   GetFilesystemSearchParams,
+  GetFilesystemTreeParams,
   GetNetworkProcessPortsResponse,
   GetProcessResponse,
   GetWatchFilesystemParams,
@@ -115,7 +116,7 @@ export class ApiClient {
       pathArgs: [params.mountPath],
       query: null,
       body: null,
-      errorCodes: { 400: "ErrorResponse", 500: "ErrorResponse" },
+      errorCodes: { 400: "ErrorResponse", 404: "ErrorResponse", 500: "ErrorResponse" },
     });
   }
 
@@ -366,12 +367,15 @@ export class ApiClient {
   }
 
   /** Get directory tree */
-  async getFilesystemTree(params: { path: string }): Promise<Directory> {
+  async getFilesystemTree(params: {
+    path: string;
+    params?: GetFilesystemTreeParams;
+  }): Promise<Directory> {
     return this._doJson<Directory>({
       method: "GET",
       pathFmt: "/filesystem/tree/{}",
       pathArgs: [params.path],
-      query: null,
+      query: params.params ?? null,
       body: null,
       errorCodes: { 400: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -526,6 +530,7 @@ export class ApiClient {
         403: "ErrorResponse",
         409: "ErrorResponse",
         500: "ErrorResponse",
+        507: "ErrorResponse",
       },
     });
   }

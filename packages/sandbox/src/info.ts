@@ -2,6 +2,7 @@ import type {
   Sandbox as ApiSandbox,
   SandboxEnv as ApiSandboxEnv,
   SandboxExpirationPolicy as ApiSandboxExpirationPolicy,
+  SandboxFilesystem as ApiSandboxFilesystem,
   SandboxLifecycle as ApiSandboxLifecycle,
   SandboxNetwork as ApiSandboxNetwork,
   SandboxPort as ApiSandboxPort,
@@ -105,6 +106,19 @@ export interface SandboxNetwork {
   proxy?: SandboxNetworkProxy;
 }
 
+/**
+ * Filesystem configuration of a sandbox, fixed at creation. The filesystem is
+ * held in memory, so files written count against the sandbox's memory.
+ */
+export interface SandboxFileSystemOptions {
+  /**
+   * Maximum memory the filesystem can use. A percentage of the sandbox's
+   * memory such as `"80%"`, a size such as `"2Gi"`, or a number of megabytes.
+   * The server defaults to 50%.
+   */
+  maxMemoryUsage?: string | number;
+}
+
 /** Proxy configuration of a sandbox's network. */
 export interface SandboxNetworkProxy {
   /**
@@ -172,6 +186,7 @@ export interface SandboxInfo {
   lifecycle?: SandboxLifecycle;
   ports: SandboxPort[];
   network?: SandboxNetwork;
+  filesystem?: SandboxFileSystemOptions;
 
   createdAt: Date;
   updatedAt?: Date;
@@ -199,6 +214,10 @@ export function sandboxInfoFromApi(sandbox: ApiSandbox): SandboxInfo {
       sandbox.lifecycle === undefined ? undefined : sandboxLifecycleFromApi(sandbox.lifecycle),
     ports: sandboxPortsFromApi(sandbox.ports),
     network: sandbox.network === undefined ? undefined : sandboxNetworkFromApi(sandbox.network),
+    filesystem:
+      sandbox.filesystem === undefined
+        ? undefined
+        : { maxMemoryUsage: sandbox.filesystem.max_memory_usage },
     createdAt: new Date(sandbox.created_at),
     updatedAt: optionalDate(sandbox.updated_at),
     createdBy: sandbox.created_by,
@@ -254,6 +273,11 @@ export function sandboxNetworkToApi(network: SandboxNetwork): ApiSandboxNetwork 
             })),
           },
   };
+}
+
+/** Converts a filesystem configuration to the control plane's form. */
+export function sandboxFileSystemToApi(filesystem: SandboxFileSystemOptions): ApiSandboxFilesystem {
+  return { max_memory_usage: filesystem.maxMemoryUsage };
 }
 
 function expirationPolicyToApi(policy: SandboxExpirationPolicy): ApiSandboxExpirationPolicy {

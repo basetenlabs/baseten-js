@@ -6,11 +6,13 @@ import { toSandboxApiError } from "./errors";
 import { ImageClient } from "./images/images";
 import {
   type SandboxEnvValue,
+  type SandboxFileSystemOptions,
   type SandboxInfo,
   type SandboxLifecycle,
   type SandboxNetwork,
   type SandboxPort,
   sandboxEnvsToApi,
+  sandboxFileSystemToApi,
   sandboxInfoFromApi,
   sandboxLifecycleToApi,
   sandboxNetworkToApi,
@@ -109,6 +111,10 @@ export interface SandboxCreateRequest {
 
   /** Network configuration, which cannot be changed after creation. */
   network?: SandboxNetwork;
+
+  /** Filesystem configuration, which cannot be changed after creation. */
+  filesystem?: SandboxFileSystemOptions;
+
   callOptions?: CallOptions;
 }
 
@@ -171,8 +177,8 @@ export interface SandboxListRequest {
  * Request for {@link SandboxClient.update}. Unset fields stay unchanged, and
  * set ones replace their previous values, including every entry of `envs`,
  * `labels`, `ports`, and `lifecycle.expirationPolicies`. Other `lifecycle`
- * fields change only when set. At least one field must be set. Memory and
- * network cannot be changed after creation.
+ * fields change only when set. At least one field must be set. Memory,
+ * network, and filesystem cannot be changed after creation.
  */
 export interface SandboxUpdateRequest {
   name: string;
@@ -275,6 +281,10 @@ export class SandboxClient {
             request.lifecycle === undefined ? undefined : sandboxLifecycleToApi(request.lifecycle),
           ports: request.ports === undefined ? undefined : sandboxPortsToApi(request.ports),
           network: request.network === undefined ? undefined : sandboxNetworkToApi(request.network),
+          filesystem:
+            request.filesystem === undefined
+              ? undefined
+              : sandboxFileSystemToApi(request.filesystem),
         },
       }),
     );

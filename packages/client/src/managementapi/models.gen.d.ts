@@ -1798,6 +1798,117 @@ export type components = {
       instance_types: components["schemas"]["InstanceTypeWithPrice"][];
     };
     /**
+     * AutoscalingScheduleSettingsRequestV1
+     * @description A complete set of raw autoscaling overrides for a schedule.
+     */
+    AutoscalingScheduleSettingsRequest: {
+      /**
+       * Min Replica
+       * @description Minimum number of replicas
+       */
+      min_replica: number;
+      /**
+       * Max Replica
+       * @description Maximum number of replicas
+       */
+      max_replica: number;
+      /**
+       * Autoscaling Window
+       * @description Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.
+       */
+      autoscaling_window: number | null;
+      /**
+       * Scale Down Delay
+       * @description Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.
+       */
+      scale_down_delay: number | null;
+      /**
+       * Concurrency Target
+       * @description Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.
+       */
+      concurrency_target: number | null;
+      /**
+       * Target Utilization Percentage
+       * @description Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.
+       */
+      target_utilization_percentage: number | null;
+      /**
+       * Target In Flight Tokens
+       * @description Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.
+       */
+      target_in_flight_tokens: number | null;
+      /**
+       * Max Scale Down Rate
+       * @description Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.
+       */
+      max_scale_down_rate: number | null;
+    };
+    /**
+     * AutoscalingScheduleUpsertV1
+     * @description A complete recurring schedule submitted for create or replacement.
+     */
+    AutoscalingScheduleUpsert: {
+      /**
+       * Id
+       * @description Stable schedule identifier. Omit this field to create a schedule.
+       */
+      id?: string | null;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
+      /**
+       * @description Recurring schedule cadence (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "DAILY" | "HOURLY";
+      /**
+       * Weekdays
+       * @description Weekdays on which the schedule runs
+       */
+      weekdays: components["schemas"]["AutoscalingScheduleWeekday"][];
+      /**
+       * Start Hour
+       * @description Start hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
+       */
+      start_hour?: number | null;
+      /**
+       * Start Minute
+       * @description Start minute of the schedule window
+       */
+      start_minute: number;
+      /**
+       * End Hour
+       * @description End hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
+       */
+      end_hour?: number | null;
+      /**
+       * End Minute
+       * @description End minute of the schedule window
+       */
+      end_minute: number;
+    };
+    /**
+     * AutoscalingScheduleWeekdayV1
+     * @enum {string}
+     */
+    AutoscalingScheduleWeekday:
+      | "SUNDAY"
+      | "MONDAY"
+      | "TUESDAY"
+      | "WEDNESDAY"
+      | "THURSDAY"
+      | "FRIDAY"
+      | "SATURDAY";
+    /**
      * DeploymentArchivePayloadV1
      * @description Deployment-level fields for a model-archive push.
      *
@@ -1867,6 +1978,259 @@ export type components = {
        * @description If true, push as a development deployment: the model's single mutable dev slot, created if absent and overwritten in place otherwise. The following fields must be left at their defaults: `environment_name`, `preserve_env_instance_type`, `deployment_name`.
        */
       is_development?: boolean;
+      /**
+       * @description Autoscaling settings for the new deployment. With `environment_name`, the new deployment starts from the environment's settings with these changes applied, and the environment keeps the result when the promotion completes. Without it, they apply to the new deployment only.
+       * @example {
+       *       "max_replica": 4,
+       *       "min_replica": 2
+       *     }
+       */
+      autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
+      /**
+       * @description Request backpressure settings for the new deployment, applied the same way as `autoscaling_settings`.
+       * @example {
+       *       "policy": "REJECT_ON_FULL"
+       *     }
+       */
+      request_backpressure_settings?:
+        | components["schemas"]["UpdateRequestBackpressureSettings"]
+        | null;
+      /** @description Autoscaling schedule changes for the environment named by `environment_name`, applied when the promotion completes. Requires `environment_name`. */
+      autoscaling_schedule_settings?:
+        | components["schemas"]["UpdateAutoscalingScheduleSettings"]
+        | null;
+      /**
+       * @description Promotion settings for promoting the new deployment into the environment named by `environment_name`, for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged. Requires `environment_name`.
+       * @example {
+       *       "rolling_deploy_config": {
+       *         "max_surge_percent": 50
+       *       }
+       *     }
+       */
+      promotion_settings_override?: components["schemas"]["UpdatePromotionSettings"] | null;
+      /**
+       * Instance Type Id
+       * @description Instance type for the new deployment, from `GET /v1/instance_types`, in place of the one in `config`. With `environment_name`, the environment takes it when the promotion completes. Without it, it applies to the new deployment only. Cannot be set with `preserve_env_instance_type: true`.
+       */
+      instance_type_id?: string | null;
+    };
+    /**
+     * OneTimeAutoscalingScheduleUpsertV1
+     * @description A complete one-time schedule submitted for create or replacement.
+     */
+    OneTimeAutoscalingScheduleUpsert: {
+      /**
+       * Id
+       * @description Stable schedule identifier. Omit this field to create a schedule.
+       */
+      id?: string | null;
+      /**
+       * Name
+       * @description Name of the schedule
+       */
+      name: string;
+      /**
+       * Enabled
+       * @description Whether the schedule is enabled
+       */
+      enabled: boolean;
+      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
+      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
+      /**
+       * @description One-time schedule cadence (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      cadence: "ONE_TIME";
+      /**
+       * Start At
+       * Format: date-time
+       * @description Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.
+       */
+      start_at: string;
+      /**
+       * End At
+       * Format: date-time
+       * @description Exclusive end of the schedule window in ISO 8601 format
+       */
+      end_at: string;
+    };
+    /**
+     * PromotionCleanupStrategyV1
+     * @description The promotion cleanup strategy.
+     * @enum {string}
+     */
+    PromotionCleanupStrategy: "KEEP" | "SCALE_TO_ZERO" | "DEACTIVATE";
+    /**
+     * RequestBackpressurePolicyV1
+     * @enum {string}
+     */
+    RequestBackpressurePolicy: "QUEUE_ON_FULL" | "REJECT_ON_FULL";
+    /**
+     * RollingDeployStrategyV1
+     * @description The rolling deploy strategy.
+     * @enum {string}
+     */
+    RollingDeployStrategy: "REPLICA";
+    /**
+     * UpdateAutoscalingScheduleSettingsV1
+     * @description Partial mutation of an environment's autoscaling schedule collection.
+     */
+    UpdateAutoscalingScheduleSettings: {
+      /**
+       * Timezone
+       * @description IANA timezone shared by the resulting collection. Omission preserves the current timezone; null is allowed only when deleting every schedule.
+       */
+      timezone?: string | null;
+      /**
+       * Schedules
+       * @description Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.
+       */
+      schedules?: (
+        | components["schemas"]["AutoscalingScheduleUpsert"]
+        | components["schemas"]["OneTimeAutoscalingScheduleUpsert"]
+      )[];
+      /**
+       * Delete Schedules
+       * @description Stable identifiers of schedules to delete. To clear all schedules, include every existing schedule identifier.
+       */
+      delete_schedules?: string[];
+    };
+    /**
+     * UpdateAutoscalingSettingsV1
+     * @description A request to update autoscaling settings for a deployment. All fields are optional, and we only update ones passed in.
+     */
+    UpdateAutoscalingSettings: {
+      /**
+       * Min Replica
+       * @description Minimum number of replicas
+       * @example 0
+       */
+      min_replica?: number | null;
+      /**
+       * Max Replica
+       * @description Maximum number of replicas
+       * @example 7
+       */
+      max_replica?: number | null;
+      /**
+       * Autoscaling Window
+       * @description Timeframe of traffic considered for autoscaling decisions
+       * @example 600
+       */
+      autoscaling_window?: number | null;
+      /**
+       * Scale Down Delay
+       * @description Waiting period before scaling down any active replica
+       * @example 120
+       */
+      scale_down_delay?: number | null;
+      /**
+       * Concurrency Target
+       * @description Number of requests per replica before scaling up
+       * @example 2
+       */
+      concurrency_target?: number | null;
+      /**
+       * Target Utilization Percentage
+       * @description Target utilization percentage for scaling up/down.
+       * @example 70
+       */
+      target_utilization_percentage?: number | null;
+      /**
+       * Target In Flight Tokens
+       * @description Target number of in-flight tokens for autoscaling decisions. Early access only.
+       * @example 40000
+       */
+      target_in_flight_tokens?: number | null;
+      /**
+       * Max Scale Down Rate
+       * @description Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.
+       * @example 20
+       */
+      max_scale_down_rate?: number | null;
+    };
+    /**
+     * UpdatePromotionSettingsV1
+     * @description Promotion settings for model promotion
+     */
+    UpdatePromotionSettings: {
+      /**
+       * Redeploy On Promotion
+       * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
+       * @example true
+       */
+      redeploy_on_promotion?: boolean | null;
+      /**
+       * Rolling Deploy
+       * @description Whether the environment should rely on rolling deploy orchestration.
+       * @example true
+       */
+      rolling_deploy?: boolean | null;
+      /**
+       * @description The cleanup strategy to use after a promotion completes.
+       * @example SCALE_TO_ZERO
+       */
+      promotion_cleanup_strategy?: components["schemas"]["PromotionCleanupStrategy"] | null;
+      /** @description Rolling deploy configuration for promotions */
+      rolling_deploy_config?: components["schemas"]["UpdateRollingDeployConfig"] | null;
+      /**
+       * Ramp Up While Promoting
+       * @description Whether to ramp up traffic while promoting
+       * @example true
+       */
+      ramp_up_while_promoting?: boolean | null;
+      /**
+       * Ramp Up Duration Seconds
+       * @description Duration of the ramp up in seconds
+       * @example 600
+       */
+      ramp_up_duration_seconds?: number | null;
+    };
+    /**
+     * UpdateRequestBackpressureSettingsV1
+     * @description A request to update request backpressure settings.
+     */
+    UpdateRequestBackpressureSettings: {
+      /**
+       * @description Backpressure policy to apply. Null indicates no policy (on update, clears an existing one).
+       * @example REJECT_ON_FULL
+       */
+      policy?: components["schemas"]["RequestBackpressurePolicy"] | null;
+    };
+    /**
+     * UpdateRollingDeployConfigV1
+     * @description Rolling deploy config for promoting chains and oracles
+     */
+    UpdateRollingDeployConfig: {
+      /**
+       * @description The rolling deploy strategy to use for promotions.
+       * @example REPLICA
+       */
+      rolling_deploy_strategy?: components["schemas"]["RollingDeployStrategy"] | null;
+      /**
+       * Max Surge Percent
+       * @description The maximum surge percentage for rolling deploys.
+       * @example 25
+       */
+      max_surge_percent?: number | null;
+      /**
+       * Max Unavailable Percent
+       * @description The maximum unavailable percentage for rolling deploys.
+       * @example 10
+       */
+      max_unavailable_percent?: number | null;
+      /**
+       * Stabilization Time Seconds
+       * @description The stabilization time in seconds for rolling deploys.
+       * @example 300
+       */
+      stabilization_time_seconds?: number | null;
+      /**
+       * Replica Overhead Percent
+       * @description The replica overhead percentage for rolling deploys.
+       * @example 0
+       */
+      replica_overhead_percent?: number | null;
     };
     /**
      * PrepareModelUploadRequestV1
@@ -2161,6 +2525,18 @@ export type components = {
       current: components["schemas"]["AuditLogEventAutoscalingScheduleSettings"] | null;
     };
     /**
+     * AuditLogEventAutoscalingScheduleOperationsV1
+     * @description The autoscaling schedule changes a request asked for. Not itself a union payload.
+     */
+    AuditLogEventAutoscalingScheduleOperations: {
+      /** Timezone */
+      timezone: string | null;
+      /** Schedules */
+      schedules: components["schemas"]["AuditLogEventAutoscalingScheduleUpsert"][];
+      /** Delete Schedule Ids */
+      delete_schedule_ids: string[];
+    };
+    /**
      * AuditLogEventAutoscalingScheduleSettingsV1
      * @description One autoscaling schedule's timing and autoscaling settings. Not itself a union payload.
      */
@@ -2209,6 +2585,82 @@ export type components = {
        * @default null
        */
       end_at: string | null;
+    };
+    /**
+     * AuditLogEventAutoscalingScheduleUpsertV1
+     * @description One schedule a request creates (`schedule_id` null) or replaces. `timezone` is the
+     *     request's, null when it keeps the environment's. Not itself a union payload.
+     */
+    AuditLogEventAutoscalingScheduleUpsert: {
+      /** Min Replica */
+      min_replica: number;
+      /** Max Replica */
+      max_replica: number;
+      /** Concurrency Target */
+      concurrency_target: number | null;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
+      /** Schedule Name */
+      schedule_name: string;
+      /** Enabled */
+      enabled: boolean;
+      /** Cadence */
+      cadence: string;
+      /** Timezone */
+      timezone: string | null;
+      /** Weekdays */
+      weekdays: string[] | null;
+      /** Start Hour */
+      start_hour: number | null;
+      /** Start Minute */
+      start_minute: number | null;
+      /** End Hour */
+      end_hour: number | null;
+      /** End Minute */
+      end_minute: number | null;
+      /**
+       * Start At
+       * @default null
+       */
+      start_at: string | null;
+      /**
+       * End At
+       * @default null
+       */
+      end_at: string | null;
+      /** Schedule Id */
+      schedule_id: string | null;
+    };
+    /**
+     * AuditLogEventAutoscalingSettingsUpdateV1
+     * @description Autoscaling settings a request set, null where it left a setting unchanged. Not itself a
+     *     payload in the discriminated union.
+     */
+    AuditLogEventAutoscalingSettingsUpdate: {
+      /** Min Replica */
+      min_replica: number | null;
+      /** Max Replica */
+      max_replica: number | null;
+      /** Concurrency Target */
+      concurrency_target: number | null;
+      /** Autoscaling Window */
+      autoscaling_window: number | null;
+      /** Scale Down Delay */
+      scale_down_delay: number | null;
+      /** Target Utilization Percentage */
+      target_utilization_percentage: number | null;
+      /** Target In Flight Tokens */
+      target_in_flight_tokens: number | null;
+      /** Max Scale Down Rate */
+      max_scale_down_rate: number | null;
     };
     /**
      * AuditLogEventAutoscalingSettingsV1
@@ -2910,8 +3362,19 @@ export type components = {
       environment_id: string | null;
       /** Region Update */
       region_update: string | null;
+      /** Instance Type Id Update */
+      instance_type_id_update: string | null;
       promotion_settings_override:
         | components["schemas"]["AuditLogEventPromotionSettingsOverride"]
+        | null;
+      autoscaling_settings_update:
+        | components["schemas"]["AuditLogEventAutoscalingSettingsUpdate"]
+        | null;
+      request_backpressure_settings_update:
+        | components["schemas"]["AuditLogEventRequestBackpressureSettingsUpdate"]
+        | null;
+      autoscaling_schedule_settings_update:
+        | components["schemas"]["AuditLogEventAutoscalingScheduleOperations"]
         | null;
     };
     /**
@@ -3090,6 +3553,15 @@ export type components = {
       deployment_name: string;
       /** Replica Id */
       replica_id: string;
+    };
+    /**
+     * AuditLogEventRequestBackpressureSettingsUpdateV1
+     * @description A request backpressure policy a request set; a null policy clears it. Not itself a
+     *     payload in the discriminated union.
+     */
+    AuditLogEventRequestBackpressureSettingsUpdate: {
+      /** Policy */
+      policy: string | null;
     };
     /**
      * AuditLogEventRequireGroupBasedAdminsEnabledV1
@@ -3777,11 +4249,6 @@ export type components = {
       request_backpressure_settings: components["schemas"]["RequestBackpressureSettings"];
     };
     /**
-     * RequestBackpressurePolicyV1
-     * @enum {string}
-     */
-    RequestBackpressurePolicy: "QUEUE_ON_FULL" | "REJECT_ON_FULL";
-    /**
      * RequestBackpressureSettingsV1
      * @description Request backpressure settings for a deployment or environment.
      */
@@ -3906,60 +4373,6 @@ export type components = {
       name?: string | null;
     };
     /**
-     * UpdateAutoscalingSettingsV1
-     * @description A request to update autoscaling settings for a deployment. All fields are optional, and we only update ones passed in.
-     */
-    UpdateAutoscalingSettings: {
-      /**
-       * Min Replica
-       * @description Minimum number of replicas
-       * @example 0
-       */
-      min_replica?: number | null;
-      /**
-       * Max Replica
-       * @description Maximum number of replicas
-       * @example 7
-       */
-      max_replica?: number | null;
-      /**
-       * Autoscaling Window
-       * @description Timeframe of traffic considered for autoscaling decisions
-       * @example 600
-       */
-      autoscaling_window?: number | null;
-      /**
-       * Scale Down Delay
-       * @description Waiting period before scaling down any active replica
-       * @example 120
-       */
-      scale_down_delay?: number | null;
-      /**
-       * Concurrency Target
-       * @description Number of requests per replica before scaling up
-       * @example 2
-       */
-      concurrency_target?: number | null;
-      /**
-       * Target Utilization Percentage
-       * @description Target utilization percentage for scaling up/down.
-       * @example 70
-       */
-      target_utilization_percentage?: number | null;
-      /**
-       * Target In Flight Tokens
-       * @description Target number of in-flight tokens for autoscaling decisions. Early access only.
-       * @example 40000
-       */
-      target_in_flight_tokens?: number | null;
-      /**
-       * Max Scale Down Rate
-       * @description Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.
-       * @example 20
-       */
-      max_scale_down_rate?: number | null;
-    };
-    /**
      * UpdateAutoscalingSettingsStatusV1
      * @description The status of a request to update autoscaling settings.
      * @enum {string}
@@ -3979,174 +4392,6 @@ export type components = {
       message: string;
     };
     /**
-     * UpdateRequestBackpressureSettingsV1
-     * @description A request to update request backpressure settings.
-     */
-    UpdateRequestBackpressureSettings: {
-      /**
-       * @description Backpressure policy to apply. Null indicates no policy (on update, clears an existing one).
-       * @example REJECT_ON_FULL
-       */
-      policy?: components["schemas"]["RequestBackpressurePolicy"] | null;
-    };
-    /**
-     * AutoscalingScheduleSettingsRequestV1
-     * @description A complete set of raw autoscaling overrides for a schedule.
-     */
-    AutoscalingScheduleSettingsRequest: {
-      /**
-       * Min Replica
-       * @description Minimum number of replicas
-       */
-      min_replica: number;
-      /**
-       * Max Replica
-       * @description Maximum number of replicas
-       */
-      max_replica: number;
-      /**
-       * Autoscaling Window
-       * @description Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.
-       */
-      autoscaling_window: number | null;
-      /**
-       * Scale Down Delay
-       * @description Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.
-       */
-      scale_down_delay: number | null;
-      /**
-       * Concurrency Target
-       * @description Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.
-       */
-      concurrency_target: number | null;
-      /**
-       * Target Utilization Percentage
-       * @description Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.
-       */
-      target_utilization_percentage: number | null;
-      /**
-       * Target In Flight Tokens
-       * @description Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.
-       */
-      target_in_flight_tokens: number | null;
-      /**
-       * Max Scale Down Rate
-       * @description Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.
-       */
-      max_scale_down_rate: number | null;
-    };
-    /**
-     * AutoscalingScheduleUpsertV1
-     * @description A complete recurring schedule submitted for create or replacement.
-     */
-    AutoscalingScheduleUpsert: {
-      /**
-       * Id
-       * @description Stable schedule identifier. Omit this field to create a schedule.
-       */
-      id?: string | null;
-      /**
-       * Name
-       * @description Name of the schedule
-       */
-      name: string;
-      /**
-       * Enabled
-       * @description Whether the schedule is enabled
-       */
-      enabled: boolean;
-      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
-      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
-      /**
-       * @description Recurring schedule cadence (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      cadence: "DAILY" | "HOURLY";
-      /**
-       * Weekdays
-       * @description Weekdays on which the schedule runs
-       */
-      weekdays: components["schemas"]["AutoscalingScheduleWeekday"][];
-      /**
-       * Start Hour
-       * @description Start hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
-       */
-      start_hour?: number | null;
-      /**
-       * Start Minute
-       * @description Start minute of the schedule window
-       */
-      start_minute: number;
-      /**
-       * End Hour
-       * @description End hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.
-       */
-      end_hour?: number | null;
-      /**
-       * End Minute
-       * @description End minute of the schedule window
-       */
-      end_minute: number;
-    };
-    /**
-     * AutoscalingScheduleWeekdayV1
-     * @enum {string}
-     */
-    AutoscalingScheduleWeekday:
-      | "SUNDAY"
-      | "MONDAY"
-      | "TUESDAY"
-      | "WEDNESDAY"
-      | "THURSDAY"
-      | "FRIDAY"
-      | "SATURDAY";
-    /**
-     * OneTimeAutoscalingScheduleUpsertV1
-     * @description A complete one-time schedule submitted for create or replacement.
-     */
-    OneTimeAutoscalingScheduleUpsert: {
-      /**
-       * Id
-       * @description Stable schedule identifier. Omit this field to create a schedule.
-       */
-      id?: string | null;
-      /**
-       * Name
-       * @description Name of the schedule
-       */
-      name: string;
-      /**
-       * Enabled
-       * @description Whether the schedule is enabled
-       */
-      enabled: boolean;
-      /** @description Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value. */
-      autoscaling_settings: components["schemas"]["AutoscalingScheduleSettingsRequest"];
-      /**
-       * @description One-time schedule cadence (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      cadence: "ONE_TIME";
-      /**
-       * Start At
-       * Format: date-time
-       * @description Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.
-       */
-      start_at: string;
-      /**
-       * End At
-       * Format: date-time
-       * @description Exclusive end of the schedule window in ISO 8601 format
-       */
-      end_at: string;
-    };
-    /**
-     * PromotionCleanupStrategyV1
-     * @description The promotion cleanup strategy.
-     * @enum {string}
-     */
-    PromotionCleanupStrategy: "KEEP" | "SCALE_TO_ZERO" | "DEACTIVATE";
-    /**
      * PromotionEnvironmentSettingsUpdateV1
      * @description Changes to an environment's settings, applied to a promoted deployment.
      */
@@ -4158,12 +4403,12 @@ export type components = {
       region?: string | null;
       /**
        * Instance Type Id
-       * @description Instance type for the promoted deployment, from `GET /v1/instance_types`.
+       * @description Instance type for the promoted deployment, from `GET /v1/instance_types`. A different instance type than the deployment's creates a new deployment on it. Cannot be set with `preserve_env_instance_type: true`.
        */
       instance_type_id?: string | null;
       /** @description Autoscaling settings for the promoted deployment. */
       autoscaling_settings?: components["schemas"]["UpdateAutoscalingSettings"] | null;
-      /** @description Request backpressure settings for the promoted deployment. */
+      /** @description Request backpressure settings for the promoted deployment. A null policy clears it. */
       request_backpressure_settings?:
         | components["schemas"]["UpdateRequestBackpressureSettings"]
         | null;
@@ -4173,108 +4418,6 @@ export type components = {
         | null;
       /** @description Promotion settings for the environment, also used for this promotion. */
       promotion_settings?: components["schemas"]["UpdatePromotionSettings"] | null;
-    };
-    /**
-     * RollingDeployStrategyV1
-     * @description The rolling deploy strategy.
-     * @enum {string}
-     */
-    RollingDeployStrategy: "REPLICA";
-    /**
-     * UpdateAutoscalingScheduleSettingsV1
-     * @description Partial mutation of an environment's autoscaling schedule collection.
-     */
-    UpdateAutoscalingScheduleSettings: {
-      /**
-       * Timezone
-       * @description IANA timezone shared by the resulting collection. Omission preserves the current timezone; null is allowed only when deleting every schedule.
-       */
-      timezone?: string | null;
-      /**
-       * Schedules
-       * @description Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.
-       */
-      schedules?: (
-        | components["schemas"]["AutoscalingScheduleUpsert"]
-        | components["schemas"]["OneTimeAutoscalingScheduleUpsert"]
-      )[];
-      /**
-       * Delete Schedules
-       * @description Stable identifiers of schedules to delete. To clear all schedules, include every existing schedule identifier.
-       */
-      delete_schedules?: string[];
-    };
-    /**
-     * UpdatePromotionSettingsV1
-     * @description Promotion settings for model promotion
-     */
-    UpdatePromotionSettings: {
-      /**
-       * Redeploy On Promotion
-       * @description Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.
-       * @example true
-       */
-      redeploy_on_promotion?: boolean | null;
-      /**
-       * Rolling Deploy
-       * @description Whether the environment should rely on rolling deploy orchestration.
-       * @example true
-       */
-      rolling_deploy?: boolean | null;
-      /**
-       * @description The cleanup strategy to use after a promotion completes.
-       * @example SCALE_TO_ZERO
-       */
-      promotion_cleanup_strategy?: components["schemas"]["PromotionCleanupStrategy"] | null;
-      /** @description Rolling deploy configuration for promotions */
-      rolling_deploy_config?: components["schemas"]["UpdateRollingDeployConfig"] | null;
-      /**
-       * Ramp Up While Promoting
-       * @description Whether to ramp up traffic while promoting
-       * @example true
-       */
-      ramp_up_while_promoting?: boolean | null;
-      /**
-       * Ramp Up Duration Seconds
-       * @description Duration of the ramp up in seconds
-       * @example 600
-       */
-      ramp_up_duration_seconds?: number | null;
-    };
-    /**
-     * UpdateRollingDeployConfigV1
-     * @description Rolling deploy config for promoting chains and oracles
-     */
-    UpdateRollingDeployConfig: {
-      /**
-       * @description The rolling deploy strategy to use for promotions.
-       * @example REPLICA
-       */
-      rolling_deploy_strategy?: components["schemas"]["RollingDeployStrategy"] | null;
-      /**
-       * Max Surge Percent
-       * @description The maximum surge percentage for rolling deploys.
-       * @example 25
-       */
-      max_surge_percent?: number | null;
-      /**
-       * Max Unavailable Percent
-       * @description The maximum unavailable percentage for rolling deploys.
-       * @example 10
-       */
-      max_unavailable_percent?: number | null;
-      /**
-       * Stabilization Time Seconds
-       * @description The stabilization time in seconds for rolling deploys.
-       * @example 300
-       */
-      stabilization_time_seconds?: number | null;
-      /**
-       * Replica Overhead Percent
-       * @description The replica overhead percentage for rolling deploys.
-       * @example 0
-       */
-      replica_overhead_percent?: number | null;
     };
     /**
      * PromoteRequestV1
@@ -7861,6 +8004,12 @@ export type components = {
        */
       enabled: boolean;
       /**
+       * Serverless
+       * @description Early access only. Whether this workspace can use serverless Loops for this model.
+       * @default null
+       */
+      serverless: boolean | null;
+      /**
        * @description Why the model is not enabled, and what would change it. Present only when 'enabled' is false — an enabled model has nothing to explain. Read 'enabled' for the state; this is the detail behind it.
        * @default null
        */
@@ -9626,6 +9775,19 @@ export type components = {
        */
       ip_allow_list?: string[] | null;
     };
+    /** LLMRuntimeV1 */
+    LLMRuntime: {
+      /** @description Runtime OIDC token mounting configuration */
+      oidc?: components["schemas"]["RuntimeOidc"] | null;
+    };
+    /** RuntimeOidcV1 */
+    RuntimeOidc: {
+      /**
+       * Enabled
+       * @description If true, mounts an OIDC bearer token for the deployment to access at runtime. If unset, the platform default applies.
+       */
+      enabled?: boolean | null;
+    };
     /**
      * CreateLLMModelRequestV1
      * @description A request to create a BIS-LLM model
@@ -9726,6 +9888,8 @@ export type components = {
         | null;
       /** @description Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled. */
       egress_restrictions?: components["schemas"]["EgressRestrictions"] | null;
+      /** @description Runtime configuration for the deployment */
+      runtime?: components["schemas"]["LLMRuntime"] | null;
       /**
        * Name
        * @description Name of the model
@@ -9859,6 +10023,8 @@ export type components = {
         | null;
       /** @description Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled. */
       egress_restrictions?: components["schemas"]["EgressRestrictions"] | null;
+      /** @description Runtime configuration for the deployment */
+      runtime?: components["schemas"]["LLMRuntime"] | null;
     };
     /** LibraryListingMetadataV1 */
     LibraryListingMetadata: {
@@ -12881,6 +13047,14 @@ export type components = {
     SandboxMetadataLabels: {
       [key: string]: string;
     };
+    /** @description Filesystem configuration of a sandbox. The sandbox filesystem is held in memory, so files written count against the sandbox memory. */
+    SandboxFilesystem: {
+      /**
+       * @description Maximum memory the filesystem can use, as a percentage of the sandbox memory (e.g. "80%"), a size (e.g. "2Gi") or a number of Mi (e.g. 2048). Defaults to 50%.
+       * @example 80%
+       */
+      max_memory_usage?: string | number;
+    };
     /**
      * @description Writable sandbox configuration. Fields are serialized at the root of the request or resource.
      * @example {
@@ -13062,6 +13236,13 @@ export type components = {
        * @example 4096
        */
       memory?: number;
+      /**
+       * @description Filesystem configuration. Set at creation only.
+       * @example {
+       *       "max_memory_usage": "80%"
+       *     }
+       */
+      filesystem?: components["schemas"]["SandboxFilesystem"];
       /**
        * @description Set of ports for a resource
        * @example [
@@ -13277,6 +13458,13 @@ export type components = {
        * @example 4096
        */
       memory?: number;
+      /**
+       * @description Filesystem configuration. Set at creation only.
+       * @example {
+       *       "max_memory_usage": "80%"
+       *     }
+       */
+      filesystem?: components["schemas"]["SandboxFilesystem"];
       /**
        * @description Set of ports for a resource
        * @example [
@@ -14109,10 +14297,10 @@ export type components = {
     SandboxPreviewHeaders: {
       [key: string]: string;
     };
-    /** @description Mutable preview configuration. ttl and expires_at are mutually exclusive; supplying both returns 400. */
+    /** @description Mutable preview configuration. */
     SandboxPreviewConfiguration: {
       /**
-       * @description Whether the URL is reachable without a preview token. Defaults to false.
+       * @description Whether the URL is reachable without a preview token. Defaults to false on creation; a PATCH without it keeps the current value.
        * @example true
        */
       public?: boolean;
@@ -14125,7 +14313,6 @@ export type components = {
        *     }
        */
       request_headers?: components["schemas"]["SandboxPreviewHeaders"];
-      ttl?: components["schemas"]["SandboxPreviewTtl"];
       /**
        * Format: date-time
        * @description Time at which the preview is deleted. Must be in the future.
@@ -14133,8 +14320,9 @@ export type components = {
        */
       expires_at?: string;
     };
-    /** @description Preview to create. Only port is required. */
+    /** @description Preview to create. Only port is required. ttl and expires_at are mutually exclusive; supplying both returns 400. */
     CreateSandboxPreviewRequest: components["schemas"]["SandboxPreviewConfiguration"] & {
+      ttl?: components["schemas"]["SandboxPreviewTtl"];
       /** @description When true, return the existing preview with this name instead of failing with a conflict. Without name, the name is public-<port> or private-<port>, so the same port and visibility return the same preview. Existing configuration is preserved. Defaults to false when omitted. */
       create_if_not_exists?: boolean;
       /**
@@ -14148,8 +14336,10 @@ export type components = {
        */
       port: number;
     };
-    /** @description Preview fields to change. name and port cannot be changed. */
-    UpdateSandboxPreviewRequest: components["schemas"]["SandboxPreviewConfiguration"];
+    /** @description Preview fields to change. name and port cannot be changed. ttl and expires_at are mutually exclusive; supplying both returns 400. */
+    UpdateSandboxPreviewRequest: components["schemas"]["SandboxPreviewConfiguration"] & {
+      ttl?: components["schemas"]["SandboxPreviewTtl"];
+    };
     /** @description Sandbox preview with configuration and server-managed fields at the root. */
     SandboxPreview: components["schemas"]["SandboxPreviewConfiguration"] & {
       /**
@@ -14196,7 +14386,7 @@ export type components = {
       pagination: components["schemas"]["SandboxApiPagination"];
     };
     CreateSandboxPreviewTokenRequest: {
-      /** @description When true, return an existing unexpired token of this preview that stays valid at least until expires_at instead of creating a new one. Defaults to false when omitted. */
+      /** @description When true, may return an existing unexpired token of this preview that stays valid at least until expires_at instead of creating a new one. A token created a moment earlier may not be found yet, in which case a new token is created. Defaults to false when omitted. */
       create_if_not_exists?: boolean;
       /**
        * Format: date-time
@@ -14213,7 +14403,7 @@ export type components = {
        */
       name: string;
       /**
-       * @description Value to send as the bl_preview_token query parameter.
+       * @description Value to send as the preview_token query parameter.
        * @example 7f3k2m9q1x8c4v6b0n5z
        */
       token: string;
@@ -15860,7 +16050,23 @@ export type PatchLoopsUserConfigRequest = components["schemas"]["PatchLoopsUserC
 export type PatchLoopsUserConfigResponse = components["schemas"]["PatchLoopsUserConfigResponse"];
 export type InstanceTypeWithPrice = components["schemas"]["InstanceTypeWithPrice"];
 export type InstanceTypePrices = components["schemas"]["InstanceTypePrices"];
+export type AutoscalingScheduleSettingsRequest =
+  components["schemas"]["AutoscalingScheduleSettingsRequest"];
+export type AutoscalingScheduleUpsert = components["schemas"]["AutoscalingScheduleUpsert"];
+export type AutoscalingScheduleWeekday = components["schemas"]["AutoscalingScheduleWeekday"];
 export type DeploymentArchivePayload = components["schemas"]["DeploymentArchivePayload"];
+export type OneTimeAutoscalingScheduleUpsert =
+  components["schemas"]["OneTimeAutoscalingScheduleUpsert"];
+export type PromotionCleanupStrategy = components["schemas"]["PromotionCleanupStrategy"];
+export type RequestBackpressurePolicy = components["schemas"]["RequestBackpressurePolicy"];
+export type RollingDeployStrategy = components["schemas"]["RollingDeployStrategy"];
+export type UpdateAutoscalingScheduleSettings =
+  components["schemas"]["UpdateAutoscalingScheduleSettings"];
+export type UpdateAutoscalingSettings = components["schemas"]["UpdateAutoscalingSettings"];
+export type UpdatePromotionSettings = components["schemas"]["UpdatePromotionSettings"];
+export type UpdateRequestBackpressureSettings =
+  components["schemas"]["UpdateRequestBackpressureSettings"];
+export type UpdateRollingDeployConfig = components["schemas"]["UpdateRollingDeployConfig"];
 export type PrepareModelUploadRequest = components["schemas"]["PrepareModelUploadRequest"];
 export type AwsCredentials = components["schemas"]["AWSCredentials"];
 export type PrepareModelUploadResponse = components["schemas"]["PrepareModelUploadResponse"];
@@ -15874,8 +16080,14 @@ export type AuditLogEventAutoscalingScheduleAction =
   components["schemas"]["AuditLogEventAutoscalingScheduleAction"];
 export type AuditLogEventAutoscalingScheduleChange =
   components["schemas"]["AuditLogEventAutoscalingScheduleChange"];
+export type AuditLogEventAutoscalingScheduleOperations =
+  components["schemas"]["AuditLogEventAutoscalingScheduleOperations"];
 export type AuditLogEventAutoscalingScheduleSettings =
   components["schemas"]["AuditLogEventAutoscalingScheduleSettings"];
+export type AuditLogEventAutoscalingScheduleUpsert =
+  components["schemas"]["AuditLogEventAutoscalingScheduleUpsert"];
+export type AuditLogEventAutoscalingSettingsUpdate =
+  components["schemas"]["AuditLogEventAutoscalingSettingsUpdate"];
 export type AuditLogEventAutoscalingSettings =
   components["schemas"]["AuditLogEventAutoscalingSettings"];
 export type AuditLogEventChainDeleted = components["schemas"]["AuditLogEventChainDeleted"];
@@ -15943,6 +16155,8 @@ export type AuditLogEventProviderConnectionUpdated =
   components["schemas"]["AuditLogEventProviderConnectionUpdated"];
 export type AuditLogEventReplicaTerminated =
   components["schemas"]["AuditLogEventReplicaTerminated"];
+export type AuditLogEventRequestBackpressureSettingsUpdate =
+  components["schemas"]["AuditLogEventRequestBackpressureSettingsUpdate"];
 export type AuditLogEventRequireGroupBasedAdminsEnabled =
   components["schemas"]["AuditLogEventRequireGroupBasedAdminsEnabled"];
 export type AuditLogEventSecretDeleted = components["schemas"]["AuditLogEventSecretDeleted"];
@@ -15985,7 +16199,6 @@ export type CreateModelRequest = components["schemas"]["CreateModelRequest"];
 export type AutoscalingSettings = components["schemas"]["AutoscalingSettings"];
 export type DeploymentStatus = components["schemas"]["DeploymentStatus"];
 export type Deployment = components["schemas"]["Deployment"];
-export type RequestBackpressurePolicy = components["schemas"]["RequestBackpressurePolicy"];
 export type RequestBackpressureSettings = components["schemas"]["RequestBackpressureSettings"];
 export type CreatedModelDeployment = components["schemas"]["CreatedModelDeployment"];
 export type ModelTombstone = components["schemas"]["ModelTombstone"];
@@ -15995,27 +16208,12 @@ export type DeploymentArchiveSource = components["schemas"]["DeploymentArchiveSo
 export type CreateModelDeploymentRequest = components["schemas"]["CreateModelDeploymentRequest"];
 export type DeploymentTombstone = components["schemas"]["DeploymentTombstone"];
 export type UpdateDeploymentRequest = components["schemas"]["UpdateDeploymentRequest"];
-export type UpdateAutoscalingSettings = components["schemas"]["UpdateAutoscalingSettings"];
 export type UpdateAutoscalingSettingsStatus =
   components["schemas"]["UpdateAutoscalingSettingsStatus"];
 export type UpdateAutoscalingSettingsResponse =
   components["schemas"]["UpdateAutoscalingSettingsResponse"];
-export type UpdateRequestBackpressureSettings =
-  components["schemas"]["UpdateRequestBackpressureSettings"];
-export type AutoscalingScheduleSettingsRequest =
-  components["schemas"]["AutoscalingScheduleSettingsRequest"];
-export type AutoscalingScheduleUpsert = components["schemas"]["AutoscalingScheduleUpsert"];
-export type AutoscalingScheduleWeekday = components["schemas"]["AutoscalingScheduleWeekday"];
-export type OneTimeAutoscalingScheduleUpsert =
-  components["schemas"]["OneTimeAutoscalingScheduleUpsert"];
-export type PromotionCleanupStrategy = components["schemas"]["PromotionCleanupStrategy"];
 export type PromotionEnvironmentSettingsUpdate =
   components["schemas"]["PromotionEnvironmentSettingsUpdate"];
-export type RollingDeployStrategy = components["schemas"]["RollingDeployStrategy"];
-export type UpdateAutoscalingScheduleSettings =
-  components["schemas"]["UpdateAutoscalingScheduleSettings"];
-export type UpdatePromotionSettings = components["schemas"]["UpdatePromotionSettings"];
-export type UpdateRollingDeployConfig = components["schemas"]["UpdateRollingDeployConfig"];
 export type PromoteRequest = components["schemas"]["PromoteRequest"];
 export type ActivateResponse = components["schemas"]["ActivateResponse"];
 export type DeactivateResponse = components["schemas"]["DeactivateResponse"];
@@ -16265,6 +16463,8 @@ export type ModelApisUsageResult = components["schemas"]["ModelApisUsageResult"]
 export type ModelApisUsageResponse = components["schemas"]["ModelApisUsageResponse"];
 export type UsageDimension = components["schemas"]["UsageDimension"];
 export type EgressRestrictions = components["schemas"]["EgressRestrictions"];
+export type LlmRuntime = components["schemas"]["LLMRuntime"];
+export type RuntimeOidc = components["schemas"]["RuntimeOidc"];
 export type CreateLlmModelRequest = components["schemas"]["CreateLLMModelRequest"];
 export type LlmModelHandle = components["schemas"]["LLMModelHandle"];
 export type CreateLlmModelVersionRequest = components["schemas"]["CreateLLMModelVersionRequest"];
@@ -16432,6 +16632,7 @@ export type SandboxEnv = components["schemas"]["SandboxEnv"];
 export type SandboxPorts = components["schemas"]["SandboxPorts"];
 export type SandboxPort = components["schemas"]["SandboxPort"];
 export type SandboxMetadataLabels = components["schemas"]["SandboxMetadataLabels"];
+export type SandboxFilesystem = components["schemas"]["SandboxFilesystem"];
 export type SandboxConfiguration = components["schemas"]["SandboxConfiguration"];
 export type CreateSandboxRequest = components["schemas"]["CreateSandboxRequest"];
 export type UpdateSandboxRequest = components["schemas"]["UpdateSandboxRequest"];
