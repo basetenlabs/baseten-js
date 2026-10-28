@@ -44,6 +44,8 @@ import type {
   CreateSandboxPreviewTokenParams,
   CreateSandboxPreviewTokenRequest,
   CreateSandboxRequest,
+  CreateSandboxVolumeParams,
+  CreateSandboxVolumeRequest,
   CreateTokenRequest,
   CreateTrainingJobRequest,
   CreateTrainingJobResponse,
@@ -60,6 +62,7 @@ import type {
   DeleteSandboxParams,
   DeleteSandboxPreviewParams,
   DeleteSandboxPreviewTokenParams,
+  DeleteSandboxVolumeParams,
   DeleteVolumeRequest,
   DeleteVolumeResponse,
   DeleteVolumeTagRequest,
@@ -145,6 +148,7 @@ import type {
   GetSandboxMetricsParams,
   GetSandboxParams,
   GetSandboxPreviewParams,
+  GetSandboxVolumeParams,
   GetTeamsLoopsRunsParams,
   GetTeamsLoopsSamplersParams,
   GetTeamsModelsParams,
@@ -203,6 +207,8 @@ import type {
   ListSandboxPreviewTokensResponse,
   ListSandboxPreviewsParams,
   ListSandboxPreviewsResponse,
+  ListSandboxVolumesParams,
+  ListSandboxVolumesResponse,
   ListSandboxesParams,
   ListSandboxesResponse,
   ListTrainingJobsResponse,
@@ -253,6 +259,7 @@ import type {
   SandboxMetrics,
   SandboxPreview,
   SandboxPreviewToken,
+  SandboxVolume,
   SearchTrainingJobsRequest,
   SearchTrainingJobsResponse,
   Secret,
@@ -301,6 +308,8 @@ import type {
   UpdateSandboxPreviewParams,
   UpdateSandboxPreviewRequest,
   UpdateSandboxRequest,
+  UpdateSandboxVolumeParams,
+  UpdateSandboxVolumeRequest,
   UpdateTrainingJobRequest,
   UpdateTrainingJobResponse,
   UpsertSecretRequest,
@@ -417,6 +426,22 @@ export class ApiClient {
       method: "POST",
       pathFmt: "/v1/sandboxes/instances/{}/previews/{}/tokens",
       pathArgs: [params.sandbox_name, params.preview_name],
+      query: params.params ?? null,
+      body: params.request,
+      successCodes: [201],
+      errorCodes: null,
+    });
+  }
+
+  /** Create a volume */
+  async createSandboxVolume(params: {
+    params?: CreateSandboxVolumeParams;
+    request: CreateSandboxVolumeRequest;
+  }): Promise<SandboxVolume> {
+    return this._doJson<SandboxVolume>({
+      method: "POST",
+      pathFmt: "/v1/sandboxes/volumes",
+      pathArgs: [],
       query: params.params ?? null,
       body: params.request,
       successCodes: [201],
@@ -663,6 +688,22 @@ export class ApiClient {
       query: params.params ?? null,
       body: null,
       successCodes: [204],
+      errorCodes: null,
+    });
+  }
+
+  /** Delete a volume */
+  async deleteSandboxVolume(params: {
+    volume_name: string;
+    params?: DeleteSandboxVolumeParams;
+  }): Promise<SandboxVolume> {
+    return this._doJson<SandboxVolume>({
+      method: "DELETE",
+      pathFmt: "/v1/sandboxes/volumes/{}",
+      pathArgs: [params.volume_name],
+      query: params.params ?? null,
+      body: null,
+      successCodes: [202],
       errorCodes: null,
     });
   }
@@ -1944,6 +1985,21 @@ export class ApiClient {
     });
   }
 
+  /** Get a volume */
+  async getSandboxVolume(params: {
+    volume_name: string;
+    params?: GetSandboxVolumeParams;
+  }): Promise<SandboxVolume> {
+    return this._doJson<SandboxVolume>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/volumes/{}",
+      pathArgs: [params.volume_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Gets all secrets (metadata only, no plain text keys) */
   async getSecrets(): Promise<Secrets> {
     return this._doJson<Secrets>({
@@ -2474,6 +2530,20 @@ export class ApiClient {
       pathFmt: "/v1/sandboxes/instances/{}/previews/{}/tokens",
       pathArgs: [params.sandbox_name, params.preview_name],
       query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** List volumes */
+  async listSandboxVolumes(params?: {
+    params?: ListSandboxVolumesParams;
+  }): Promise<ListSandboxVolumesResponse> {
+    return this._doJson<ListSandboxVolumesResponse>({
+      method: "GET",
+      pathFmt: "/v1/sandboxes/volumes",
+      pathArgs: [],
+      query: params?.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -3983,6 +4053,22 @@ export class ApiClient {
       method: "PATCH",
       pathFmt: "/v1/sandboxes/instances/{}/previews/{}",
       pathArgs: [params.sandbox_name, params.preview_name],
+      query: params.params ?? null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Update a volume */
+  async updateSandboxVolume(params: {
+    volume_name: string;
+    params?: UpdateSandboxVolumeParams;
+    request: UpdateSandboxVolumeRequest;
+  }): Promise<SandboxVolume> {
+    return this._doJson<SandboxVolume>({
+      method: "PATCH",
+      pathFmt: "/v1/sandboxes/volumes/{}",
+      pathArgs: [params.volume_name],
       query: params.params ?? null,
       body: params.request,
       errorCodes: null,

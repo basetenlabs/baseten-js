@@ -70,10 +70,22 @@ export interface ImageTagInfo {
 
 /** Result of {@link ImageClient.cleanup}. */
 export interface ImageCleanupResult {
-  /** Number of image versions removed. */
+  /** Number of image versions removed, across calls. */
   deleted: number;
 
-  /** Human-readable description of the result. */
+  /** Human-readable description of the last call, covering only its removals. */
+  message: string;
+}
+
+/** A cleanup's state between two server calls, from {@link ImageClient.cleanup}. */
+export interface ImageCleanupProgress {
+  /** Number of image versions removed so far, across calls. */
+  deleted: number;
+
+  /** Number of unused image versions left for the next call. */
+  remaining: number;
+
+  /** Human-readable description of the call that just finished, covering only its removals. */
   message: string;
 }
 
@@ -145,7 +157,7 @@ export interface ImageLibraryVolume {
   type?: string;
 
   /** Storage capacity in megabytes of an ephemeral volume. */
-  sizeMb?: number;
+  size?: number;
 
   /** Whether the volume is mounted read-only. */
   readOnly: boolean;
@@ -432,6 +444,12 @@ export interface ImageDeleteTagRequest {
 
 /** Request for {@link ImageClient.cleanup}. */
 export interface ImageCleanupRequest {
+  /**
+   * Called between the server calls: after each call that stopped on its time
+   * limit, before the next one. Not called after the last call, whose outcome
+   * is the result.
+   */
+  progress?: (progress: ImageCleanupProgress) => void | Promise<void>;
   callOptions?: CallOptions;
 }
 
@@ -667,13 +685,26 @@ export class ImageClient {
     return imageInfoFromApi(image);
   }
 
-  /** Removes image versions that no sandbox uses. */
+  /**
+   * Removes image versions that no sandbox uses. A server call runs for a
+   * limited time, so this calls again until none remain. Abort the signal to
+   * stop early.
+   */
   async cleanup(request: ImageCleanupRequest = {}): Promise<ImageCleanupResult> {
     const signal = request.callOptions?.signal;
-    const result = await callControlPlane(() =>
-      this.#context.api(signal).cleanupImages({ params: { team_id: this.#context.teamId } }),
-    );
-    return { deleted: result.deleted, message: result.message };
+    let deleted = 0;
+    for (;;) {
+      const result = await callControlPlane(() =>
+        this.#context.api(signal).cleanupImages({ params: { team_id: this.#context.teamId } }),
+      );
+      deleted += result.deleted;
+      if (!result.has_more) return { deleted, message: result.message };
+      await request.progress?.({
+        deleted,
+        remaining: result.remaining ?? 0,
+        message: result.message,
+      });
+    }
   }
 
   /** Lists the built-in images available to every team. */
@@ -1110,7 +1141,7 @@ function imageLibraryInfoFromApi(image: ApiLibraryImage): ImageLibraryInfo {
       name: volume.name,
       mountPath: volume.mount_path,
       type: volume.type,
-      sizeMb: volume.size_mb,
+      size: volume.size,
       readOnly: volume.read_only ?? false,
     })),
   };
