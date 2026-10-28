@@ -333,7 +333,14 @@ export type components = {
      * LibraryListingModality
      * @enum {string}
      */
-    LibraryListingModality: "text" | "image" | "audio" | "video" | "embedding" | "rerank";
+    LibraryListingModality:
+      | "text"
+      | "image"
+      | "audio"
+      | "video"
+      | "embedding"
+      | "rerank"
+      | "decision";
     /**
      * ResourceKind
      * @enum {string}
@@ -14252,8 +14259,8 @@ export type components = {
     /** @description Volume attachment suggested by a built-in image. */
     SandboxLibraryImageVolume: {
       /**
-       * @description Volume name, or an internal identifier for ephemeral volumes.
-       * @example scratch
+       * @description Volume name, used in volume_name path parameters and sandbox volumes.
+       * @example datasets
        */
       name: string;
       /**
@@ -14261,16 +14268,6 @@ export type components = {
        * @example /mnt/data
        */
       mount_path: string;
-      /**
-       * @description Volume type, persistent when empty.
-       * @example ephemeral
-       */
-      type?: string;
-      /**
-       * @description Storage capacity in megabytes for ephemeral volumes.
-       * @example 10240
-       */
-      size?: number;
       /**
        * @description Whether the volume is mounted read-only.
        * @example false
@@ -14391,7 +14388,7 @@ export type components = {
      */
     SandboxPreviewTtl: string;
     /**
-     * @description HTTP headers as name-value pairs.
+     * @description HTTP headers as name-value pairs. At most 20 headers and 8 KiB of names and values in total unless your quota allows more.
      * @example {
      *       "Access-Control-Allow-Origin": "*"
      *     }
@@ -14409,7 +14406,7 @@ export type components = {
       /** @description Headers added to every response served by the preview, for example CORS headers. */
       response_headers?: components["schemas"]["SandboxPreviewHeaders"];
       /**
-       * @description Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set.
+       * @description Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set. Some header names are reserved by the platform.
        * @example {
        *       "Authorization": "Bearer app-internal-token"
        *     }

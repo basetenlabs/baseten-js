@@ -887,7 +887,7 @@ describe("ImageClient", () => {
           creation_options: {
             extra_args: { kernel: "6.1" },
             volumes: [
-              { name: "scratch", mount_path: "/scratch", type: "ephemeral", size: 1024 },
+              { name: "scratch", mount_path: "/scratch" },
               { name: "data", mount_path: "/data", read_only: true },
             ],
           },
@@ -914,14 +914,8 @@ describe("ImageClient", () => {
         enterprise: true,
         creationExtraArgs: { kernel: "6.1" },
         creationVolumes: [
-          {
-            name: "scratch",
-            mountPath: "/scratch",
-            type: "ephemeral",
-            size: 1024,
-            readOnly: false,
-          },
-          { name: "data", mountPath: "/data", type: undefined, size: undefined, readOnly: true },
+          { name: "scratch", mountPath: "/scratch", readOnly: false },
+          { name: "data", mountPath: "/data", readOnly: true },
         ],
       },
       {

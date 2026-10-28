@@ -147,17 +147,11 @@ export interface ImageLibraryInfo {
 
 /** A volume attachment a built-in image suggests, in {@link ImageLibraryInfo}. */
 export interface ImageLibraryVolume {
-  /** Volume name, or an internal identifier for an ephemeral volume. */
+  /** Volume name. */
   name: string;
 
   /** Absolute path the volume is mounted at. */
   mountPath: string;
-
-  /** Volume type, persistent when empty or unset. */
-  type?: string;
-
-  /** Storage capacity in megabytes of an ephemeral volume. */
-  size?: number;
 
   /** Whether the volume is mounted read-only. */
   readOnly: boolean;
@@ -1140,8 +1134,6 @@ function imageLibraryInfoFromApi(image: ApiLibraryImage): ImageLibraryInfo {
     creationVolumes: (image.creation_options?.volumes ?? []).map((volume) => ({
       name: volume.name,
       mountPath: volume.mount_path,
-      type: volume.type,
-      size: volume.size,
       readOnly: volume.read_only ?? false,
     })),
   };
