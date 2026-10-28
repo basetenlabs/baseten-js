@@ -835,10 +835,18 @@ describe("ImageClient", () => {
       { deleted: 4, message: "m2", remaining: 1, has_more: true },
       { deleted: 1, message: "m3", remaining: 0, has_more: false },
     ];
-    const server = fakeServer(() => replies.shift());
     const reported: ImageCleanupProgress[] = [];
+    // How many progress reports had finished when each request arrived.
+    const reportedAtRequest: number[] = [];
+    const server = fakeServer(() => {
+      reportedAtRequest.push(reported.length);
+      return replies.shift();
+    });
     const result = await server.client.images.cleanup({
       progress: async (progress) => {
+        // Yields to the event loop first, so a cleanup not awaiting this
+        // would send its next request before the report is recorded.
+        await new Promise((resolve) => setTimeout(resolve, 0));
         reported.push(progress);
       },
     });
@@ -847,7 +855,7 @@ describe("ImageClient", () => {
       { deleted: 2, remaining: 5, message: "m1" },
       { deleted: 6, remaining: 1, message: "m2" },
     ]);
-    expect(server.requests).toHaveLength(3);
+    expect(reportedAtRequest).toEqual([0, 1, 2]);
   });
 
   it("waitBuilt accepts BUILT immediately", async () => {
