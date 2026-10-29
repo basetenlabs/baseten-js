@@ -7,6 +7,7 @@ import type {
   SandboxNetwork as ApiSandboxNetwork,
   SandboxPort as ApiSandboxPort,
   SandboxProxyTarget as ApiSandboxProxyTarget,
+  SandboxVolumeAttachment as ApiSandboxVolumeAttachment,
 } from "@basetenlabs/client/managementapi";
 import { formatDuration, parseDuration } from "./common";
 
@@ -119,6 +120,18 @@ export interface SandboxFileSystemOptions {
   maxMemoryUsage?: string | number;
 }
 
+/** A persistent volume mounted in a sandbox, fixed at creation. */
+export interface SandboxVolumeMount {
+  /** Name of the volume. */
+  name: string;
+
+  /** Absolute path the volume is mounted at. */
+  mountPath: string;
+
+  /** Whether the volume is mounted read-only. Defaults to false. */
+  readOnly?: boolean;
+}
+
 /** Proxy configuration of a sandbox's network. */
 export interface SandboxNetworkProxy {
   /**
@@ -188,6 +201,9 @@ export interface SandboxInfo {
   network?: SandboxNetwork;
   filesystem?: SandboxFileSystemOptions;
 
+  /** Persistent volumes mounted in the sandbox. */
+  volumes: SandboxVolumeMount[];
+
   createdAt: Date;
   updatedAt?: Date;
   createdBy?: string;
@@ -218,6 +234,11 @@ export function sandboxInfoFromApi(sandbox: ApiSandbox): SandboxInfo {
       sandbox.filesystem === undefined
         ? undefined
         : { maxMemoryUsage: sandbox.filesystem.max_memory_usage },
+    volumes: (sandbox.volumes ?? []).map((volume) => ({
+      name: volume.name,
+      mountPath: volume.mount_path,
+      readOnly: volume.read_only,
+    })),
     createdAt: new Date(sandbox.created_at),
     updatedAt: optionalDate(sandbox.updated_at),
     createdBy: sandbox.created_by,
@@ -278,6 +299,15 @@ export function sandboxNetworkToApi(network: SandboxNetwork): ApiSandboxNetwork 
 /** Converts a filesystem configuration to the control plane's form. */
 export function sandboxFileSystemToApi(filesystem: SandboxFileSystemOptions): ApiSandboxFilesystem {
   return { max_memory_usage: filesystem.maxMemoryUsage };
+}
+
+/** Converts volume mounts to the control plane's form. */
+export function sandboxVolumesToApi(volumes: SandboxVolumeMount[]): ApiSandboxVolumeAttachment[] {
+  return volumes.map((volume) => ({
+    name: volume.name,
+    mount_path: volume.mountPath,
+    read_only: volume.readOnly,
+  }));
 }
 
 function expirationPolicyToApi(policy: SandboxExpirationPolicy): ApiSandboxExpirationPolicy {

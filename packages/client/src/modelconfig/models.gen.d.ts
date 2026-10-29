@@ -504,7 +504,7 @@ export interface DockerServer {
    */
   no_build?: boolean | null;
   /**
-   * Reject requirements, requirements_file, system_packages, and build_commands. The base image must already contain them.
+   * Do not install packages or rewrite the image entrypoint. Rejects requirements, requirements_file, system_packages, and build_commands. The base image must already contain them.
    */
   rebuild_free?: boolean | null;
   [k: string]: unknown;

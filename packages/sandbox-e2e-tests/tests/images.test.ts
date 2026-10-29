@@ -1,6 +1,13 @@
 import { ImageBuilder, SandboxApiError, type SandboxClient } from "@basetenlabs/sandbox";
 import { describe, expect, it } from "vitest";
-import { E2E_LABELS, e2eEnabled, sandboxClient, uniqueName, waitDeployed } from "./harness";
+import {
+  E2E_LABELS,
+  E2E_REGION,
+  e2eEnabled,
+  sandboxClient,
+  uniqueName,
+  waitDeployed,
+} from "./harness";
 
 // Every push starts a build on the server, and this suite runs on every CI
 // push, so the whole file pushes exactly one image and keeps its build small.
@@ -45,8 +52,7 @@ describe.runIf(e2eEnabled())("ImageClient", () => {
         await client.create({
           name: sandboxName,
           image: `${imageName}:latest`,
-          // TODO: Same temporary region pin as the shared sandbox.
-          region: "us-was-1",
+          region: E2E_REGION,
           labels: E2E_LABELS,
         });
         await waitDeployed(client, sandboxName);

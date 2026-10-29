@@ -2,6 +2,7 @@ import { SandboxApiError } from "@basetenlabs/sandbox";
 import type { TestProject } from "vitest/node";
 import {
   E2E_LABELS,
+  E2E_REGION,
   SHARED_ENVS,
   e2eEnabled,
   sandboxClient,
@@ -26,9 +27,7 @@ export default async function setup(project: TestProject): Promise<(() => Promis
   // The name is known before creating, so even a partial create is removed.
   // The original error is kept if removing fails too.
   try {
-    // TODO: Temporary, to check whether the exec plane's token rejection is
-    // specific to the default region.
-    await client.create({ name, region: "us-was-1", labels: E2E_LABELS, envs: SHARED_ENVS });
+    await client.create({ name, region: E2E_REGION, labels: E2E_LABELS, envs: SHARED_ENVS });
     await waitDeployed(client, name);
   } catch (err) {
     try {

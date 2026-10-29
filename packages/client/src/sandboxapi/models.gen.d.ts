@@ -809,7 +809,7 @@ export type components = {
       maxBytes?: number;
     };
     GetWatchFilesystemParams: {
-      /** @description Comma-separated substrings; events whose full path contains one are skipped */
+      /** @description Comma-separated substrings; events whose full path contains one are skipped, and matching directories are not watched at all */
       ignore?: string;
     };
     GetFilesystemResponse:

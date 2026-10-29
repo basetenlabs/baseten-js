@@ -118,6 +118,7 @@ describe("SandboxClient", () => {
         },
       },
       filesystem: { maxMemoryUsage: "80%" },
+      volumes: [{ name: "data", mountPath: "/data", readOnly: true }],
     });
     expect(server.requests[0]!.body).toEqual({
       name: "sb-1",
@@ -157,6 +158,7 @@ describe("SandboxClient", () => {
         },
       },
       filesystem: { max_memory_usage: "80%" },
+      volumes: [{ name: "data", mount_path: "/data", read_only: true }],
     });
   });
 
@@ -224,6 +226,7 @@ describe("SandboxClient", () => {
           },
         },
         filesystem: { max_memory_usage: 2048 },
+        volumes: [{ name: "data", mount_path: "/data", read_only: false }],
         updated_at: "2026-09-16T21:31:13Z",
         created_by: "creator",
         updated_by: "updater",
@@ -274,6 +277,7 @@ describe("SandboxClient", () => {
         },
       },
       filesystem: { maxMemoryUsage: 2048 },
+      volumes: [{ name: "data", mountPath: "/data", readOnly: false }],
       createdAt: new Date("2026-09-16T21:26:58Z"),
       updatedAt: new Date("2026-09-16T21:31:13Z"),
       createdBy: "creator",
@@ -296,6 +300,7 @@ describe("SandboxClient", () => {
     expect(info.ports).toEqual([]);
     expect(info.network).toBeUndefined();
     expect(info.filesystem).toBeUndefined();
+    expect(info.volumes).toEqual([]);
     expect(info.expiresInMs).toBeUndefined();
   });
 

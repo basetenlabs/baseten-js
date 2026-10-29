@@ -18,9 +18,12 @@ import {
   sandboxNetworkToApi,
   sandboxPortsToApi,
   type SandboxStatus,
+  type SandboxVolumeMount,
+  sandboxVolumesToApi,
 } from "./info";
 import { Sandbox, type SandboxOptions } from "./sandbox/sandbox";
 import { Transport } from "./transport";
+import { VolumeClient } from "./volumes";
 
 /** Options for {@link SandboxClient}. */
 export interface SandboxClientOptions {
@@ -114,6 +117,13 @@ export interface SandboxCreateRequest {
 
   /** Filesystem configuration, which cannot be changed after creation. */
   filesystem?: SandboxFileSystemOptions;
+
+  /**
+   * Persistent volumes to mount, each in the sandbox's region and not mounted
+   * elsewhere. At most one is currently supported. They cannot be changed
+   * after creation.
+   */
+  volumes?: SandboxVolumeMount[];
 
   callOptions?: CallOptions;
 }
@@ -216,6 +226,7 @@ export class SandboxClient {
   #fetchWithAuth!: typeof fetch;
   #unsignaledApi!: ManagementApiClient;
   #images: ImageClient | undefined;
+  #volumes: VolumeClient | undefined;
 
   constructor(options: SandboxClientOptions) {
     this.#options = { ...options };
@@ -249,6 +260,15 @@ export class SandboxClient {
       fetch: (input, init) => this.#transport.fetch(input, init),
     });
     return this.#images;
+  }
+
+  /** Persistent volumes that sandboxes mount. */
+  get volumes(): VolumeClient {
+    this.#volumes ??= new VolumeClient({
+      api: (signal) => this.#api(signal),
+      teamId: this.#options.teamId,
+    });
+    return this.#volumes;
   }
 
   /**
@@ -285,6 +305,7 @@ export class SandboxClient {
             request.filesystem === undefined
               ? undefined
               : sandboxFileSystemToApi(request.filesystem),
+          volumes: request.volumes === undefined ? undefined : sandboxVolumesToApi(request.volumes),
         },
       }),
     );

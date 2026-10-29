@@ -113,9 +113,10 @@ describe.runIf(e2eEnabled())("SandboxPreviews", () => {
   it("needs a token while private", async () => {
     await fetchPreview(created.url, "rejected without a token", rejected);
 
+    // A token cannot outlive its preview, which expires an hour after creation.
     const token = await sandbox.previews.createToken({
       previewName: name,
-      expiresAt: new Date(Date.now() + 3_600_000),
+      expiresAt: new Date(Date.now() + 2_700_000),
     });
     expect(token.expired).toBe(false);
     // The server may not find the token just created yet, so the result may

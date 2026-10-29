@@ -77,6 +77,10 @@ export function uniqueName(): string {
 /** Labels on every sandbox the suite creates. */
 export const E2E_LABELS = { created_by: "e2e" };
 
+/** Region of everything the suite creates. */
+// TODO: Temporary, while other regions' exec planes reject our tokens.
+export const E2E_REGION = "us-was-1";
+
 /** Env on the shared sandbox, by name. */
 export const SHARED_ENVS = {
   E2E_PLAIN: { value: "plain-value", secret: false },

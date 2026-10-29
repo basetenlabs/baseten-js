@@ -33,6 +33,7 @@ export type {
   SandboxPort,
   SandboxPortProtocol,
   SandboxStatus,
+  SandboxVolumeMount,
 } from "./info";
 
 export {
@@ -50,6 +51,7 @@ export {
 } from "./images/ignore";
 export {
   ImageClient,
+  type ImageCleanupProgress,
   type ImageCleanupRequest,
   type ImageCleanupResult,
   type ImageDeleteRequest,
@@ -137,3 +139,13 @@ export {
   type SandboxProcessWriteStdinRequest,
 } from "./sandbox/process";
 export { Sandbox } from "./sandbox/sandbox";
+export {
+  VolumeClient,
+  type VolumeCreateRequest,
+  type VolumeDeleteRequest,
+  type VolumeGetInfoRequest,
+  type VolumeInfo,
+  type VolumeListRequest,
+  type VolumeStatus,
+  type VolumeUpdateRequest,
+} from "./volumes";

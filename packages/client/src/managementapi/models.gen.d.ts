@@ -333,7 +333,14 @@ export type components = {
      * LibraryListingModality
      * @enum {string}
      */
-    LibraryListingModality: "text" | "image" | "audio" | "video" | "embedding" | "rerank";
+    LibraryListingModality:
+      | "text"
+      | "image"
+      | "audio"
+      | "video"
+      | "embedding"
+      | "rerank"
+      | "decision";
     /**
      * ResourceKind
      * @enum {string}
@@ -2355,6 +2362,12 @@ export type components = {
       api_key_name: string | null;
     };
     /**
+     * AuditLogApiKeyRevocationReasonV1
+     * @description Reason an API key was revoked.
+     * @enum {string}
+     */
+    AuditLogApiKeyRevocationReason: "INACTIVITY";
+    /**
      * AuditLogApiKeyTypeV1
      * @description Type of API key recorded on an API-key event.
      * @enum {string}
@@ -2446,7 +2459,10 @@ export type components = {
         | components["schemas"]["AuditLogEventVolumeVersionRestored"]
         | components["schemas"]["AuditLogEventVolumeTagSet"]
         | components["schemas"]["AuditLogEventVolumeTagDeleted"]
-        | components["schemas"]["AuditLogEventVolumeUpdated"];
+        | components["schemas"]["AuditLogEventVolumeUpdated"]
+        | components["schemas"]["AuditLogEventTelemetryExportCreated"]
+        | components["schemas"]["AuditLogEventTelemetryExportUpdated"]
+        | components["schemas"]["AuditLogEventTelemetryExportDeleted"];
       /**
        * @description Surface that issued the action, if known.
        * @default null
@@ -2504,6 +2520,8 @@ export type components = {
       api_key_type: components["schemas"]["AuditLogApiKeyType"];
       /** Prefix */
       prefix: string;
+      /** @default null */
+      revocation_reason: components["schemas"]["AuditLogApiKeyRevocationReason"] | null;
     };
     /**
      * AuditLogEventAutoscalingScheduleActionV1
@@ -3630,6 +3648,51 @@ export type components = {
       expires_at: string;
     };
     /**
+     * AuditLogEventTelemetryExportCreatedV1
+     * @description A telemetry export configuration was created.
+     */
+    AuditLogEventTelemetryExportCreated: {
+      /** Telemetry Export Configuration Id */
+      telemetry_export_configuration_id: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "TELEMETRY_EXPORT_CREATED";
+    };
+    /**
+     * AuditLogEventTelemetryExportDeletedV1
+     * @description A telemetry export configuration was deleted.
+     */
+    AuditLogEventTelemetryExportDeleted: {
+      /** Telemetry Export Configuration Id */
+      telemetry_export_configuration_id: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "TELEMETRY_EXPORT_DELETED";
+    };
+    /**
+     * AuditLogEventTelemetryExportUpdatedV1
+     * @description A telemetry export configuration was updated. `enabled` is the new value when this update
+     *     paused or resumed exporting and null when only the endpoint, protocol, headers, or credential
+     *     changed; a pause whose actor is the Baseten system was Baseten's own.
+     */
+    AuditLogEventTelemetryExportUpdated: {
+      /** Telemetry Export Configuration Id */
+      telemetry_export_configuration_id: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "TELEMETRY_EXPORT_UPDATED";
+      /** Credential Rotated */
+      credential_rotated: boolean;
+      /** Enabled */
+      enabled: boolean | null;
+    };
+    /**
      * AuditLogEventTypeV1
      * @description Type of action recorded by an audit-log entry.
      * @enum {string}
@@ -3687,7 +3750,10 @@ export type components = {
       | "VOLUME_VERSION_RESTORED"
       | "VOLUME_TAG_SET"
       | "VOLUME_TAG_DELETED"
-      | "VOLUME_UPDATED";
+      | "VOLUME_UPDATED"
+      | "TELEMETRY_EXPORT_CREATED"
+      | "TELEMETRY_EXPORT_UPDATED"
+      | "TELEMETRY_EXPORT_DELETED";
     /**
      * AuditLogEventUserInvitedV1
      * @description A user was invited to the organization.
@@ -3979,7 +4045,8 @@ export type components = {
       | "WEBHOOK_SIGNING_SECRETS"
       | "USER_MANAGEMENT"
       | "DIRECTORY_GROUP_MANAGEMENT"
-      | "SSH";
+      | "SSH"
+      | "TELEMETRY_EXPORT";
     /**
      * AuditLogSortDirectionV1
      * @description Sort order of returned entries, by creation time.
@@ -8106,6 +8173,12 @@ export type components = {
        */
       lora_config_version: string | null;
       /**
+       * Base Checkpoint
+       * @description The custom base checkpoint the run started from, pinned to a commit (hf://<org>/<repo>@<sha>). Null when it uses the base model's own weights.
+       * @default null
+       */
+      base_checkpoint: string | null;
+      /**
        * Base Url
        * @description The run's base URL.
        */
@@ -8178,6 +8251,12 @@ export type components = {
        * @default 1
        */
       node_count: number;
+      /**
+       * Base Checkpoint
+       * @description The custom base checkpoint the sampler serves, pinned to a commit (hf://<org>/<repo>@<sha>). Null when it uses the base model's own weights.
+       * @default null
+       */
+      base_checkpoint: string | null;
     };
     /**
      * ListLoopsRunsResponseV1
@@ -8256,6 +8335,11 @@ export type components = {
        * @description Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.
        */
       reuse_from_session_id?: string | null;
+      /**
+       * Base Checkpoint
+       * @description Optional Hugging Face checkpoint to start training from instead of the base model's weights. Form: hf://<org>/<repo>[@<revision>]. It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include its tokenizer files: the run's sampler and the SDK load the tokenizer and chat template from the checkpoint. A private or gated repository needs a Hugging Face token in the team secret hf_access_token. The revision is pinned to a commit when the run is created. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.
+       */
+      base_checkpoint?: string | null;
       /**
        * Sampler Num Replicas
        * @description Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.
@@ -8355,6 +8439,11 @@ export type components = {
        * @description Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.
        */
       reuse_from_session_id?: string | null;
+      /**
+       * Base Checkpoint
+       * @description Optional Hugging Face checkpoint to start training from instead of the base model's weights. Form: hf://<org>/<repo>[@<revision>]. It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include its tokenizer files: the run's sampler and the SDK load the tokenizer and chat template from the checkpoint. A private or gated repository needs a Hugging Face token in the team secret hf_access_token. The revision is pinned to a commit when the run is created. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.
+       */
+      base_checkpoint?: string | null;
     };
     /**
      * ListLoopsSamplersResponseV1
@@ -8700,6 +8789,12 @@ export type components = {
        * @description The HuggingFace base model the deployment is fine-tuning.
        */
       base_model: string;
+      /**
+       * Base Checkpoint
+       * @description The custom base checkpoint the deployment's trainer loaded, pinned to a commit (hf://<org>/<repo>@<sha>). Null when it uses the base model's own weights.
+       * @default null
+       */
+      base_checkpoint: string | null;
       /**
        * Base Url
        * @description The run's base URL.
@@ -13206,7 +13301,7 @@ export type components = {
        */
       network?: components["schemas"]["SandboxNetwork"];
       /**
-       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
+       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the default sandbox region is used.
        * @example us-pdx-1
        */
       region?: string;
@@ -13243,6 +13338,8 @@ export type components = {
        *     }
        */
       filesystem?: components["schemas"]["SandboxFilesystem"];
+      /** @description Volumes mounted in the sandbox. Set at creation only. */
+      volumes?: components["schemas"]["SandboxVolumeAttachment"][];
       /**
        * @description Set of ports for a resource
        * @example [
@@ -13428,7 +13525,7 @@ export type components = {
        */
       network?: components["schemas"]["SandboxNetwork"];
       /**
-       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.
+       * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the default sandbox region is used.
        * @example us-pdx-1
        */
       region?: string;
@@ -13465,6 +13562,8 @@ export type components = {
        *     }
        */
       filesystem?: components["schemas"]["SandboxFilesystem"];
+      /** @description Volumes mounted in the sandbox. Set at creation only. */
+      volumes?: components["schemas"]["SandboxVolumeAttachment"][];
       /**
        * @description Set of ports for a resource
        * @example [
@@ -13492,7 +13591,7 @@ export type components = {
       labels?: components["schemas"]["SandboxMetadataLabels"];
     };
     /**
-     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, network, region, image, and ports are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
+     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, network, region, image, ports, filesystem, and volumes are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
      * @example {
      *       "lifecycle": {
      *         "expiration_policies": [
@@ -14160,8 +14259,8 @@ export type components = {
     /** @description Volume attachment suggested by a built-in image. */
     SandboxLibraryImageVolume: {
       /**
-       * @description Volume name, or an internal identifier for ephemeral volumes.
-       * @example scratch
+       * @description Volume name, used in volume_name path parameters and sandbox volumes.
+       * @example datasets
        */
       name: string;
       /**
@@ -14169,16 +14268,6 @@ export type components = {
        * @example /mnt/data
        */
       mount_path: string;
-      /**
-       * @description Volume type, persistent when empty.
-       * @example ephemeral
-       */
-      type?: string;
-      /**
-       * @description Storage capacity in megabytes for ephemeral volumes.
-       * @example 10240
-       */
-      size_mb?: number;
       /**
        * @description Whether the volume is mounted read-only.
        * @example false
@@ -14276,6 +14365,16 @@ export type components = {
        * @example Removed 3 unused image versions. Image versions used by active sandboxes were retained.
        */
       message: string;
+      /**
+       * @description Number of unused image versions left for a next call.
+       * @example 0
+       */
+      remaining?: number;
+      /**
+       * @description True when the cleanup stopped on its time limit before every unused version was removed. Call it again to continue.
+       * @example false
+       */
+      has_more?: boolean;
     };
     /**
      * @description Preview status, always uppercase.
@@ -14289,7 +14388,7 @@ export type components = {
      */
     SandboxPreviewTtl: string;
     /**
-     * @description HTTP headers as name-value pairs.
+     * @description HTTP headers as name-value pairs. At most 20 headers and 8 KiB of names and values in total unless your quota allows more.
      * @example {
      *       "Access-Control-Allow-Origin": "*"
      *     }
@@ -14307,7 +14406,7 @@ export type components = {
       /** @description Headers added to every response served by the preview, for example CORS headers. */
       response_headers?: components["schemas"]["SandboxPreviewHeaders"];
       /**
-       * @description Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set.
+       * @description Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set. Some header names are reserved by the platform.
        * @example {
        *       "Authorization": "Bearer app-internal-token"
        *     }
@@ -14422,6 +14521,118 @@ export type components = {
     ListSandboxPreviewTokensResponse: {
       /** @description Resources on this page. */
       items: components["schemas"]["SandboxPreviewToken"][];
+      pagination: components["schemas"]["SandboxApiPagination"];
+    };
+    /**
+     * @description Volume status, always uppercase.
+     * @example DEPLOYED
+     * @enum {string}
+     */
+    SandboxVolumeStatus: "DEPLOYING" | "DEPLOYED" | "FAILED" | "DELETING";
+    /**
+     * @description A persistent volume mounted in the sandbox. The volume must exist, be in the sandbox's region and not be mounted elsewhere. A sandbox mounts at most one persistent volume.
+     * @example {
+     *       "name": "datasets",
+     *       "mount_path": "/data",
+     *       "read_only": false
+     *     }
+     */
+    SandboxVolumeAttachment: {
+      /**
+       * @description Name of the volume to mount.
+       * @example datasets
+       */
+      name: string;
+      /**
+       * @description Absolute path where the volume is mounted in the sandbox.
+       * @example /data
+       */
+      mount_path: string;
+      /**
+       * @description Mount the volume read-only. Defaults to false.
+       * @example false
+       */
+      read_only?: boolean;
+    };
+    /** @description Volume to create. Only size is required. */
+    CreateSandboxVolumeRequest: {
+      /**
+       * @description Volume name, unique in the team. Generated when omitted.
+       * @example datasets
+       */
+      name?: string;
+      /**
+       * @description Capacity, as a size (e.g. "10Gi", "512Mi") or a number of Mi (e.g. 1024). Can grow later, never shrink.
+       * @example 10Gi
+       */
+      size: string | number;
+      /**
+       * @description Region of the volume. Defaults to the default sandbox region. Sandboxes mounting it must be in the same region.
+       * @example us-pdx-1
+       */
+      region?: string;
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /** @description Volume fields to change. name and region cannot be changed. */
+    UpdateSandboxVolumeRequest: {
+      /**
+       * @description New capacity, as a size (e.g. "20Gi") or a number of Mi, greater than or equal to the current size.
+       * @example 20Gi
+       */
+      size?: string | number;
+      /** @description Labels replacing all current labels, not merged with them. Omit to keep them. */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+    };
+    /** @description Persistent volume. */
+    SandboxVolume: {
+      /**
+       * @description Volume name, used in volume_name path parameters and sandbox volumes.
+       * @example datasets
+       */
+      readonly name: string;
+      /**
+       * @description Capacity, as a size (e.g. "10Gi", "512Mi") or a number of Mi (e.g. 1024).
+       * @example 10Gi
+       */
+      size: string | number;
+      /**
+       * @description Region of the volume.
+       * @example us-pdx-1
+       */
+      region: string;
+      status: components["schemas"]["SandboxVolumeStatus"];
+      /**
+       * @description Name of the sandbox the volume is mounted in. Absent when not mounted.
+       * @example baseten-api-review-0916
+       */
+      readonly attached_to?: string;
+      /** @description Labels. Omitted from list responses. */
+      labels?: components["schemas"]["SandboxMetadataLabels"];
+      /**
+       * Format: date-time
+       * @example 2026-10-12T12:00:00Z
+       */
+      readonly created_at?: string;
+      /**
+       * Format: date-time
+       * @example 2026-10-12T12:00:00Z
+       */
+      readonly updated_at?: string;
+      /**
+       * @description User or service account that created the volume.
+       * @example sandbox-automation
+       */
+      readonly created_by?: string;
+      /**
+       * @description User or service account that last updated the volume.
+       * @example sandbox-automation
+       */
+      readonly updated_by?: string;
+    };
+    /** @description One page of volumes. */
+    ListSandboxVolumesResponse: {
+      /** @description Resources on this page. */
+      items: components["schemas"]["SandboxVolume"][];
       pagination: components["schemas"]["SandboxApiPagination"];
     };
     GetVolumesParams: {
@@ -15685,6 +15896,43 @@ export type components = {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
     };
+    ListSandboxVolumesParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+      /**
+       * @description Opaque cursor from the previous page; omit for the first page.
+       * @example eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ
+       */
+      cursor?: string;
+      /**
+       * @description Maximum number of items to return.
+       * @example 20
+       */
+      limit?: number;
+      /**
+       * @description Search volume names. Search is applied before pagination.
+       * @example datasets
+       */
+      q?: string;
+      /** @description Volume statuses. Repeat the query parameter for each status, for example status=DEPLOYED&status=FAILED. Unknown values are rejected. */
+      status?: components["schemas"]["SandboxVolumeStatus"][];
+    };
+    CreateSandboxVolumeParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    GetSandboxVolumeParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    UpdateSandboxVolumeParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
+    DeleteSandboxVolumeParams: {
+      /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
+      team_id?: string;
+    };
     ListImagesParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
       team_id?: string;
@@ -15939,6 +16187,8 @@ export type components = {
     PreviewName: string;
     /** @description Token name returned by creation. */
     PreviewTokenName: string;
+    /** @description Volume name returned by creation. */
+    VolumeName: string;
     /** @description Image repository name. */
     SandboxImageName: string;
     /** @description Image tag name. */
@@ -16072,6 +16322,8 @@ export type AwsCredentials = components["schemas"]["AWSCredentials"];
 export type PrepareModelUploadResponse = components["schemas"]["PrepareModelUploadResponse"];
 export type AuditLogActorType = components["schemas"]["AuditLogActorType"];
 export type AuditLogActor = components["schemas"]["AuditLogActor"];
+export type AuditLogApiKeyRevocationReason =
+  components["schemas"]["AuditLogApiKeyRevocationReason"];
 export type AuditLogApiKeyType = components["schemas"]["AuditLogApiKeyType"];
 export type AuditLogEntry = components["schemas"]["AuditLogEntry"];
 export type AuditLogEventApiKeyCreated = components["schemas"]["AuditLogEventApiKeyCreated"];
@@ -16163,6 +16415,12 @@ export type AuditLogEventSecretDeleted = components["schemas"]["AuditLogEventSec
 export type AuditLogEventSecretUpdated = components["schemas"]["AuditLogEventSecretUpdated"];
 export type AuditLogEventSshCertificateSigned =
   components["schemas"]["AuditLogEventSshCertificateSigned"];
+export type AuditLogEventTelemetryExportCreated =
+  components["schemas"]["AuditLogEventTelemetryExportCreated"];
+export type AuditLogEventTelemetryExportDeleted =
+  components["schemas"]["AuditLogEventTelemetryExportDeleted"];
+export type AuditLogEventTelemetryExportUpdated =
+  components["schemas"]["AuditLogEventTelemetryExportUpdated"];
 export type AuditLogEventType = components["schemas"]["AuditLogEventType"];
 export type AuditLogEventUserInvited = components["schemas"]["AuditLogEventUserInvited"];
 export type AuditLogEventUserJoinedOrganization =
@@ -16667,6 +16925,12 @@ export type CreateSandboxPreviewTokenRequest =
 export type SandboxPreviewToken = components["schemas"]["SandboxPreviewToken"];
 export type ListSandboxPreviewTokensResponse =
   components["schemas"]["ListSandboxPreviewTokensResponse"];
+export type SandboxVolumeStatus = components["schemas"]["SandboxVolumeStatus"];
+export type SandboxVolumeAttachment = components["schemas"]["SandboxVolumeAttachment"];
+export type CreateSandboxVolumeRequest = components["schemas"]["CreateSandboxVolumeRequest"];
+export type UpdateSandboxVolumeRequest = components["schemas"]["UpdateSandboxVolumeRequest"];
+export type SandboxVolume = components["schemas"]["SandboxVolume"];
+export type ListSandboxVolumesResponse = components["schemas"]["ListSandboxVolumesResponse"];
 export type GetVolumesParams = components["schemas"]["GetVolumesParams"];
 export type GetVolumesNamespacesParams = components["schemas"]["GetVolumesNamespacesParams"];
 export type GetVolumesSyncsParams = components["schemas"]["GetVolumesSyncsParams"];
@@ -16752,6 +17016,11 @@ export type CreateSandboxPreviewTokenParams =
   components["schemas"]["CreateSandboxPreviewTokenParams"];
 export type DeleteSandboxPreviewTokenParams =
   components["schemas"]["DeleteSandboxPreviewTokenParams"];
+export type ListSandboxVolumesParams = components["schemas"]["ListSandboxVolumesParams"];
+export type CreateSandboxVolumeParams = components["schemas"]["CreateSandboxVolumeParams"];
+export type GetSandboxVolumeParams = components["schemas"]["GetSandboxVolumeParams"];
+export type UpdateSandboxVolumeParams = components["schemas"]["UpdateSandboxVolumeParams"];
+export type DeleteSandboxVolumeParams = components["schemas"]["DeleteSandboxVolumeParams"];
 export type ListImagesParams = components["schemas"]["ListImagesParams"];
 export type PushImageParams = components["schemas"]["PushImageParams"];
 export type CleanupImagesParams = components["schemas"]["CleanupImagesParams"];

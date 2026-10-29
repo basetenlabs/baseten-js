@@ -20,6 +20,7 @@ import {
   ImageUploadError,
   SandboxApiError,
   SandboxClient,
+  type ImageCleanupProgress,
   type ImageIgnoreFileOptions,
   type ImageIgnoreFileProcessorOptions,
   type ImagePushDirectoryRequest,
@@ -828,6 +829,35 @@ describe("ImageClient", () => {
     ]);
   });
 
+  it("cleanup calls again while more remain, awaiting progress between calls", async () => {
+    const replies = [
+      { deleted: 2, message: "m1", remaining: 5, has_more: true },
+      { deleted: 4, message: "m2", remaining: 1, has_more: true },
+      { deleted: 1, message: "m3", remaining: 0, has_more: false },
+    ];
+    const reported: ImageCleanupProgress[] = [];
+    // How many progress reports had finished when each request arrived.
+    const reportedAtRequest: number[] = [];
+    const server = fakeServer(() => {
+      reportedAtRequest.push(reported.length);
+      return replies.shift();
+    });
+    const result = await server.client.images.cleanup({
+      progress: async (progress) => {
+        // Yields to the event loop first, so a cleanup not awaiting this
+        // would send its next request before the report is recorded.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        reported.push(progress);
+      },
+    });
+    expect(result).toEqual({ deleted: 7, message: "m3" });
+    expect(reported).toEqual([
+      { deleted: 2, remaining: 5, message: "m1" },
+      { deleted: 6, remaining: 1, message: "m2" },
+    ]);
+    expect(reportedAtRequest).toEqual([0, 1, 2]);
+  });
+
   it("waitBuilt accepts BUILT immediately", async () => {
     const server = fakeServer(() => apiImage("BUILT"));
     expect((await server.client.images.waitBuilt({ name: "app" })).status).toBe("BUILT");
@@ -857,7 +887,7 @@ describe("ImageClient", () => {
           creation_options: {
             extra_args: { kernel: "6.1" },
             volumes: [
-              { name: "scratch", mount_path: "/scratch", type: "ephemeral", size_mb: 1024 },
+              { name: "scratch", mount_path: "/scratch" },
               { name: "data", mount_path: "/data", read_only: true },
             ],
           },
@@ -884,14 +914,8 @@ describe("ImageClient", () => {
         enterprise: true,
         creationExtraArgs: { kernel: "6.1" },
         creationVolumes: [
-          {
-            name: "scratch",
-            mountPath: "/scratch",
-            type: "ephemeral",
-            sizeMb: 1024,
-            readOnly: false,
-          },
-          { name: "data", mountPath: "/data", type: undefined, sizeMb: undefined, readOnly: true },
+          { name: "scratch", mountPath: "/scratch", readOnly: false },
+          { name: "data", mountPath: "/data", readOnly: true },
         ],
       },
       {
