@@ -14,9 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: chainguard-actions/pnpm-action-setup@b20813050e45881b880cc601d8b35d5d2f593e5b # v4.3.0
 
-      - uses: actions/setup-node@v4
+      - uses: chainguard-actions/actions-setup-node@031fc9bd73e651da81e6a7294b2af29e64d5f39c # v4.4.0
         with:
           node-version: "26"
           registry-url: "https://registry.npmjs.org"
