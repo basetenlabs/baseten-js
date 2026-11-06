@@ -82,7 +82,12 @@ describe.runIf(ensureE2EEnv())("e2e", () => {
 
     try {
       const created = await client.api.postApiKeys({
-        request: { name: keyName, type: "PERSONAL", model_ids: null },
+        request: {
+          name: keyName,
+          type: "PERSONAL",
+          model_ids: null,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        },
       });
       expect(created.api_key).toBeTruthy();
       createdPrefix = created.api_key.split(".")[0]!;
