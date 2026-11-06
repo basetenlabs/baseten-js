@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -28,9 +28,8 @@ jobs:
 
       # Publishes every public package in dependency order, with workspace:*
       # rewritten to exact versions, skipping private packages and versions
-      # already on npm, so bump versions before cutting a release. pnpm hands
-      # each packed tarball to the npm CLI, which does the tokenless OIDC
-      # trusted publishing and which Node 26 bundles at a version with it. The
-      # release checkout is a detached tag, so pnpm's branch check is skipped.
+      # already on npm, so bump versions before cutting a release. pnpm
+      # publishes natively with tokenless OIDC trusted publishing. The release
+      # checkout is a detached tag, so pnpm's branch check is skipped.
       - name: Publish
         run: pnpm publish -r --no-git-checks --provenance --access public

@@ -93,8 +93,14 @@ export interface SandboxCreateRequest {
   /** Image reference including its tag. Defaults to `baseten/base-image:latest`. */
   image?: string;
 
-  /** Memory in megabytes, which also sets the CPU allocation. Defaults to 4096. */
+  /**
+   * Memory in megabytes. Defaults to 4096, or to 8192 per vCPU when only
+   * `cpu` is set. When `cpu` is unset, it also sets the CPU allocation.
+   */
   memory?: number;
+
+  /** Number of vCPUs, from 1 to 32. Unset derives the CPU allocation from `memory`. */
+  cpu?: number;
 
   /** Region to run in. Unset picks the closest one. */
   region?: string;
@@ -187,7 +193,7 @@ export interface SandboxListRequest {
  * Request for {@link SandboxClient.update}. Unset fields stay unchanged, and
  * set ones replace their previous values, including every entry of `envs`,
  * `labels`, `ports`, and `lifecycle.expirationPolicies`. Other `lifecycle`
- * fields change only when set. At least one field must be set. Memory,
+ * fields change only when set. At least one field must be set. Memory, CPU,
  * network, and filesystem cannot be changed after creation.
  */
 export interface SandboxUpdateRequest {
@@ -293,6 +299,7 @@ export class SandboxClient {
           create_if_not_exists: request.createIfNotExists,
           image: request.image,
           memory: request.memory,
+          cpu: request.cpu,
           region: request.region,
           envs: request.envs === undefined ? undefined : sandboxEnvsToApi(request.envs),
           labels: request.labels,

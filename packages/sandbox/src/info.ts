@@ -181,8 +181,11 @@ export interface SandboxInfo {
   /** Image reference, including its tag. */
   image?: string;
 
-  /** Memory in megabytes, which also sets the CPU allocation. */
+  /** Memory in megabytes. */
   memory?: number;
+
+  /** Number of vCPUs the sandbox runs with. */
+  cpu?: number;
 
   region?: string;
 
@@ -222,6 +225,7 @@ export function sandboxInfoFromApi(sandbox: ApiSandbox): SandboxInfo {
     status: sandbox.status,
     image: sandbox.image,
     memory: sandbox.memory,
+    cpu: sandbox.cpu,
     region: sandbox.region,
     envs: sandboxEnvsFromApi(sandbox.envs),
     labels: { ...sandbox.labels },
