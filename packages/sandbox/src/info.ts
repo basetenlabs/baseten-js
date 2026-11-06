@@ -4,9 +4,7 @@ import type {
   SandboxExpirationPolicy as ApiSandboxExpirationPolicy,
   SandboxFilesystem as ApiSandboxFilesystem,
   SandboxLifecycle as ApiSandboxLifecycle,
-  SandboxNetwork as ApiSandboxNetwork,
   SandboxPort as ApiSandboxPort,
-  SandboxProxyTarget as ApiSandboxProxyTarget,
   SandboxVolumeAttachment as ApiSandboxVolumeAttachment,
 } from "@basetenlabs/client/managementapi";
 import { formatDuration, parseDuration } from "./common";
@@ -98,15 +96,6 @@ export interface SandboxPort {
 /** Protocol of a sandbox port. Other values may be added, so do not treat this list as exhaustive. */
 export type SandboxPortProtocol = "HTTP" | "TCP" | "UDP" | "TLS" | (string & {});
 
-/** Network configuration of a sandbox, fixed at creation. */
-export interface SandboxNetwork {
-  /** Subnet name. The server defaults to `default`. */
-  subnet?: string;
-
-  /** Routes the sandbox's HTTP traffic through the platform proxy. */
-  proxy?: SandboxNetworkProxy;
-}
-
 /**
  * Filesystem configuration of a sandbox, fixed at creation. The filesystem is
  * held in memory, so files written count against the sandbox's memory.
@@ -130,42 +119,6 @@ export interface SandboxVolumeMount {
 
   /** Whether the volume is mounted read-only. Defaults to false. */
   readOnly?: boolean;
-}
-
-/** Proxy configuration of a sandbox's network. */
-export interface SandboxNetworkProxy {
-  /**
-   * When set, only these external domains are reachable. Supports wildcards
-   * such as `*.example.com`. Takes precedence over `forbiddenDomains`.
-   */
-  allowedDomains?: string[];
-
-  /** When set, every external domain except these is reachable. Supports wildcards. */
-  forbiddenDomains?: string[];
-
-  /**
-   * Domains reached directly rather than through the proxy. Supports
-   * wildcards. Local and private addresses always bypass it.
-   */
-  bypass?: string[];
-
-  /** Rules injecting headers and body fields into matching requests. */
-  routing?: SandboxNetworkProxyRoute[];
-}
-
-/** A proxy rule injecting headers and body fields into requests to its destinations. */
-export interface SandboxNetworkProxyRoute {
-  /** Destination domains the rule applies to. `["*"]` matches all. */
-  destinations?: string[];
-
-  /** Headers to inject. Values may reference `{{SECRET:name}}` from `secrets`. */
-  headers?: Record<string, string>;
-
-  /** Body fields to inject. Values may reference `{{SECRET:name}}` from `secrets`. */
-  body?: Record<string, string>;
-
-  /** Named secret values for this rule. Write-only, so always unset on {@link SandboxInfo}. */
-  secrets?: Record<string, string>;
 }
 
 /** A sandbox as last reported by the control plane. */
@@ -201,7 +154,6 @@ export interface SandboxInfo {
 
   lifecycle?: SandboxLifecycle;
   ports: SandboxPort[];
-  network?: SandboxNetwork;
   filesystem?: SandboxFileSystemOptions;
 
   /** Persistent volumes mounted in the sandbox. */
@@ -233,7 +185,6 @@ export function sandboxInfoFromApi(sandbox: ApiSandbox): SandboxInfo {
     lifecycle:
       sandbox.lifecycle === undefined ? undefined : sandboxLifecycleFromApi(sandbox.lifecycle),
     ports: sandboxPortsFromApi(sandbox.ports),
-    network: sandbox.network === undefined ? undefined : sandboxNetworkFromApi(sandbox.network),
     filesystem:
       sandbox.filesystem === undefined
         ? undefined
@@ -276,28 +227,6 @@ export function sandboxPortsToApi(ports: SandboxPort[]): ApiSandboxPort[] {
     name,
     protocol: protocol as ApiSandboxPort["protocol"],
   }));
-}
-
-/** Converts a network configuration to the control plane's form. */
-export function sandboxNetworkToApi(network: SandboxNetwork): ApiSandboxNetwork {
-  const proxy = network.proxy;
-  return {
-    subnet: network.subnet,
-    proxy:
-      proxy === undefined
-        ? undefined
-        : {
-            allowed_domains: proxy.allowedDomains,
-            forbidden_domains: proxy.forbiddenDomains,
-            bypass: proxy.bypass,
-            routing: proxy.routing?.map((route): ApiSandboxProxyTarget => ({
-              destinations: route.destinations,
-              headers: route.headers,
-              body: route.body,
-              secrets: route.secrets,
-            })),
-          },
-  };
 }
 
 /** Converts a filesystem configuration to the control plane's form. */
@@ -347,27 +276,6 @@ function expirationPolicyFromApi(policy: ApiSandboxExpirationPolicy): SandboxExp
 
 export function sandboxPortsFromApi(ports: ApiSandboxPort[] | undefined): SandboxPort[] {
   return (ports ?? []).map(({ target, name, protocol }) => ({ target, name, protocol }));
-}
-
-function sandboxNetworkFromApi(network: ApiSandboxNetwork): SandboxNetwork {
-  const proxy = network.proxy;
-  return {
-    subnet: network.subnet,
-    proxy:
-      proxy === undefined
-        ? undefined
-        : {
-            allowedDomains: proxy.allowed_domains,
-            forbiddenDomains: proxy.forbidden_domains,
-            bypass: proxy.bypass,
-            routing: proxy.routing?.map((route) => ({
-              destinations: route.destinations,
-              headers: route.headers,
-              body: route.body,
-              secrets: route.secrets,
-            })),
-          },
-  };
 }
 
 function sandboxEnvsFromApi(envs: ApiSandboxEnv[] | undefined): Record<string, SandboxEnvValue> {

@@ -102,22 +102,6 @@ describe("SandboxClient", () => {
         terminatedRetentionMs: 3_600_000,
       },
       ports: [{ target: 3000, name: "http", protocol: "HTTP" }, { target: 9000 }],
-      network: {
-        subnet: "default",
-        proxy: {
-          allowedDomains: ["*.example.com"],
-          forbiddenDomains: ["bad.example.com"],
-          bypass: ["direct.example.com"],
-          routing: [
-            {
-              destinations: ["*"],
-              headers: { "x-a": "{{SECRET:a}}" },
-              body: { b: "c" },
-              secrets: { a: "s" },
-            },
-          ],
-        },
-      },
       filesystem: { maxMemoryUsage: "80%" },
       volumes: [{ name: "data", mountPath: "/data", readOnly: true }],
     });
@@ -143,22 +127,6 @@ describe("SandboxClient", () => {
         terminated_retention: "3600000ms",
       },
       ports: [{ target: 3000, name: "http", protocol: "HTTP" }, { target: 9000 }],
-      network: {
-        subnet: "default",
-        proxy: {
-          allowed_domains: ["*.example.com"],
-          forbidden_domains: ["bad.example.com"],
-          bypass: ["direct.example.com"],
-          routing: [
-            {
-              destinations: ["*"],
-              headers: { "x-a": "{{SECRET:a}}" },
-              body: { b: "c" },
-              secrets: { a: "s" },
-            },
-          ],
-        },
-      },
       filesystem: { max_memory_usage: "80%" },
       volumes: [{ name: "data", mount_path: "/data", read_only: true }],
     });
@@ -217,17 +185,6 @@ describe("SandboxClient", () => {
           terminated_retention: "1h30m",
         },
         ports: [{ target: 3000, name: "http", protocol: "HTTP" }, { target: 9000 }],
-        network: {
-          subnet: "default",
-          proxy: {
-            allowed_domains: ["*.example.com"],
-            forbidden_domains: ["bad.example.com"],
-            bypass: ["direct.example.com"],
-            routing: [
-              { destinations: ["*"], headers: { "x-a": "{{SECRET:a}}" }, body: { b: "c" } },
-            ],
-          },
-        },
         filesystem: { max_memory_usage: 2048 },
         volumes: [{ name: "data", mount_path: "/data", read_only: false }],
         updated_at: "2026-09-16T21:31:13Z",
@@ -264,22 +221,6 @@ describe("SandboxClient", () => {
         { target: 3000, name: "http", protocol: "HTTP" },
         { target: 9000, name: undefined, protocol: undefined },
       ],
-      network: {
-        subnet: "default",
-        proxy: {
-          allowedDomains: ["*.example.com"],
-          forbiddenDomains: ["bad.example.com"],
-          bypass: ["direct.example.com"],
-          routing: [
-            {
-              destinations: ["*"],
-              headers: { "x-a": "{{SECRET:a}}" },
-              body: { b: "c" },
-              secrets: undefined,
-            },
-          ],
-        },
-      },
       filesystem: { maxMemoryUsage: 2048 },
       volumes: [{ name: "data", mountPath: "/data", readOnly: false }],
       createdAt: new Date("2026-09-16T21:26:58Z"),
@@ -302,7 +243,6 @@ describe("SandboxClient", () => {
       terminatedRetentionMs: undefined,
     });
     expect(info.ports).toEqual([]);
-    expect(info.network).toBeUndefined();
     expect(info.filesystem).toBeUndefined();
     expect(info.volumes).toEqual([]);
     expect(info.expiresInMs).toBeUndefined();
