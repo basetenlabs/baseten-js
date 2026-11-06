@@ -107,29 +107,10 @@ export type components = {
       /** @example 5 */
       total: number;
     };
-    CopyRequest: {
-      /** @example /app/destination */
-      destination: string;
-      /** @example false */
-      noOverwrite?: boolean;
-      /** @example /app/source */
-      source: string;
-    };
-    CopyResponse: {
-      destination: string;
-      message: string;
-      source: string;
-    };
     Directory: {
       files: components["schemas"]["File"][];
       name: string;
       path: string;
-      /**
-       * @description Recursive is true when files and subdirectories hold every level below
-       *     path (tree read with recursive=true). Older APIs ignore that parameter
-       *     and omit this field, so clients can tell a one-level listing apart.
-       */
-      recursive?: boolean;
       /** @description @name Subdirectories */
       subdirectories: components["schemas"]["Subdirectory"][];
     };
@@ -176,8 +157,6 @@ export type components = {
       success?: boolean;
     };
     ErrorResponse: {
-      /** @example FILE_ALREADY_EXISTS */
-      code?: string;
       /** @example Error message */
       error: string;
     };
@@ -287,8 +266,6 @@ export type components = {
       uploaded?: boolean;
     };
     File: {
-      /** @description Content is set only by a tree read with content=true, for regular files. */
-      content?: string;
       group: string;
       lastModified: string;
       name: string;
@@ -450,16 +427,6 @@ export type components = {
       stdout: string;
     };
     ProcessRequest: {
-      /**
-       * @description Key the webhook is signed with (HMAC-SHA256, X-Blaxel-Signature header). At least 32 characters; required with callbackUrl. Never returned by the API.
-       * @example a-random-secret-of-at-least-32-chars
-       */
-      callbackSecret?: string;
-      /**
-       * @description URL that receives a signed process.exited webhook when the process ends for good (not on auto-restart). Requires callbackSecret.
-       * @example https://example.com/hooks/process
-       */
-      callbackUrl?: string;
       /** @example ls -la */
       command: string;
       /**
@@ -653,10 +620,13 @@ export type components = {
       config: string;
     };
     UpgradeRequest: {
-      /** @description Deprecated: custom binary sources are not accepted */
+      /**
+       * @description Base URL for releases (useful for forks)
+       * @example https://github.com/basetenlabs/sandbox/releases
+       */
       baseUrl?: string;
       /**
-       * @description Version to upgrade to: "latest" (default), "develop", "main", or a release tag like "v1.0.0"
+       * @description Version to upgrade to: "latest" (default), "develop", "main", or specific tag like "v1.0.0"
        * @example latest
        */
       version?: string;
@@ -814,28 +784,8 @@ export type components = {
       /** @description Delete directory recursively */
       recursive?: boolean;
     };
-    GetFilesystemTreeParams: {
-      /** @description List every file and directory below the path, not only its direct children (default: false) */
-      recursive?: boolean;
-      /** @description Include the content of each regular file, as UTF-8 text (default: false) */
-      content?: boolean;
-      /** @description Comma-separated glob patterns matched against file names (e.g., *.json,*.md). Directories are not filtered. */
-      patterns?: string;
-      /** @description Comma-separated directory names to skip with everything below them (default: none) */
-      excludeDirs?: string;
-      /** @description Skip files and directories whose name starts with a dot (default: false) */
-      excludeHidden?: boolean;
-      /** @description Fail with 422 when more files match (default: 10000 with recursive or content, otherwise unlimited; at most 100000) */
-      maxFiles?: number;
-      /** @description With content=true, fail with 422 when the matching files hold more bytes (default: 33554432, 32 MiB; at most 268435456, 256 MiB) */
-      maxBytes?: number;
-    };
-    GetProcessWaitParams: {
-      /** @description Seconds to wait (default and max 119; larger values are capped) */
-      timeout?: number;
-    };
     GetWatchFilesystemParams: {
-      /** @description Comma-separated substrings; events whose full path contains one are skipped, and matching directories are not watched at all */
+      /** @description Comma-separated substrings; events whose full path contains one are skipped */
       ignore?: string;
     };
     GetFilesystemResponse:
@@ -864,8 +814,6 @@ export type ApplyEditResponse = components["schemas"]["ApplyEditResponse"];
 export type ArchiveManifest = components["schemas"]["ArchiveManifest"];
 export type ContentSearchMatch = components["schemas"]["ContentSearchMatch"];
 export type ContentSearchResponse = components["schemas"]["ContentSearchResponse"];
-export type CopyRequest = components["schemas"]["CopyRequest"];
-export type CopyResponse = components["schemas"]["CopyResponse"];
 export type Directory = components["schemas"]["Directory"];
 export type DriveListResponse = components["schemas"]["DriveListResponse"];
 export type DriveMountInfo = components["schemas"]["DriveMountInfo"];
@@ -925,8 +873,6 @@ export type GetFilesystemSearchParams = components["schemas"]["GetFilesystemSear
 export type DeleteFilesystemParams = components["schemas"]["DeleteFilesystemParams"];
 export type GetFilesystemParams = components["schemas"]["GetFilesystemParams"];
 export type DeleteFilesystemTreeParams = components["schemas"]["DeleteFilesystemTreeParams"];
-export type GetFilesystemTreeParams = components["schemas"]["GetFilesystemTreeParams"];
-export type GetProcessWaitParams = components["schemas"]["GetProcessWaitParams"];
 export type GetWatchFilesystemParams = components["schemas"]["GetWatchFilesystemParams"];
 export type GetFilesystemResponse = components["schemas"]["GetFilesystemResponse"];
 export type DeleteNetworkProcessMonitorResponse =

@@ -12037,11 +12037,11 @@ export type components = {
        */
       provider: components["schemas"]["GridProvider"] | null;
       /**
-       * Router Id
-       * @description Slug of the intelligent router, matching its name in `GET /v1/grid/routes`. Null when not grouping by ROUTER.
+       * Intelligent Route
+       * @description Name of the intelligent route, as in `GET /v1/grid/routes`. Null when not grouping by INTELLIGENT_ROUTE.
        * @default null
        */
-      router_id: string | null;
+      intelligent_route: string | null;
       /**
        * @description Coding harness. Null when not grouping by HARNESS, when no harness was recorded (including usage from before harness tracking), or when the recorded harness is not recognized by this API version.
        * @default null
@@ -12075,7 +12075,7 @@ export type components = {
       output_tokens: number;
       /**
        * Requests
-       * @description Number of requests; with ROUTER, the requests sent through that router. Usage recorded before requests were counted adds zero.
+       * @description Number of requests; with INTELLIGENT_ROUTE, the requests sent through that route. Usage recorded before requests were counted adds zero.
        */
       requests: number;
     };
@@ -12093,7 +12093,13 @@ export type components = {
      * GridRouteUsageDimensionV1
      * @enum {string}
      */
-    GridRouteUsageDimension: "USER" | "TEAM" | "MODEL" | "PROVIDER" | "ROUTER" | "HARNESS";
+    GridRouteUsageDimension:
+      | "USER"
+      | "TEAM"
+      | "MODEL"
+      | "PROVIDER"
+      | "INTELLIGENT_ROUTE"
+      | "HARNESS";
     /** GridRouteTombstoneV1 */
     GridRouteTombstone: {
       /**
@@ -12133,23 +12139,16 @@ export type components = {
           )
         | null;
     };
-    /** GridBackgroundHarnessDefaultsV1 */
-    GridBackgroundHarnessDefaults: {
-      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
-      primary: components["schemas"]["GridHarnessModel"] | null;
-      /** @description Route for background tasks, such as session titles. Null when the team has no route to use. */
-      background: components["schemas"]["GridHarnessModel"] | null;
-    };
     /** GridHarnessDefaultsV1 */
     GridHarnessDefaults: {
       /** @description Default models for Claude Code. */
-      claude_code: components["schemas"]["GridBackgroundHarnessDefaults"];
+      claude_code: components["schemas"]["GridHarnessModels"];
       /** @description Default models for OpenCode. */
-      opencode: components["schemas"]["GridBackgroundHarnessDefaults"];
+      opencode: components["schemas"]["GridHarnessModels"];
       /** @description Default models for Codex. */
-      codex: components["schemas"]["GridBackgroundHarnessDefaults"];
+      codex: components["schemas"]["GridHarnessModels"];
       /** @description Default models for Pi. */
-      pi: components["schemas"]["GridBackgroundHarnessDefaults"];
+      pi: components["schemas"]["GridHarnessModels"];
     };
     /** GridHarnessModelV1 */
     GridHarnessModel: {
@@ -12157,6 +12156,13 @@ export type components = {
       source: components["schemas"]["GridSettingSource"];
       /** @description Route to use for this role. */
       route: components["schemas"]["GridRoute"];
+    };
+    /** GridHarnessModelsV1 */
+    GridHarnessModels: {
+      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
+      primary: components["schemas"]["GridHarnessModel"] | null;
+      /** @description Route for background tasks, such as session titles. Null when the team has no route to use. */
+      background: components["schemas"]["GridHarnessModel"] | null;
     };
     /**
      * GridSettingSourceV1
@@ -12197,8 +12203,19 @@ export type components = {
       /** @description Spend limits for Baseten Grid for members' spend in this team. */
       spend_limit: components["schemas"]["GridTeamSpendLimitSetting"];
     };
-    /** UpdateGridBackgroundHarnessModelsV1 */
-    UpdateGridBackgroundHarnessModels: {
+    /** UpdateGridHarnessDefaultsV1 */
+    UpdateGridHarnessDefaults: {
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      claude_code?: components["schemas"]["UpdateGridHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      opencode?: components["schemas"]["UpdateGridHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      codex?: components["schemas"]["UpdateGridHarnessModels"] | null;
+      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
+      pi?: components["schemas"]["UpdateGridHarnessModels"] | null;
+    };
+    /** UpdateGridHarnessModelsV1 */
+    UpdateGridHarnessModels: {
       /**
        * Primary
        * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
@@ -12211,17 +12228,6 @@ export type components = {
        * @example def5678
        */
       background?: string | null;
-    };
-    /** UpdateGridHarnessDefaultsV1 */
-    UpdateGridHarnessDefaults: {
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      claude_code?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      opencode?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      codex?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
-      /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      pi?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
     };
     /** UpdateGridTeamSpendLimitSettingV1 */
     UpdateGridTeamSpendLimitSetting: {
@@ -13672,219 +13678,6 @@ export type components = {
       value: string;
     };
     /**
-     * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
-     * @example {
-     *       "proxy": {
-     *         "allowed_domains": [
-     *           "api.openai.com",
-     *           "pypi.org",
-     *           "files.pythonhosted.org",
-     *           "registry.npmjs.org"
-     *         ],
-     *         "bypass": [
-     *           "registry.npmjs.org"
-     *         ],
-     *         "forbidden_domains": [
-     *           "facebook.com",
-     *           "*.facebook.com"
-     *         ],
-     *         "routing": [
-     *           {
-     *             "destinations": [
-     *               "api.openai.com"
-     *             ],
-     *             "headers": {
-     *               "Authorization": "Bearer {{SECRET:openai-key}}"
-     *             },
-     *             "body": {
-     *               "user": "baseten-api-review-0916"
-     *             },
-     *             "secrets": {
-     *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
-     *             }
-     *           }
-     *         ]
-     *       },
-     *       "subnet": "default"
-     *     }
-     */
-    SandboxNetwork: {
-      /**
-       * @description Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection
-       * @example {
-       *       "allowed_domains": [
-       *         "api.openai.com",
-       *         "pypi.org",
-       *         "files.pythonhosted.org",
-       *         "registry.npmjs.org"
-       *       ],
-       *       "bypass": [
-       *         "registry.npmjs.org"
-       *       ],
-       *       "forbidden_domains": [
-       *         "facebook.com",
-       *         "*.facebook.com"
-       *       ],
-       *       "routing": [
-       *         {
-       *           "destinations": [
-       *             "api.openai.com"
-       *           ],
-       *           "headers": {
-       *             "Authorization": "Bearer {{SECRET:openai-key}}"
-       *           },
-       *           "body": {
-       *             "user": "baseten-api-review-0916"
-       *           },
-       *           "secrets": {
-       *             "openai-key": "sk-proj-demo-not-a-valid-api-key"
-       *           }
-       *         }
-       *       ]
-       *     }
-       */
-      proxy?: components["schemas"]["SandboxProxyConfig"];
-      /**
-       * @description Subnet name for the sandbox. Defaults to "default" at creation.
-       * @example default
-       */
-      subnet?: string;
-    };
-    /**
-     * @description Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection
-     * @example {
-     *       "allowed_domains": [
-     *         "api.openai.com",
-     *         "pypi.org",
-     *         "files.pythonhosted.org",
-     *         "registry.npmjs.org"
-     *       ],
-     *       "bypass": [
-     *         "registry.npmjs.org"
-     *       ],
-     *       "forbidden_domains": [
-     *         "facebook.com",
-     *         "*.facebook.com"
-     *       ],
-     *       "routing": [
-     *         {
-     *           "destinations": [
-     *             "api.openai.com"
-     *           ],
-     *           "headers": {
-     *             "Authorization": "Bearer {{SECRET:openai-key}}"
-     *           },
-     *           "body": {
-     *             "user": "baseten-api-review-0916"
-     *           },
-     *           "secrets": {
-     *             "openai-key": "sk-proj-demo-not-a-valid-api-key"
-     *           }
-     *         }
-     *       ]
-     *     }
-     */
-    SandboxProxyConfig: {
-      /**
-       * @description List of allowed external domains (allowlist). When set, only these domains are reachable. Supports wildcards (e.g. *.storage.example.com).
-       * @example [
-       *       "api.openai.com",
-       *       "pypi.org",
-       *       "files.pythonhosted.org",
-       *       "registry.npmjs.org"
-       *     ]
-       */
-      allowed_domains?: string[];
-      /**
-       * @description Domains that bypass the proxy entirely via the NO_PROXY directive. Traffic to these destinations goes direct, not through the CONNECT tunnel. Supports wildcards. Note that localhost, private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 169.254.169.254, .local and .internal are always bypassed by default.
-       * @example [
-       *       "registry.npmjs.org"
-       *     ]
-       */
-      bypass?: string[];
-      /**
-       * @description List of forbidden external domains (denylist). When set, all domains except these are reachable. Supports wildcards (e.g. *.malware.com). If both allowed_domains and forbidden_domains are set, allowed_domains takes precedence.
-       * @example [
-       *       "facebook.com",
-       *       "*.facebook.com"
-       *     ]
-       */
-      forbidden_domains?: string[];
-      /**
-       * @description Per-destination routing rules with header/body injection and secrets. Use destinations ["*"] for global rules that apply to all destinations.
-       * @example [
-       *       {
-       *         "destinations": [
-       *           "api.openai.com"
-       *         ],
-       *         "headers": {
-       *           "Authorization": "Bearer {{SECRET:openai-key}}"
-       *         },
-       *         "body": {
-       *           "user": "baseten-api-review-0916"
-       *         },
-       *         "secrets": {
-       *           "openai-key": "sk-proj-demo-not-a-valid-api-key"
-       *         }
-       *       }
-       *     ]
-       */
-      routing?: components["schemas"]["SandboxProxyTarget"][];
-    };
-    /**
-     * @description Routing rule that injects headers and body fields into requests matching the given destinations. Use destinations ["*"] for a global rule that applies to all proxied traffic.
-     * @example {
-     *       "destinations": [
-     *         "api.openai.com"
-     *       ],
-     *       "headers": {
-     *         "Authorization": "Bearer {{SECRET:openai-key}}"
-     *       },
-     *       "body": {
-     *         "user": "baseten-api-review-0916"
-     *       },
-     *       "secrets": {
-     *         "openai-key": "sk-proj-demo-not-a-valid-api-key"
-     *       }
-     *     }
-     */
-    SandboxProxyTarget: {
-      /**
-       * @description Body fields to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.
-       * @example {
-       *       "user": "baseten-api-review-0916"
-       *     }
-       */
-      body?: {
-        [key: string]: string;
-      };
-      /**
-       * @description Destination domains this rule applies to. Use ["*"] for a global rule that matches all destinations.
-       * @example [
-       *       "api.openai.com"
-       *     ]
-       */
-      destinations?: string[];
-      /**
-       * @description Headers to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.
-       * @example {
-       *       "Authorization": "Bearer {{SECRET:openai-key}}"
-       *     }
-       */
-      headers?: {
-        [key: string]: string;
-      };
-      /**
-       * @description Named secret values for this routing rule, referenced in headers/body via {{SECRET:name}}. Stored encrypted at rest. Write-only: never returned in API responses.
-       * @example {
-       *       "openai-key": "sk-proj-demo-not-a-valid-api-key"
-       *     }
-       */
-      secrets?: {
-        [key: string]: string;
-      };
-    };
-    /**
      * @description Environment variable with name and value
      * @example {
      *       "name": "NODE_ENV",
@@ -13988,40 +13781,6 @@ export type components = {
      *         ],
      *         "terminated_retention": "24h"
      *       },
-     *       "network": {
-     *         "proxy": {
-     *           "allowed_domains": [
-     *             "api.openai.com",
-     *             "pypi.org",
-     *             "files.pythonhosted.org",
-     *             "registry.npmjs.org"
-     *           ],
-     *           "bypass": [
-     *             "registry.npmjs.org"
-     *           ],
-     *           "forbidden_domains": [
-     *             "facebook.com",
-     *             "*.facebook.com"
-     *           ],
-     *           "routing": [
-     *             {
-     *               "destinations": [
-     *                 "api.openai.com"
-     *               ],
-     *               "headers": {
-     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
-     *               },
-     *               "body": {
-     *                 "user": "baseten-api-review-0916"
-     *               },
-     *               "secrets": {
-     *                 "openai-key": "sk-proj-demo-not-a-valid-api-key"
-     *               }
-     *             }
-     *           ]
-     *         },
-     *         "subnet": "default"
-     *       },
      *       "region": "us-pdx-1",
      *       "envs": [
      *         {
@@ -14078,44 +13837,6 @@ export type components = {
        *     }
        */
       lifecycle?: components["schemas"]["SandboxLifecycle"];
-      /**
-       * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
-       * @example {
-       *       "proxy": {
-       *         "allowed_domains": [
-       *           "api.openai.com",
-       *           "pypi.org",
-       *           "files.pythonhosted.org",
-       *           "registry.npmjs.org"
-       *         ],
-       *         "bypass": [
-       *           "registry.npmjs.org"
-       *         ],
-       *         "forbidden_domains": [
-       *           "facebook.com",
-       *           "*.facebook.com"
-       *         ],
-       *         "routing": [
-       *           {
-       *             "destinations": [
-       *               "api.openai.com"
-       *             ],
-       *             "headers": {
-       *               "Authorization": "Bearer {{SECRET:openai-key}}"
-       *             },
-       *             "body": {
-       *               "user": "baseten-api-review-0916"
-       *             },
-       *             "secrets": {
-       *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
-       *             }
-       *           }
-       *         ]
-       *       },
-       *       "subnet": "default"
-       *     }
-       */
-      network?: components["schemas"]["SandboxNetwork"];
       /**
        * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the default sandbox region is used.
        * @example us-pdx-1
@@ -14211,40 +13932,6 @@ export type components = {
      *         ],
      *         "terminated_retention": "24h"
      *       },
-     *       "network": {
-     *         "proxy": {
-     *           "allowed_domains": [
-     *             "api.openai.com",
-     *             "pypi.org",
-     *             "files.pythonhosted.org",
-     *             "registry.npmjs.org"
-     *           ],
-     *           "bypass": [
-     *             "registry.npmjs.org"
-     *           ],
-     *           "forbidden_domains": [
-     *             "facebook.com",
-     *             "*.facebook.com"
-     *           ],
-     *           "routing": [
-     *             {
-     *               "destinations": [
-     *                 "api.openai.com"
-     *               ],
-     *               "headers": {
-     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
-     *               },
-     *               "body": {
-     *                 "user": "baseten-api-review-0916"
-     *               },
-     *               "secrets": {
-     *                 "openai-key": "sk-proj-demo-not-a-valid-api-key"
-     *               }
-     *             }
-     *           ]
-     *         },
-     *         "subnet": "default"
-     *       },
      *       "region": "us-pdx-1",
      *       "envs": [
      *         {
@@ -14308,44 +13995,6 @@ export type components = {
        *     }
        */
       lifecycle?: components["schemas"]["SandboxLifecycle"];
-      /**
-       * @description Network configuration for a sandbox including subnet, domain filtering, and proxy settings
-       * @example {
-       *       "proxy": {
-       *         "allowed_domains": [
-       *           "api.openai.com",
-       *           "pypi.org",
-       *           "files.pythonhosted.org",
-       *           "registry.npmjs.org"
-       *         ],
-       *         "bypass": [
-       *           "registry.npmjs.org"
-       *         ],
-       *         "forbidden_domains": [
-       *           "facebook.com",
-       *           "*.facebook.com"
-       *         ],
-       *         "routing": [
-       *           {
-       *             "destinations": [
-       *               "api.openai.com"
-       *             ],
-       *             "headers": {
-       *               "Authorization": "Bearer {{SECRET:openai-key}}"
-       *             },
-       *             "body": {
-       *               "user": "baseten-api-review-0916"
-       *             },
-       *             "secrets": {
-       *               "openai-key": "sk-proj-demo-not-a-valid-api-key"
-       *             }
-       *           }
-       *         ]
-       *       },
-       *       "subnet": "default"
-       *     }
-       */
-      network?: components["schemas"]["SandboxNetwork"];
       /**
        * @description Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the default sandbox region is used.
        * @example us-pdx-1
@@ -14418,7 +14067,7 @@ export type components = {
       labels?: components["schemas"]["SandboxMetadataLabels"];
     };
     /**
-     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, cpu, network, region, image, ports, filesystem, and volumes are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
+     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, cpu, region, image, ports, filesystem, and volumes are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
      * @example {
      *       "lifecycle": {
      *         "expiration_policies": [
@@ -14540,37 +14189,6 @@ export type components = {
      *           }
      *         ],
      *         "terminated_retention": "24h"
-     *       },
-     *       "network": {
-     *         "proxy": {
-     *           "allowed_domains": [
-     *             "api.openai.com",
-     *             "pypi.org",
-     *             "files.pythonhosted.org",
-     *             "registry.npmjs.org"
-     *           ],
-     *           "bypass": [
-     *             "registry.npmjs.org"
-     *           ],
-     *           "forbidden_domains": [
-     *             "facebook.com",
-     *             "*.facebook.com"
-     *           ],
-     *           "routing": [
-     *             {
-     *               "destinations": [
-     *                 "api.openai.com"
-     *               ],
-     *               "headers": {
-     *                 "Authorization": "Bearer {{SECRET:openai-key}}"
-     *               },
-     *               "body": {
-     *                 "user": "baseten-api-review-0916"
-     *               }
-     *             }
-     *           ]
-     *         },
-     *         "subnet": "default"
      *       },
      *       "region": "us-pdx-1",
      *       "envs": [
@@ -14725,37 +14343,6 @@ export type components = {
      *             ],
      *             "terminated_retention": "24h"
      *           },
-     *           "network": {
-     *             "proxy": {
-     *               "allowed_domains": [
-     *                 "api.openai.com",
-     *                 "pypi.org",
-     *                 "files.pythonhosted.org",
-     *                 "registry.npmjs.org"
-     *               ],
-     *               "bypass": [
-     *                 "registry.npmjs.org"
-     *               ],
-     *               "forbidden_domains": [
-     *                 "facebook.com",
-     *                 "*.facebook.com"
-     *               ],
-     *               "routing": [
-     *                 {
-     *                   "destinations": [
-     *                     "api.openai.com"
-     *                   ],
-     *                   "headers": {
-     *                     "Authorization": "Bearer {{SECRET:openai-key}}"
-     *                   },
-     *                   "body": {
-     *                     "user": "baseten-api-review-0916"
-     *                   }
-     *                 }
-     *               ]
-     *             },
-     *             "subnet": "default"
-     *           },
      *           "region": "us-pdx-1",
      *           "envs": [
      *             {
@@ -14826,37 +14413,6 @@ export type components = {
        *             }
        *           ],
        *           "terminated_retention": "24h"
-       *         },
-       *         "network": {
-       *           "proxy": {
-       *             "allowed_domains": [
-       *               "api.openai.com",
-       *               "pypi.org",
-       *               "files.pythonhosted.org",
-       *               "registry.npmjs.org"
-       *             ],
-       *             "bypass": [
-       *               "registry.npmjs.org"
-       *             ],
-       *             "forbidden_domains": [
-       *               "facebook.com",
-       *               "*.facebook.com"
-       *             ],
-       *             "routing": [
-       *               {
-       *                 "destinations": [
-       *                   "api.openai.com"
-       *                 ],
-       *                 "headers": {
-       *                   "Authorization": "Bearer {{SECRET:openai-key}}"
-       *                 },
-       *                 "body": {
-       *                   "user": "baseten-api-review-0916"
-       *                 }
-       *               }
-       *             ]
-       *           },
-       *           "subnet": "default"
        *         },
        *         "region": "us-pdx-1",
        *         "envs": [
@@ -16445,13 +16001,13 @@ export type components = {
       /**
        * Start Date
        * Format: date-time
-       * @description Start date (ISO 8601, UTC). Earliest queryable: 2026-01-01.
+       * @description Inclusive start date (ISO 8601, normalized to midnight UTC). Earliest queryable: 2026-01-01.
        */
       start_date: string;
       /**
        * End Date
        * Format: date-time
-       * @description End date in ISO 8601 format (UTC). Date range cannot exceed 31 days.
+       * @description Exclusive end date (ISO 8601, normalized to midnight UTC). Date range cannot exceed 31 days.
        */
       end_date: string;
     };
@@ -16604,7 +16160,7 @@ export type components = {
       end_date?: string | null;
       /**
        * Group By
-       * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, ROUTER, or HARNESS. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. Defaults to MODEL.
+       * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, INTELLIGENT_ROUTE, or HARNESS. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. INTELLIGENT_ROUTE returns only usage sent through an intelligent route, one row per intelligent route, or per intelligent route and model with MODEL. These rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. Defaults to MODEL.
        */
       group_by?: components["schemas"]["GridRouteUsageDimension"][];
       /**
@@ -17778,15 +17334,14 @@ export type GridRouteUsageResponse = components["schemas"]["GridRouteUsageRespon
 export type GridRouteUsageDimension = components["schemas"]["GridRouteUsageDimension"];
 export type GridRouteTombstone = components["schemas"]["GridRouteTombstone"];
 export type UpdateGridRouteRequest = components["schemas"]["UpdateGridRouteRequest"];
-export type GridBackgroundHarnessDefaults = components["schemas"]["GridBackgroundHarnessDefaults"];
 export type GridHarnessDefaults = components["schemas"]["GridHarnessDefaults"];
 export type GridHarnessModel = components["schemas"]["GridHarnessModel"];
+export type GridHarnessModels = components["schemas"]["GridHarnessModels"];
 export type GridSettingSource = components["schemas"]["GridSettingSource"];
 export type GridTeamSpendLimitSetting = components["schemas"]["GridTeamSpendLimitSetting"];
 export type GridTeamSettings = components["schemas"]["GridTeamSettings"];
-export type UpdateGridBackgroundHarnessModels =
-  components["schemas"]["UpdateGridBackgroundHarnessModels"];
 export type UpdateGridHarnessDefaults = components["schemas"]["UpdateGridHarnessDefaults"];
+export type UpdateGridHarnessModels = components["schemas"]["UpdateGridHarnessModels"];
 export type UpdateGridTeamSpendLimitSetting =
   components["schemas"]["UpdateGridTeamSpendLimitSetting"];
 export type UpdateGridTeamSettingsRequest = components["schemas"]["UpdateGridTeamSettingsRequest"];
@@ -17887,9 +17442,6 @@ export type SandboxTtlIdleExpirationPolicy =
 export type SandboxTtlMaxAgeExpirationPolicy =
   components["schemas"]["SandboxTTLMaxAgeExpirationPolicy"];
 export type SandboxDateExpirationPolicy = components["schemas"]["SandboxDateExpirationPolicy"];
-export type SandboxNetwork = components["schemas"]["SandboxNetwork"];
-export type SandboxProxyConfig = components["schemas"]["SandboxProxyConfig"];
-export type SandboxProxyTarget = components["schemas"]["SandboxProxyTarget"];
 export type SandboxEnv = components["schemas"]["SandboxEnv"];
 export type SandboxPorts = components["schemas"]["SandboxPorts"];
 export type SandboxPort = components["schemas"]["SandboxPort"];
