@@ -17,22 +17,10 @@ export type components = {
      */
     CheckpointSyncStatus: "SYNCING" | "COMPLETED";
     /**
-     * V1AvailabilityModel
-     * @description Capacity guarantee under which a training job is scheduled.
-     *
-     *     ``DEDICATED`` is on-demand capacity that is not preempted (the default). ``SPOT`` is
-     *     interruptible capacity that may be preempted; the user is responsible for checkpointing
-     *     their own progress. A managed/resumable model where the platform handles
-     *     checkpoint/resume on its own is intentionally not defined yet; it is planned for a
-     *     future milestone.
-     * @enum {string}
-     */
-    V1AvailabilityModel: "dedicated" | "spot";
-    /**
      * AuthMethod
      * @enum {string}
      */
-    AuthMethod: "CUSTOM_SECRET" | "AWS_OIDC" | "GCP_OIDC" | "AWS_ASSUME_ROLE";
+    AuthMethod: "CUSTOM_SECRET" | "AWS_OIDC" | "GCP_OIDC" | "HUGGING_FACE_OIDC" | "AWS_ASSUME_ROLE";
     /** BasetenLatestCheckpointConfig */
     BasetenLatestCheckpointConfig: {
       /**
@@ -102,6 +90,13 @@ export type components = {
        * @example /root/.cache
        */
       mount_base_path?: string;
+      /**
+       * Persistent Home
+       * @description Whether to keep `$HOME` in a per-job directory on the project cache, so its contents outlive the job. Requires `enabled`.
+       * @example true
+       * @example false
+       */
+      persistent_home?: boolean;
     };
     /** CreateTrainingJobCheckpointingConfig */
     CreateTrainingJobCheckpointingConfig: {
@@ -319,7 +314,7 @@ export type components = {
      */
     APIKeyCategory:
       | "PERSONAL"
-      | "ROUTES"
+      | "GRID"
       | "WORKSPACE_MANAGE_ALL"
       | "WORKSPACE_EXPORT_METRICS"
       | "WORKSPACE_INVOKE"
@@ -346,23 +341,12 @@ export type components = {
      * @enum {string}
      */
     ResourceKind:
+      | "LOOPS_RUN"
       | "LOOPS_SAMPLER"
       | "LOOPS_TRAINER"
       | "MODEL_DEPLOYMENT"
       | "TRAINING_JOB"
       | "CHAINLET";
-    /**
-     * GatewayProvider
-     * @enum {string}
-     */
-    GatewayProvider:
-      | "ANTHROPIC"
-      | "OPENAI"
-      | "XAI"
-      | "BASETEN"
-      | "BASETEN_MODEL_API"
-      | "VERTEX"
-      | "OPENAI_COMPATIBLE";
     /** PaginationResponseV1 */
     PaginationResponse: {
       /**
@@ -628,6 +612,19 @@ export type components = {
       workload_identity_provider: string;
     };
     /**
+     * VolumeSyncAuthenticationHuggingFaceOIDCV1
+     * @description Authentication using a Hugging Face trusted publisher and Baseten workload identity.
+     */
+    VolumeSyncAuthenticationHuggingFaceOIDC: {
+      /**
+       * Resource
+       * @description Hugging Face username for an account CI/CD identity, or namespace/repository for a repository trusted publisher. Configure trust in Hugging Face before starting the sync.
+       * @example hf-user
+       * @example organization/private-model
+       */
+      resource: string;
+    };
+    /**
      * VolumeSyncDestinationV1
      * @description BDN destination for a volume sync.
      */
@@ -805,6 +802,8 @@ export type components = {
        * @enum {string}
        */
       type: "HUGGING_FACE";
+      /** @description Hugging Face OIDC authentication for this source. Cannot be combined with auth_secret_name. */
+      hf_oidc?: components["schemas"]["VolumeSyncAuthenticationHuggingFaceOIDC"] | null;
     };
     /**
      * VolumeSyncSourceR2V1
@@ -1986,7 +1985,7 @@ export type components = {
        */
       is_development?: boolean;
       /**
-       * @description Autoscaling settings for the new deployment. With `environment_name`, the new deployment starts from the environment's settings with these changes applied, and the environment keeps the result when the promotion completes. Without it, they apply to the new deployment only.
+       * @description Autoscaling settings for the new deployment. The new deployment starts from the settings of the environment named by `environment_name` with these changes applied, and the environment keeps the result when the promotion completes. Requires `environment_name`.
        * @example {
        *       "max_replica": 4,
        *       "min_replica": 2
@@ -2017,7 +2016,7 @@ export type components = {
       promotion_settings_override?: components["schemas"]["UpdatePromotionSettings"] | null;
       /**
        * Instance Type Id
-       * @description Instance type for the new deployment, from `GET /v1/instance_types`, in place of the one in `config`. With `environment_name`, the environment takes it when the promotion completes. Without it, it applies to the new deployment only. Cannot be set with `preserve_env_instance_type: true`.
+       * @description Instance type for the new deployment, from `GET /v1/instance_types`, in place of the one in `config`. The environment named by `environment_name` takes it when the promotion completes. Requires `environment_name`. Cannot be set with `preserve_env_instance_type: true`.
        */
       instance_type_id?: string | null;
     };
@@ -2432,12 +2431,16 @@ export type components = {
         | components["schemas"]["AuditLogEventSecretDeleted"]
         | components["schemas"]["AuditLogEventApiKeyCreated"]
         | components["schemas"]["AuditLogEventApiKeyDeleted"]
+        | components["schemas"]["AuditLogEventApiKeyLifetimeLimitsUpdated"]
         | components["schemas"]["AuditLogEventGatewayEndpointCreated"]
         | components["schemas"]["AuditLogEventGatewayEndpointUpdated"]
         | components["schemas"]["AuditLogEventGatewayEndpointDeleted"]
         | components["schemas"]["AuditLogEventProviderConnectionCreated"]
         | components["schemas"]["AuditLogEventProviderConnectionUpdated"]
         | components["schemas"]["AuditLogEventProviderConnectionDeleted"]
+        | components["schemas"]["AuditLogEventGridMachineUserCreated"]
+        | components["schemas"]["AuditLogEventGridMachineUserUpdated"]
+        | components["schemas"]["AuditLogEventGridMachineUserDeleted"]
         | components["schemas"]["AuditLogEventUserInvited"]
         | components["schemas"]["AuditLogEventUserJoinedOrganization"]
         | components["schemas"]["AuditLogEventWebhookSigningSecretCreated"]
@@ -2522,6 +2525,27 @@ export type components = {
       prefix: string;
       /** @default null */
       revocation_reason: components["schemas"]["AuditLogApiKeyRevocationReason"] | null;
+    };
+    /**
+     * AuditLogEventApiKeyLifetimeLimitsUpdatedV1
+     * @description An administrator updated the organization's API key lifetime limits.
+     */
+    AuditLogEventApiKeyLifetimeLimitsUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "API_KEY_LIFETIME_LIMITS_UPDATED";
+      /** Organization Id */
+      organization_id: string;
+      /** Previous Personal Limit Days */
+      previous_personal_limit_days: number | null;
+      /** New Personal Limit Days */
+      new_personal_limit_days: number | null;
+      /** Previous Team Limit Days */
+      previous_team_limit_days: number | null;
+      /** New Team Limit Days */
+      new_team_limit_days: number | null;
     };
     /**
      * AuditLogEventAutoscalingScheduleActionV1
@@ -3197,6 +3221,65 @@ export type components = {
       previous_slug: string | null;
     };
     /**
+     * AuditLogEventGridMachineUserCreatedV1
+     * @description A Grid machine user was created.
+     */
+    AuditLogEventGridMachineUserCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "GRID_MACHINE_USER_CREATED";
+      /** Machine User Id */
+      machine_user_id: string;
+      /** Machine User Name */
+      machine_user_name: string;
+      /** Team Id */
+      team_id: string;
+      /** Team Name */
+      team_name: string;
+    };
+    /**
+     * AuditLogEventGridMachineUserDeletedV1
+     * @description A Grid machine user was deleted, revoking its API keys.
+     */
+    AuditLogEventGridMachineUserDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "GRID_MACHINE_USER_DELETED";
+      /** Machine User Id */
+      machine_user_id: string;
+      /** Machine User Name */
+      machine_user_name: string;
+      /** Team Id */
+      team_id: string;
+      /** Team Name */
+      team_name: string;
+    };
+    /**
+     * AuditLogEventGridMachineUserUpdatedV1
+     * @description A Grid machine user was renamed.
+     */
+    AuditLogEventGridMachineUserUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "GRID_MACHINE_USER_UPDATED";
+      /** Machine User Id */
+      machine_user_id: string;
+      /** Machine User Name */
+      machine_user_name: string;
+      /** Previous Machine User Name */
+      previous_machine_user_name: string;
+      /** Team Id */
+      team_id: string;
+      /** Team Name */
+      team_name: string;
+    };
+    /**
      * AuditLogEventModelDeletedV1
      * @description A model was deleted.
      */
@@ -3237,6 +3320,22 @@ export type components = {
       publish: boolean;
       /** Environment Name */
       environment_name: string | null;
+      /** Region Update */
+      region_update: string | null;
+      /** Instance Type Id Update */
+      instance_type_id_update: string | null;
+      promotion_settings_override:
+        | components["schemas"]["AuditLogEventPromotionSettingsOverride"]
+        | null;
+      autoscaling_settings_update:
+        | components["schemas"]["AuditLogEventAutoscalingSettingsUpdate"]
+        | null;
+      request_backpressure_settings_update:
+        | components["schemas"]["AuditLogEventRequestBackpressureSettingsUpdate"]
+        | null;
+      autoscaling_schedule_settings_update:
+        | components["schemas"]["AuditLogEventAutoscalingScheduleOperations"]
+        | null;
     };
     /**
      * AuditLogEventModelDeploymentActivatedV1
@@ -3723,12 +3822,16 @@ export type components = {
       | "SECRET_DELETED"
       | "API_KEY_CREATED"
       | "API_KEY_DELETED"
+      | "API_KEY_LIFETIME_LIMITS_UPDATED"
       | "GATEWAY_ENDPOINT_CREATED"
       | "GATEWAY_ENDPOINT_UPDATED"
       | "GATEWAY_ENDPOINT_DELETED"
       | "PROVIDER_CONNECTION_CREATED"
       | "PROVIDER_CONNECTION_UPDATED"
       | "PROVIDER_CONNECTION_DELETED"
+      | "GRID_MACHINE_USER_CREATED"
+      | "GRID_MACHINE_USER_UPDATED"
+      | "GRID_MACHINE_USER_DELETED"
       | "USER_INVITED"
       | "USER_JOINED_ORGANIZATION"
       | "WEBHOOK_SIGNING_SECRET_CREATED"
@@ -4041,7 +4144,7 @@ export type components = {
       | "SECRETS"
       | "API_KEYS"
       | "GATEWAY"
-      | "CODE"
+      | "GRID"
       | "WEBHOOK_SIGNING_SECRETS"
       | "USER_MANAGEMENT"
       | "DIRECTORY_GROUP_MANAGEMENT"
@@ -5012,7 +5115,7 @@ export type components = {
       needs_full_deploy_reason: string | null;
     };
     /**
-     * ModelMetricDescriptorV1
+     * MetricDescriptorV1
      * @description Describes one metric. Its position in the response ``metric_descriptors``
      *     list is the index used to read that metric out of each value set's ``values``.
      *
@@ -5020,26 +5123,26 @@ export type components = {
      *     or volume by status). ``label_sets`` enumerates those series in order; each
      *     value set's value for this metric is a list aligned to that order.
      */
-    ModelMetricDescriptor: {
+    MetricDescriptor: {
       /**
        * Name
        * @description Canonical metric name.
        */
       name: string;
       /** @description Advisory unit of the metric's values. */
-      unit_hint: components["schemas"]["ModelMetricUnitHint"];
+      unit_hint: components["schemas"]["MetricUnitHint"];
       /** @description Semantic hint for how the metric behaves (GAUGE, COUNTER, HISTOGRAM). */
-      kind: components["schemas"]["ModelMetricKind"];
+      kind: components["schemas"]["MetricKind"];
       /**
        * Label Sets
-       * @description The metric's series, in order. Each entry is the set of labels identifying one series; the value at the same index in each value set's ``values`` is that series' value. A plain metric has a single entry with no labels (`{}`). A histogram has one entry per quantile plus an average, e.g. {'quantile': '0.5'} … {'quantile': '0.99'}, {'stat': 'avg'}. A by-status metric has one entry per status, e.g. {'status': '2xx'}.
+       * @description The metric's series, in order. Each entry is the set of labels identifying one series; the value at the same index in each value set's ``values`` is that series' value. A plain metric has a single entry with no labels (`{}`). A histogram has one entry per quantile plus an average, e.g. {'quantile': '0.5'} … {'quantile': '0.99'}, {'stat': 'avg'}.
        */
       label_sets: {
         [key: string]: string;
       }[];
     };
     /**
-     * ModelMetricKindV1
+     * MetricKindV1
      * @description Semantic hint for how a metric behaves, to aid client rendering and
      *     aggregation. It does not describe the value's shape (that is carried by the
      *     descriptor's ``label_sets``; a metric may break down into multiple series).
@@ -5049,15 +5152,15 @@ export type components = {
      *     - ``HISTOGRAM``: a distribution, exposed as quantile/average series.
      * @enum {string}
      */
-    ModelMetricKind: "GAUGE" | "COUNTER" | "HISTOGRAM";
+    MetricKind: "GAUGE" | "COUNTER" | "HISTOGRAM";
     /**
-     * ModelMetricModeV1
+     * MetricModeV1
      * @description How metric values are aggregated over the request.
      * @enum {string}
      */
-    ModelMetricMode: "CURRENT" | "SUMMARY" | "SERIES";
+    MetricMode: "CURRENT" | "SUMMARY" | "SERIES";
     /**
-     * ModelMetricUnitHintV1
+     * MetricUnitHintV1
      * @description Advisory unit of a metric's values. Values are reported as scraped, so the
      *     hint describes the raw value (e.g. GPU memory is reported in mebibytes).
      *
@@ -5072,7 +5175,7 @@ export type components = {
      *     - ``WATTS``: power draw in watts.
      * @enum {string}
      */
-    ModelMetricUnitHint:
+    MetricUnitHint:
       | "PER_SECOND"
       | "SECONDS"
       | "BYTES"
@@ -5082,11 +5185,11 @@ export type components = {
       | "CELSIUS"
       | "WATTS";
     /**
-     * ModelMetricValueSetV1
+     * MetricValueSetV1
      * @description The metric values for one time step. ``values`` is aligned by index to the
      *     response ``metric_descriptors`` list.
      */
-    ModelMetricValueSet: {
+    MetricValueSet: {
       /**
        * Start Epoch Millis
        * @description Start of the step. The step spans until the next value set's start, or the window end for the last one; a summary has a single value set starting at the window start.
@@ -5099,11 +5202,11 @@ export type components = {
       values: (number | null)[][];
     };
     /**
-     * GetModelMetricsResponseV1
+     * GetMetricsResponseV1
      * @description Model metrics over a time window, index-mapped: metric descriptors appear once
      *     in ``metric_descriptors``; each value set's ``values`` are aligned to that order.
      */
-    GetModelMetricsResponse: {
+    GetMetricsResponse: {
       /**
        * Start Epoch Millis
        * @description Start of the returned window.
@@ -5115,7 +5218,7 @@ export type components = {
        */
       end_epoch_millis: number;
       /** @description The aggregation mode used. */
-      mode: components["schemas"]["ModelMetricMode"];
+      mode: components["schemas"]["MetricMode"];
       /**
        * Step Seconds
        * @description Seconds per step; populated only in SERIES mode, null otherwise.
@@ -5125,12 +5228,12 @@ export type components = {
        * Metric Descriptors
        * @description Descriptors for each metric; position defines the values index.
        */
-      metric_descriptors: components["schemas"]["ModelMetricDescriptor"][];
+      metric_descriptors: components["schemas"]["MetricDescriptor"][];
       /**
        * Metric Values
        * @description Metric values per time step covering the window. In summary mode this always contains exactly one value set spanning the whole window.
        */
-      metric_values: components["schemas"]["ModelMetricValueSet"][];
+      metric_values: components["schemas"]["MetricValueSet"][];
     };
     /**
      * StartupAttemptV1
@@ -6733,6 +6836,12 @@ export type components = {
        * @example My Training Project
        */
       name: string;
+      /**
+       * Project Accelerator
+       * @description Optional default GPU type for cache-enabled CPU job placement, such as H100. GPU jobs use their requested GPU type; uncached CPU jobs use normal CPU routing. Omitting this field preserves the stored default; providing a value updates it. Existing cache-affinity requirements still apply.
+       * @example H100
+       */
+      project_accelerator?: string | null;
     };
     /**
      * UpsertTrainingProjectRequestV1
@@ -6742,6 +6851,12 @@ export type components = {
       /** @description The training project to upsert. */
       training_project: components["schemas"]["UpsertTrainingProject"];
     };
+    /**
+     * AvailabilityModelV1
+     * @description Capacity a training job or Loops trainer runs on.
+     * @enum {string}
+     */
+    AvailabilityModel: "standard" | "spot";
     /** TrainingJobV1 */
     TrainingJob: {
       /**
@@ -6807,10 +6922,10 @@ export type components = {
        */
       priority: number;
       /**
-       * @description Capacity guarantee for the job. 'dedicated' is non-preemptible on-demand capacity; 'spot' is interruptible.
-       * @default dedicated
+       * @description Capacity guarantee for the job. 'standard' runs on capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; you are responsible for checkpointing your own progress.
+       * @default standard
        */
-      availability_model: components["schemas"]["V1AvailabilityModel"];
+      availability_model: components["schemas"]["AvailabilityModel"];
       /**
        * @description The user who created the training job.
        * @default null
@@ -6845,6 +6960,12 @@ export type components = {
        * @description Name of the training project.
        */
       name: string;
+      /**
+       * Project Accelerator
+       * @description Default GPU type for cache-enabled CPU job placement.
+       * @default null
+       */
+      project_accelerator: string | null;
       /**
        * Created At
        * Format: date-time
@@ -6896,6 +7017,8 @@ export type components = {
        * @description List of training projects.
        */
       training_projects: components["schemas"]["TrainingProject"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
     };
     /**
      * ListTrainingJobsResponseV1
@@ -7075,10 +7198,10 @@ export type components = {
        */
       accelerator?: components["schemas"]["CreateTrainingJobAccelerator"] | null;
       /**
-       * @description Capacity guarantee for the job. 'dedicated' (the default) runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress.
+       * @description Capacity guarantee for the job. Defaults to 'standard'. 'standard' runs on capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; you are responsible for checkpointing your own progress.
        * @example spot
        */
-      availability_model?: components["schemas"]["V1AvailabilityModel"];
+      availability_model?: components["schemas"]["AvailabilityModel"];
     };
     /**
      * CreateTrainingJobImageV1
@@ -7135,6 +7258,7 @@ export type components = {
        *       "enable_legacy_hf_mount": true,
        *       "enabled": true,
        *       "mount_base_path": "/root/.cache",
+       *       "persistent_home": false,
        *       "require_cache_affinity": true
        *     }
        */
@@ -7444,10 +7568,10 @@ export type components = {
        */
       priority?: number | null;
       /**
-       * @description New capacity guarantee for a PENDING training job. 'dedicated' runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress. Only jobs in the PENDING state can have their availability model changed.
+       * @description New capacity guarantee for a PENDING training job. 'standard' runs on capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; you are responsible for checkpointing your own progress. Only jobs in the PENDING state can have their availability model changed.
        * @example spot
        */
-      availability_model?: components["schemas"]["V1AvailabilityModel"] | null;
+      availability_model?: components["schemas"]["AvailabilityModel"] | null;
     };
     /**
      * UpdateTrainingJobResponseV1
@@ -7973,6 +8097,16 @@ export type components = {
      */
     SearchTrainingJobsRequest: {
       /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
        * Project Id
        * @description Filter the training jobs by project ID.
        * @example n4q95w5
@@ -8009,6 +8143,8 @@ export type components = {
        * @description List of training jobs.
        */
       training_jobs: components["schemas"]["TrainingJob"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
     };
     /**
      * EnablementDetailsV1
@@ -8087,12 +8223,12 @@ export type components = {
      * @description Response for ``GET /v1/loops/capabilities``.
      *
      *     A model Baseten does not support has no entry at all, so an empty list for
-     *     a single-model request means exactly that.
+     *     a single-model request without ``enabled`` means exactly that.
      */
     GetLoopsCapabilitiesResponse: {
       /**
        * Supported Models
-       * @description Models Baseten supports for this use case, each carrying an 'enabled' flag saying whether this workspace can run it now, and 'enablement_details' when it cannot. Filter on 'enabled' to get the models you can use.
+       * @description Models Baseten supports for this use case, each carrying an 'enabled' flag saying whether this workspace can run it now, and 'enablement_details' when it cannot. Models this workspace can run come first, then the rest, each group sorted by name.
        */
       supported_models: components["schemas"]["SupportedModel"][];
     };
@@ -8211,6 +8347,11 @@ export type components = {
     LoopsSampler: {
       /** Id */
       id: string;
+      /**
+       * Session Id
+       * @description The session ID this sampler belongs to.
+       */
+      session_id: string;
       /** Base Url */
       base_url: string;
       /**
@@ -8310,10 +8451,10 @@ export type components = {
        */
       scale_down_delay_seconds?: number;
       /**
-       * @description Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.
+       * @description Capacity the trainer runs on. 'standard' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.
        * @example spot
        */
-      availability_model?: components["schemas"]["V1AvailabilityModel"];
+      availability_model?: components["schemas"]["AvailabilityModel"];
       /**
        * Replicas
        * @description Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.
@@ -8376,6 +8517,12 @@ export type components = {
       /** @description The Loops run with its associated sampler. */
       run: components["schemas"]["LoopsRun"];
     };
+    /**
+     * LoopsPlacementScopeV1
+     * @description Where a Loops run's trainer or a standalone sampler runs.
+     * @enum {string}
+     */
+    LoopsPlacementScope: "default" | "serverless" | "dedicated";
     /** CreateLoopsTrainerRequestV1 */
     CreateLoopsTrainerRequest: {
       /**
@@ -8414,10 +8561,10 @@ export type components = {
        */
       scale_down_delay_seconds?: number;
       /**
-       * @description Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.
+       * @description Capacity the trainer runs on. 'standard' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.
        * @example spot
        */
-      availability_model?: components["schemas"]["V1AvailabilityModel"];
+      availability_model?: components["schemas"]["AvailabilityModel"];
       /**
        * Replicas
        * @description Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.
@@ -8444,6 +8591,8 @@ export type components = {
        * @description Optional Hugging Face checkpoint to start training from instead of the base model's weights. Form: hf://<org>/<repo>[@<revision>]. It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include its tokenizer files: the run's sampler and the SDK load the tokenizer and chat template from the checkpoint. A private or gated repository needs a Hugging Face token in the team secret hf_access_token. The revision is pinned to a commit when the run is created. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.
        */
       base_checkpoint?: string | null;
+      /** @description Choose where this runs. 'default' lets Baseten choose. 'serverless' runs on Baseten's shared capacity, and fails instead of falling back when shared capacity can't serve the request. 'dedicated' gives it its own deployment, which you size and pay for. */
+      scope?: components["schemas"]["LoopsPlacementScope"];
     };
     /**
      * ListLoopsSamplersResponseV1
@@ -8461,8 +8610,8 @@ export type components = {
     };
     /** CreateLoopsSamplerRequestV1 */
     CreateLoopsSamplerRequest: {
-      /** @description Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'dedicated' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it. */
-      availability_model?: components["schemas"]["V1AvailabilityModel"] | null;
+      /** @description Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'standard' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it. */
+      availability_model?: components["schemas"]["AvailabilityModel"] | null;
       /**
        * Session Id
        * @description ID of the Loops session this sampler belongs to.
@@ -8499,6 +8648,8 @@ export type components = {
        * @description Number of replicas the sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a paired sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged, and when a run ends, its sampler is scaled down.
        */
       num_replicas?: number | null;
+      /** @description Choose where this runs. 'default' lets Baseten choose. 'serverless' runs on Baseten's shared capacity, and fails instead of falling back when shared capacity can't serve the request. 'dedicated' gives it its own deployment, which you size and pay for. Standalone samplers only: a run's sampler runs where its run does. */
+      scope?: components["schemas"]["LoopsPlacementScope"];
     };
     /** CreateLoopsSamplerResponseV1 */
     CreateLoopsSamplerResponse: {
@@ -8733,7 +8884,7 @@ export type components = {
       volume_ref: string;
       /**
        * Path
-       * @description Directory inside that version holding the checkpoint's files.
+       * @description Directory inside that version holding the checkpoint's files. Empty when the checkpoint is the whole version.
        */
       path: string;
     };
@@ -8812,9 +8963,9 @@ export type components = {
       created_at: string;
       /**
        * @description Capacity the trainer was scheduled on.
-       * @default dedicated
+       * @default standard
        */
-      availability_model: components["schemas"]["V1AvailabilityModel"];
+      availability_model: components["schemas"]["AvailabilityModel"];
       /** @description Instance type backing the trainer. */
       instance_type: components["schemas"]["InstanceType"];
       /**
@@ -9114,7 +9265,7 @@ export type components = {
       usage_count: number;
       /**
        * Dedicated Usage Count
-       * @description Portion of usage_count from dedicated (on-demand) jobs.
+       * @description Portion of usage_count from standard (non-spot) jobs.
        * @default 0
        */
       dedicated_usage_count: number;
@@ -9152,7 +9303,7 @@ export type components = {
       usage_count: number;
       /**
        * Dedicated Usage Count
-       * @description Portion of usage_count from dedicated (on-demand) jobs, which run against the baseline.
+       * @description Portion of usage_count from standard (non-spot) jobs, which run against the baseline.
        * @default 0
        */
       dedicated_usage_count: number;
@@ -9483,7 +9634,7 @@ export type components = {
       /**
        * @description Type of the API key.
        * @example PERSONAL
-       * @example ROUTES
+       * @example GRID
        * @example WORKSPACE_MANAGE_API_KEYS
        * @example WORKSPACE_EXPORT_METRICS
        * @example WORKSPACE_INVOKE
@@ -9498,6 +9649,12 @@ export type components = {
        *     ]
        */
       model_ids?: string[] | null;
+      /**
+       * Expires At
+       * @description Expiration time in UTC. Must be in the future. Personal keys must expire within 90 days, or sooner if your organization sets a lower limit. Team and organization keys require an expiration within your organization's limit when one is set; otherwise they may omit it or use null. Organization lifetime limits do not apply to Grid keys.
+       * @example 2027-01-01T00:00:00Z
+       */
+      expires_at?: string | null;
       /**
        * Team Id
        * @description Team ID for a team-scoped key. When omitted, uses the team in the URL if present, otherwise your organization's default team. Must match the URL team when both are provided. Not supported for PERSONAL or WORKSPACE_MANAGE_API_KEYS keys.
@@ -9535,7 +9692,7 @@ export type components = {
       /**
        * @description Type of the API key.
        * @example PERSONAL
-       * @example ROUTES
+       * @example GRID
        * @example WORKSPACE_MANAGE_API_KEYS
        * @example WORKSPACE_EXPORT_METRICS
        * @example WORKSPACE_INVOKE
@@ -9563,6 +9720,12 @@ export type components = {
        * @description Creation time in ISO 8601 format
        */
       created_at: string;
+      /**
+       * Expires At
+       * @description Expiry time in ISO 8601 format, or null if the key never expires.
+       * @default null
+       */
+      expires_at: string | null;
       /**
        * Last Used At
        * @description Last recorded use in ISO 8601 format, or null if unavailable. Updates may be delayed.
@@ -9627,25 +9790,114 @@ export type components = {
     LimitType: "REQUEST" | "TOKEN" | "CONCURRENT_REQUEST" | "UNCACHED_INPUT_TOKEN" | "OUTPUT_TOKEN";
     /**
      * ModelAPIOrgDetailsV1
-     * @description Workspace-specific state for a Model API.
+     * @description Team-specific state for an added Model API.
      */
     ModelAPIOrgDetails: {
       /**
        * Added At
        * Format: date-time
-       * @description When the workspace first added this Model API.
+       * @description When the team first added this Model API.
        */
       added_at: string;
       /**
        * Last Used At
-       * @description When the workspace last invoked this Model API. Null if the workspace has never invoked it.
+       * @description When the team last invoked this Model API. Null if the team has never invoked it.
        * @default null
        */
       last_used_at: string | null;
     };
+    /** ModelAPIRateLimitV1 */
+    ModelAPIRateLimit: {
+      /**
+       * @description The type of the rate limit
+       * @example TOKEN
+       * @example REQUEST
+       */
+      type: components["schemas"]["LimitType"];
+      /**
+       * @description The unit of the rate limit
+       * @example SECOND
+       * @example MINUTE
+       */
+      unit: components["schemas"]["RateLimitUnit"];
+      /**
+       * Threshold
+       * @description The threshold for the rate limit
+       * @example 1000
+       * @example 50000
+       */
+      threshold: number;
+      /**
+       * Is Pooled
+       * @description Whether this limit uses the organization-wide pool. The threshold is the effective limit, including any adaptive grant.
+       */
+      is_pooled: boolean;
+      /**
+       * @description Service tier the rate limit applies to.
+       * @example DEFAULT
+       * @example FLEX
+       */
+      service_tier: components["schemas"]["ModelAPIServiceTier"];
+      /**
+       * Baseline Threshold
+       * @description Configured baseline threshold for the rate limit, before any adaptive increase. Equal to `threshold` when no adaptive increase is in effect.
+       * @example 1000
+       * @example 50000
+       */
+      baseline_threshold: number;
+    };
+    /**
+     * ModelAPIServiceTierV1
+     * @enum {string}
+     */
+    ModelAPIServiceTier: "DEFAULT" | "FLEX" | "PRIORITY";
+    /** ModelAPITeamDetailsV1 */
+    ModelAPITeamDetails: {
+      /**
+       * Id
+       * @description Organization Shared Endpoint ID.
+       */
+      id: string;
+      /**
+       * Team Id
+       * @description Team that has added this Model API.
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the team that has added this Model API.
+       */
+      team_name: string;
+      /**
+       * Added At
+       * Format: date-time
+       * @description When the team first added this Model API.
+       */
+      added_at: string;
+      /**
+       * Last Used At
+       * @description When the team last invoked this Model API. Null if never invoked.
+       */
+      last_used_at: string | null;
+      /**
+       * Rate Limits
+       * @description Effective rate limits for this team's Model API, at most one per type, unit, and service tier.
+       */
+      rate_limits: components["schemas"]["ModelAPIRateLimit"][];
+      /**
+       * Cost Per Million Input Tokens
+       * @description Effective cost per million input tokens, in dollars. Null if unavailable.
+       */
+      cost_per_million_input_tokens: number | string | null;
+      /**
+       * Cost Per Million Output Tokens
+       * @description Effective cost per million output tokens, in dollars. Null if unavailable.
+       */
+      cost_per_million_output_tokens: number | string | null;
+    };
     /**
      * ModelAPIV1
-     * @description A Model API catalog row, optionally enriched with workspace-specific state.
+     * @description Model metadata and authorized team details, with retained legacy fields.
      */
     ModelAPI: {
       /**
@@ -9694,54 +9946,47 @@ export type components = {
       context_length: number;
       /**
        * Cost Per Million Input Tokens
-       * @description Effective cost per million input tokens, in dollars. Null when pricing is unavailable.
+       * @deprecated
+       * @description Deprecated and will be removed in a future version. Legacy effective input-token price. Use team_details pricing instead. Retained during migration; null when pricing is unavailable.
        * @example 0.13
        */
       cost_per_million_input_tokens: number | string | null;
       /**
+       * Cost Per Million Cached Input Tokens
+       * @description Effective cost per million cached input tokens, in dollars. Null when pricing is unavailable or the Model API has no cached input price.
+       * @example 0.03
+       */
+      cost_per_million_cached_input_tokens: number | string | null;
+      /**
        * Cost Per Million Output Tokens
-       * @description Effective cost per million output tokens, in dollars. Null when pricing is unavailable.
+       * @deprecated
+       * @description Deprecated and will be removed in a future version. Legacy effective output-token price. Use team_details pricing instead. Retained during migration; null when pricing is unavailable.
        * @example 0.50
        */
       cost_per_million_output_tokens: number | string | null;
       /**
        * Rate Limits
-       * @description Rate limits in effect for the workspace. Workspace-specific overrides are returned when the workspace has added this Model API and configured them; otherwise the catalog default rate limits are returned.
+       * @deprecated
+       * @description Deprecated and will be removed in a future version. Legacy Default Team effective limits, independent of team_ids, or catalog defaults when not added or unauthorized. Use team_details for team limits; this field is not the org-pool limit view.
        */
-      rate_limits: components["schemas"]["RateLimit"][];
+      rate_limits: components["schemas"]["ModelAPIRateLimit"][];
       /**
-       * @description Workspace-specific state. Null when the workspace has not added this Model API.
+       * @deprecated
+       * @description Deprecated and will be removed in a future version. Legacy Default Team state, independent of team_ids. Use team_details instead. Null when not added or unauthorized.
        * @default null
        */
       org_details: components["schemas"]["ModelAPIOrgDetails"] | null;
+      /**
+       * Team Details
+       * @description Added Model API details for authorized teams, ordered by team ID. Empty when no team in the selected scope has added this Model API.
+       */
+      team_details?: components["schemas"]["ModelAPITeamDetails"][];
     };
     /**
      * RateLimitUnitV1
      * @enum {string}
      */
     RateLimitUnit: "SECOND" | "MINUTE";
-    /** RateLimitV1 */
-    RateLimit: {
-      /**
-       * @description The type of the rate limit
-       * @example TOKEN
-       * @example REQUEST
-       */
-      type: components["schemas"]["LimitType"];
-      /**
-       * @description The unit of the rate limit
-       * @example SECOND
-       * @example MINUTE
-       */
-      unit: components["schemas"]["RateLimitUnit"];
-      /**
-       * Threshold
-       * @description The threshold for the rate limit
-       * @example 1000
-       * @example 50000
-       */
-      threshold: number;
-    };
     /**
      * ModelAPIsResponseV1
      * @description Page of Model APIs visible to the caller.
@@ -9882,6 +10127,13 @@ export type components = {
        * @description If true, mounts an OIDC bearer token for the deployment to access at runtime. If unset, the platform default applies.
        */
       enabled?: boolean | null;
+      /**
+       * Byok
+       * @description BYOK configuration for envelope-encrypted BDN weights in BIS-LLM deployments. Requires runtime.oidc.enabled to be true.
+       */
+      byok?: {
+        [key: string]: unknown;
+      } | null;
     };
     /**
      * CreateLLMModelRequestV1
@@ -9895,6 +10147,11 @@ export type components = {
       resources: {
         [key: string]: unknown;
       };
+      /**
+       * Deployment Name
+       * @description Name of the deployment, unique within the model. Use only A-Z, a-z, 0-9, '-', '_', and '.'. The name 'development' is reserved. If omitted or empty, a name is generated automatically.
+       */
+      deployment_name?: string | null;
       /**
        * Region
        * @description Region in which to deploy the model
@@ -9981,6 +10238,13 @@ export type components = {
             [key: string]: unknown;
           }[]
         | null;
+      /**
+       * Bdn
+       * @description BDN configuration for read-only sealed volume mounts; supports mounts only
+       */
+      bdn?: {
+        [key: string]: unknown;
+      } | null;
       /** @description Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled. */
       egress_restrictions?: components["schemas"]["EgressRestrictions"] | null;
       /** @description Runtime configuration for the deployment */
@@ -10031,6 +10295,11 @@ export type components = {
         [key: string]: unknown;
       };
       /**
+       * Deployment Name
+       * @description Name of the deployment, unique within the model. Use only A-Z, a-z, 0-9, '-', '_', and '.'. The name 'development' is reserved. If omitted or empty, a name is generated automatically.
+       */
+      deployment_name?: string | null;
+      /**
        * Region
        * @description Region in which to deploy the model
        */
@@ -10116,6 +10385,13 @@ export type components = {
             [key: string]: unknown;
           }[]
         | null;
+      /**
+       * Bdn
+       * @description BDN configuration for read-only sealed volume mounts; supports mounts only
+       */
+      bdn?: {
+        [key: string]: unknown;
+      } | null;
       /** @description Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled. */
       egress_restrictions?: components["schemas"]["EgressRestrictions"] | null;
       /** @description Runtime configuration for the deployment */
@@ -10135,6 +10411,8 @@ export type components = {
       license: string;
       /** Variant */
       variant?: string | null;
+      /** Base Model */
+      base_model?: string | null;
       /** Publisher */
       publisher?: string | null;
       /** Model Api Slug */
@@ -10511,6 +10789,12 @@ export type components = {
        */
       service_tier: string | null;
       /**
+       * Team Id
+       * @description Team the cost is attributed to. Null when not grouping by team or when team attribution is unavailable.
+       * @default null
+       */
+      team_id: string | null;
+      /**
        * Subtotal
        * @description Model API cost in USD for this day and grouping combination, returned as an exact decimal string preserving fractional-cent amounts. This amount may differ from finalized invoice amounts.
        * @example 0.00000123
@@ -10536,7 +10820,7 @@ export type components = {
      * ModelApiCostDimensionV1
      * @enum {string}
      */
-    ModelApiCostDimension: "api_key_prefix" | "user" | "model" | "service_tier";
+    ModelApiCostDimension: "api_key_prefix" | "user" | "model" | "service_tier" | "team";
     /** BillableResourceV1 */
     BillableResource: {
       /**
@@ -10544,7 +10828,7 @@ export type components = {
        * @description Unique identifier of the resource
        */
       id: string;
-      /** @description Resource kind (MODEL_DEPLOYMENT, CHAINLET, TRAINING_JOB, LOOPS_TRAINER, or LOOPS_SAMPLER) */
+      /** @description Resource kind (MODEL_DEPLOYMENT, CHAINLET, TRAINING_JOB, LOOPS_TRAINER, LOOPS_SAMPLER, or LOOPS_RUN) */
       kind: components["schemas"]["ResourceKind"];
       /**
        * Name
@@ -10577,7 +10861,7 @@ export type components = {
       instance_type: string | null;
       /**
        * Base Model
-       * @description Base model used by this Loops trainer or sampler
+       * @description Base model used by this Loops run, trainer, or sampler
        * @default null
        */
       base_model: string | null;
@@ -10657,6 +10941,28 @@ export type components = {
        * @description Number of inference requests on this date
        */
       inference_requests: number;
+    };
+    /** DailyLoopsUsageV1 */
+    DailyLoopsUsage: {
+      /**
+       * Subtotal
+       * @description Cost in dollars across all four meters
+       */
+      subtotal: number | string;
+      /** @description Prompt tokens that missed the prefix cache */
+      uncached_prefill: components["schemas"]["LoopsMeterUsage"];
+      /** @description Prompt tokens served from the prefix cache */
+      cached_prefill: components["schemas"]["LoopsMeterUsage"];
+      /** @description Tokens generated by sampling */
+      sample: components["schemas"]["LoopsMeterUsage"];
+      /** @description Tokens processed by forward and forward-backward training calls */
+      train: components["schemas"]["LoopsMeterUsage"];
+      /**
+       * Date
+       * Format: date
+       * @description Date of the usage
+       */
+      date: string;
     };
     /** DailyModelApiUsageV1 */
     DailyModelApiUsage: {
@@ -10768,6 +11074,96 @@ export type components = {
        * @description Per-deployment usage breakdown
        */
       breakdown?: components["schemas"]["DedicatedItem"][];
+    };
+    /** LoopsBaseModelItemV1 */
+    LoopsBaseModelItem: {
+      /**
+       * Subtotal
+       * @description Cost in dollars across all four meters
+       */
+      subtotal: number | string;
+      /** @description Prompt tokens that missed the prefix cache */
+      uncached_prefill: components["schemas"]["LoopsMeterUsage"];
+      /** @description Prompt tokens served from the prefix cache */
+      cached_prefill: components["schemas"]["LoopsMeterUsage"];
+      /** @description Tokens generated by sampling */
+      sample: components["schemas"]["LoopsMeterUsage"];
+      /** @description Tokens processed by forward and forward-backward training calls */
+      train: components["schemas"]["LoopsMeterUsage"];
+      /**
+       * Base Model
+       * @description Base model the usage is priced by
+       */
+      base_model: string;
+      /**
+       * Daily
+       * @description Daily usage breakdown
+       */
+      daily?: components["schemas"]["DailyLoopsUsage"][];
+      /**
+       * Breakdown
+       * @description Usage per run and standalone sampler on this base model
+       */
+      breakdown?: components["schemas"]["LoopsResourceItem"][];
+    };
+    /** LoopsMeterUsageV1 */
+    LoopsMeterUsage: {
+      /**
+       * Tokens
+       * @description Tokens billed on this meter
+       */
+      tokens: number;
+      /**
+       * Subtotal
+       * @description Cost of those tokens in dollars
+       */
+      subtotal: number | string;
+    };
+    /** LoopsResourceItemV1 */
+    LoopsResourceItem: {
+      /**
+       * Subtotal
+       * @description Cost in dollars across all four meters
+       */
+      subtotal: number | string;
+      /** @description Prompt tokens that missed the prefix cache */
+      uncached_prefill: components["schemas"]["LoopsMeterUsage"];
+      /** @description Prompt tokens served from the prefix cache */
+      cached_prefill: components["schemas"]["LoopsMeterUsage"];
+      /** @description Tokens generated by sampling */
+      sample: components["schemas"]["LoopsMeterUsage"];
+      /** @description Tokens processed by forward and forward-backward training calls */
+      train: components["schemas"]["LoopsMeterUsage"];
+      /** @description The Loops run (LOOPS_RUN) or standalone sampler (LOOPS_SAMPLER). A resource that no longer exists has only its ID and kind set. */
+      billable_resource: components["schemas"]["BillableResource"];
+      /**
+       * Daily
+       * @description Daily usage breakdown
+       */
+      daily?: components["schemas"]["DailyLoopsUsage"][];
+    };
+    /** LoopsUsageV1 */
+    LoopsUsage: {
+      /**
+       * Subtotal
+       * @description Cost in dollars before credits
+       */
+      subtotal: number | string;
+      /**
+       * Credits Used
+       * @description Credits applied in dollars
+       */
+      credits_used: number | string;
+      /**
+       * Total
+       * @description Total cost in dollars
+       */
+      total: number | string;
+      /**
+       * Breakdown
+       * @description Per-base-model usage breakdown
+       */
+      breakdown?: components["schemas"]["LoopsBaseModelItem"][];
     };
     /** ModelApiItemV1 */
     ModelApiItem: {
@@ -10899,6 +11295,11 @@ export type components = {
        * @default null
        */
       model_apis_usage: components["schemas"]["ModelApisUsage"] | null;
+      /**
+       * @description Serverless Loops usage, billed per token. Loops usage on dedicated trainers and samplers is billed by the minute and is part of training usage.
+       * @default null
+       */
+      loops_usage: components["schemas"]["LoopsUsage"] | null;
     };
     /**
      * ToolCallUsageBucketV1
@@ -10936,6 +11337,12 @@ export type components = {
        * @description Billable quantity in the provider's sku unit, summed over the calls.
        */
       quantity: number;
+      /**
+       * Team Id
+       * @description Team attributed to the usage. Null when not grouping by team or when historical team attribution is unavailable.
+       * @default null
+       */
+      team_id: string | null;
     };
     /**
      * ToolCallUsageResponseV1
@@ -10945,6 +11352,11 @@ export type components = {
       /** Items */
       items?: components["schemas"]["ToolCallUsageBucket"][];
     };
+    /**
+     * ToolCallUsageDimensionV1
+     * @enum {string}
+     */
+    ToolCallUsageDimension: "TEAM";
     /**
      * UserInfoV1
      * @description A Baseten user.
@@ -11246,6 +11658,41 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** CreateGridTokenRequestV1 */
+    CreateGridTokenRequest: {
+      /**
+       * Team Id
+       * @description ID of the team. When omitted, the team you belong to; required when you belong to several.
+       * @example abc1234
+       */
+      team_id?: string | null;
+    };
+    /** GridTokenV1 */
+    GridToken: {
+      /**
+       * Token
+       * @description Short-lived bearer token for the Grid gateway, scoped to you and the team. Send it as Authorization: Bearer <token>.
+       */
+      token: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description Token expiry in ISO 8601 format. Tokens cannot be renewed; request a new one.
+       */
+      expires_at: string;
+      /**
+       * Team Id
+       * @description ID of the team the token invokes Grid routes in.
+       * @example abc1234
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of that team.
+       * @example Engineering
+       */
+      team_name: string;
+    };
     /** GridClassifierV1 */
     GridClassifier: {
       /**
@@ -11260,6 +11707,35 @@ export type components = {
        * @example General
        */
       name: string;
+    };
+    /** GridRouteClassifierV1 */
+    GridRouteClassifier: {
+      /**
+       * Id
+       * @description Stable route classifier identifier.
+       * @example general-v1
+       */
+      id: string;
+      /**
+       * Name
+       * @description Display name of the route classifier.
+       * @example General
+       */
+      name: string;
+      /**
+       * Supported Tradeoffs
+       * @description Tradeoffs the route classifier supports. Empty when it supports all of them.
+       */
+      supported_tradeoffs: ("cost" | "balanced" | "intelligence")[];
+      /**
+       * Decidable Models
+       * @description Model identities the route classifier picks from.
+       * @example [
+       *       "zai-org/GLM-5.3",
+       *       "anthropic/claude-opus-5-5"
+       *     ]
+       */
+      decidable_models: string[];
     };
     /** GridRouteRefV1 */
     GridRouteRef: {
@@ -11322,6 +11798,22 @@ export type components = {
        */
       connection_id: string;
     };
+    /** GridRouteTargetIntelligentV1 */
+    GridRouteTargetIntelligent: {
+      /**
+       * @description Target kind for an intelligent route: Baseten picks the model per request. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "INTELLIGENT";
+      /** @description Route classifier that picks the model. */
+      route_classifier: components["schemas"]["GridRouteClassifier"];
+      /**
+       * GridRouteTradeoffV1
+       * @description How the classifier weighs cost against quality.
+       * @enum {string}
+       */
+      tradeoff: "cost" | "balanced" | "intelligence";
+    };
     /** GridRouteV1 */
     GridRoute: {
       /**
@@ -11361,7 +11853,8 @@ export type components = {
       target:
         | components["schemas"]["GridRouteTargetBasetenModelAPI"]
         | components["schemas"]["GridRouteTargetConnection"]
-        | components["schemas"]["GridRouteTargetClassifier"];
+        | components["schemas"]["GridRouteTargetClassifier"]
+        | components["schemas"]["GridRouteTargetIntelligent"];
       /** @description Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked. */
       metadata: components["schemas"]["ExploreMetadata"] | null;
       /**
@@ -11491,7 +11984,8 @@ export type components = {
       | "ANTHROPIC"
       | "XAI"
       | "VERTEX"
-      | "OPENAI_COMPATIBLE";
+      | "OPENAI_COMPATIBLE"
+      | "BEDROCK";
     /** GridRouteUsageBucketV1 */
     GridRouteUsageBucket: {
       /**
@@ -11506,6 +12000,11 @@ export type components = {
        */
       results: components["schemas"]["GridRouteUsageResult"][];
     };
+    /**
+     * GridRouteUsageHarnessV1
+     * @enum {string}
+     */
+    GridRouteUsageHarness: "CLAUDE_CODE" | "OPENCODE" | "CODEX" | "PI";
     /** GridRouteUsageResultV1 */
     GridRouteUsageResult: {
       /**
@@ -11543,6 +12042,11 @@ export type components = {
        * @default null
        */
       router_id: string | null;
+      /**
+       * @description Coding harness. Null when not grouping by HARNESS, when no harness was recorded (including usage from before harness tracking), or when the recorded harness is not recognized by this API version.
+       * @default null
+       */
+      harness: components["schemas"]["GridRouteUsageHarness"] | null;
       /**
        * Cost Usd
        * @description Estimated cost in USD, returned as an exact decimal string. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.
@@ -11589,7 +12093,7 @@ export type components = {
      * GridRouteUsageDimensionV1
      * @enum {string}
      */
-    GridRouteUsageDimension: "USER" | "TEAM" | "MODEL" | "PROVIDER" | "ROUTER";
+    GridRouteUsageDimension: "USER" | "TEAM" | "MODEL" | "PROVIDER" | "ROUTER" | "HARNESS";
     /** GridRouteTombstoneV1 */
     GridRouteTombstone: {
       /**
@@ -11643,9 +12147,9 @@ export type components = {
       /** @description Default models for OpenCode. */
       opencode: components["schemas"]["GridBackgroundHarnessDefaults"];
       /** @description Default models for Codex. */
-      codex: components["schemas"]["GridPrimaryHarnessDefaults"];
+      codex: components["schemas"]["GridBackgroundHarnessDefaults"];
       /** @description Default models for Pi. */
-      pi: components["schemas"]["GridPrimaryHarnessDefaults"];
+      pi: components["schemas"]["GridBackgroundHarnessDefaults"];
     };
     /** GridHarnessModelV1 */
     GridHarnessModel: {
@@ -11653,11 +12157,6 @@ export type components = {
       source: components["schemas"]["GridSettingSource"];
       /** @description Route to use for this role. */
       route: components["schemas"]["GridRoute"];
-    };
-    /** GridPrimaryHarnessDefaultsV1 */
-    GridPrimaryHarnessDefaults: {
-      /** @description Route for the primary model, which new sessions use. Null when the team has no route to use. */
-      primary: components["schemas"]["GridHarnessModel"] | null;
     };
     /**
      * GridSettingSourceV1
@@ -11720,18 +12219,9 @@ export type components = {
       /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
       opencode?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
       /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      codex?: components["schemas"]["UpdateGridPrimaryHarnessModels"] | null;
+      codex?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
       /** @description Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged. */
-      pi?: components["schemas"]["UpdateGridPrimaryHarnessModels"] | null;
-    };
-    /** UpdateGridPrimaryHarnessModelsV1 */
-    UpdateGridPrimaryHarnessModels: {
-      /**
-       * Primary
-       * @description Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.
-       * @example abc1234
-       */
-      primary?: string | null;
+      pi?: components["schemas"]["UpdateGridBackgroundHarnessModels"] | null;
     };
     /** UpdateGridTeamSpendLimitSettingV1 */
     UpdateGridTeamSpendLimitSetting: {
@@ -11901,6 +12391,22 @@ export type components = {
        */
       team_id?: string | null;
     };
+    /** GridConnectionBedrockAccessKeysAuthV1 */
+    GridConnectionBedrockAccessKeysAuth: {
+      /**
+       * @description The secret holds the access keys of an IAM user, as the base64-encoded JSON object `{"AccessKeyId": "...", "SecretAccessKey": "..."}` (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      method: "access_keys";
+    };
+    /** GridConnectionBedrockApiKeyAuthV1 */
+    GridConnectionBedrockApiKeyAuth: {
+      /**
+       * @description The secret holds a long-term Amazon Bedrock API key. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      method: "api_key";
+    };
     /** GridConnectionConfigAnthropicV1 */
     GridConnectionConfigAnthropic: {
       /**
@@ -11919,6 +12425,36 @@ export type components = {
        */
       secret_name: string;
     };
+    /** GridConnectionConfigBedrockV1 */
+    GridConnectionConfigBedrock: {
+      /**
+       * @description Provider kind for Amazon Bedrock. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "BEDROCK";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+      /**
+       * Region
+       * @description AWS Region of the Amazon Bedrock endpoint.
+       */
+      region: string;
+      /**
+       * Auth
+       * @description How the connection's secret authenticates with Amazon Bedrock.
+       */
+      auth:
+        | components["schemas"]["GridConnectionBedrockApiKeyAuth"]
+        | components["schemas"]["GridConnectionBedrockAccessKeysAuth"];
+    };
     /** GridConnectionConfigOpenAIV1 */
     GridConnectionConfigOpenAI: {
       /**
@@ -11936,6 +12472,34 @@ export type components = {
        * @description Name of the team secret holding the provider API key.
        */
       secret_name: string;
+    };
+    /** GridConnectionConfigVertexV1 */
+    GridConnectionConfigVertex: {
+      /**
+       * @description Provider kind for Google Vertex. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "VERTEX";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+      /**
+       * Project Id
+       * @description Google Cloud project ID or number of a project with Vertex AI enabled.
+       */
+      project_id: string;
+      /**
+       * Location
+       * @description Google Cloud region that serves the Vertex AI models, for example `us-central1`.
+       */
+      location: string;
     };
     /** GridConnectionConfigXAIV1 */
     GridConnectionConfigXAI: {
@@ -11979,7 +12543,9 @@ export type components = {
       config:
         | components["schemas"]["GridConnectionConfigAnthropic"]
         | components["schemas"]["GridConnectionConfigOpenAI"]
-        | components["schemas"]["GridConnectionConfigXAI"];
+        | components["schemas"]["GridConnectionConfigXAI"]
+        | components["schemas"]["GridConnectionConfigVertex"]
+        | components["schemas"]["GridConnectionConfigBedrock"];
       /**
        * Created At
        * Format: date-time
@@ -12003,6 +12569,22 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** UpsertGridConnectionBedrockAccessKeysAuthV1 */
+    UpsertGridConnectionBedrockAccessKeysAuth: {
+      /**
+       * @description The secret holds the access keys of an IAM user, as the base64-encoded JSON object `{"AccessKeyId": "...", "SecretAccessKey": "..."}` (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      method: "access_keys";
+    };
+    /** UpsertGridConnectionBedrockApiKeyAuthV1 */
+    UpsertGridConnectionBedrockApiKeyAuth: {
+      /**
+       * @description The secret holds a long-term Amazon Bedrock API key. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      method: "api_key";
+    };
     /** UpsertGridConnectionConfigAnthropicV1 */
     UpsertGridConnectionConfigAnthropic: {
       /**
@@ -12017,6 +12599,33 @@ export type components = {
        */
       secret_name: string;
     };
+    /** UpsertGridConnectionConfigBedrockV1 */
+    UpsertGridConnectionConfigBedrock: {
+      /**
+       * @description Provider kind for Amazon Bedrock. Claude models (`anthropic.*`) use the Anthropic Messages API, and other models use the OpenAI-compatible APIs. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "BEDROCK";
+      /**
+       * Secret Name
+       * @description Name of an existing secret, owned by the same team, that holds the provider API key.
+       * @example anthropic-key
+       */
+      secret_name: string;
+      /**
+       * Region
+       * @description AWS Region of the Amazon Bedrock endpoint, for example `us-east-1`.
+       * @example us-east-1
+       */
+      region: string;
+      /**
+       * Auth
+       * @description How the connection's secret authenticates with Amazon Bedrock.
+       */
+      auth:
+        | components["schemas"]["UpsertGridConnectionBedrockApiKeyAuth"]
+        | components["schemas"]["UpsertGridConnectionBedrockAccessKeysAuth"];
+    };
     /** UpsertGridConnectionConfigOpenAIV1 */
     UpsertGridConnectionConfigOpenAI: {
       /**
@@ -12030,6 +12639,32 @@ export type components = {
        * @example anthropic-key
        */
       secret_name: string;
+    };
+    /** UpsertGridConnectionConfigVertexV1 */
+    UpsertGridConnectionConfigVertex: {
+      /**
+       * @description Provider kind for Google Vertex. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "VERTEX";
+      /**
+       * Secret Name
+       * @description Name of an existing secret, owned by the same team, that holds the provider API key.
+       * @example anthropic-key
+       */
+      secret_name: string;
+      /**
+       * Project Id
+       * @description Google Cloud project ID or number of a project with Vertex AI enabled.
+       * @example my-gcp-project
+       */
+      project_id: string;
+      /**
+       * Location
+       * @description Google Cloud region that serves the Vertex AI models, for example `us-central1`.
+       * @example us-central1
+       */
+      location: string;
     };
     /** UpsertGridConnectionConfigXAIV1 */
     UpsertGridConnectionConfigXAI: {
@@ -12064,7 +12699,9 @@ export type components = {
       config:
         | components["schemas"]["UpsertGridConnectionConfigAnthropic"]
         | components["schemas"]["UpsertGridConnectionConfigOpenAI"]
-        | components["schemas"]["UpsertGridConnectionConfigXAI"];
+        | components["schemas"]["UpsertGridConnectionConfigXAI"]
+        | components["schemas"]["UpsertGridConnectionConfigVertex"]
+        | components["schemas"]["UpsertGridConnectionConfigBedrock"];
     };
     /** GridConnectionTombstoneV1 */
     GridConnectionTombstone: {
@@ -12087,7 +12724,9 @@ export type components = {
       config:
         | components["schemas"]["UpsertGridConnectionConfigAnthropic"]
         | components["schemas"]["UpsertGridConnectionConfigOpenAI"]
-        | components["schemas"]["UpsertGridConnectionConfigXAI"];
+        | components["schemas"]["UpsertGridConnectionConfigXAI"]
+        | components["schemas"]["UpsertGridConnectionConfigVertex"]
+        | components["schemas"]["UpsertGridConnectionConfigBedrock"];
     };
     /** GridClassifiersResponseV1 */
     GridClassifiersResponse: {
@@ -12099,13 +12738,155 @@ export type components = {
       /** @description Pagination metadata for the page. */
       pagination: components["schemas"]["PaginationResponse"];
     };
+    /** GridRouteClassifiersResponseV1 */
+    GridRouteClassifiersResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["GridRouteClassifier"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** GridMachineUserV1 */
+    GridMachineUser: {
+      /**
+       * Id
+       * @description Stable machine user identifier. Grid usage and settings identify the machine user by this ID as its `user_id`.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name of the machine user, unique within its team.
+       */
+      name: string;
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the machine user.
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the team that owns the machine user.
+       */
+      team_name: string;
+      /**
+       * Created By
+       * @description ID of the user who created the machine user. Null when unknown.
+       * @default null
+       */
+      created_by: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time, ISO 8601.
+       */
+      created_at: string;
+    };
+    /** GridMachineUsersResponseV1 */
+    GridMachineUsersResponse: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["GridMachineUser"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /** CreateGridMachineUserAPIKeyRequestV1 */
+    CreateGridMachineUserAPIKeyRequest: {
+      /**
+       * Name
+       * @description Name of the API key: lowercase letters, numbers, and hyphens, at most 255 characters, and unique among the machine user's active keys. Defaults to a name derived from the machine user's.
+       * @example production
+       */
+      name?: string | null;
+    };
+    /** CreateGridMachineUserRequestV1 */
+    CreateGridMachineUserRequest: {
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the machine user. Defaults to your only team, if you belong to exactly one.
+       * @example abc1234
+       */
+      team_id?: string | null;
+      /**
+       * Name
+       * @description Name of the machine user, unique within the team. At most 255 characters.
+       * @example night-shift
+       */
+      name: string;
+      /** @description When set, also creates the machine user's first API key. */
+      api_key?: components["schemas"]["CreateGridMachineUserAPIKeyRequest"] | null;
+    };
+    /** CreatedGridMachineUserV1 */
+    CreatedGridMachineUser: {
+      /**
+       * Id
+       * @description Stable machine user identifier. Grid usage and settings identify the machine user by this ID as its `user_id`.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name of the machine user, unique within its team.
+       */
+      name: string;
+      /**
+       * Team Id
+       * @description Identifier of the team that owns the machine user.
+       */
+      team_id: string;
+      /**
+       * Team Name
+       * @description Name of the team that owns the machine user.
+       */
+      team_name: string;
+      /**
+       * Created By
+       * @description ID of the user who created the machine user. Null when unknown.
+       * @default null
+       */
+      created_by: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Creation time, ISO 8601.
+       */
+      created_at: string;
+      /**
+       * Api Key
+       * @description The first API key, returned only once. Null unless the request set `api_key`.
+       * @default null
+       */
+      api_key: string | null;
+    };
+    /** GridMachineUserTombstoneV1 */
+    GridMachineUserTombstone: {
+      /**
+       * Id
+       * @description Stable identifier of the deleted machine user.
+       */
+      id: string;
+    };
+    /** UpdateGridMachineUserRequestV1 */
+    UpdateGridMachineUserRequest: {
+      /**
+       * Name
+       * @description Name of the machine user, unique within its team. At most 255 characters. Omit to keep it.
+       */
+      name?: string | null;
+    };
     /**
      * EndpointTargetV1
      * @description One configured upstream target of an endpoint.
      */
     EndpointTarget: {
-      /** @description Upstream provider. */
-      provider: components["schemas"]["GatewayProvider"];
+      /**
+       * @description Upstream provider.
+       * @example ANTHROPIC
+       * @example OPENAI_COMPATIBLE
+       */
+      provider: components["schemas"]["GatewayEndpointProvider"];
       /**
        * Secret Id
        * @description Referenced secret, if any.
@@ -12179,6 +12960,18 @@ export type components = {
       targets: components["schemas"]["EndpointTarget"][];
     };
     /**
+     * GatewayEndpointProviderV1
+     * @enum {string}
+     */
+    GatewayEndpointProvider:
+      | "ANTHROPIC"
+      | "OPENAI"
+      | "XAI"
+      | "BASETEN"
+      | "BASETEN_MODEL_API"
+      | "VERTEX"
+      | "OPENAI_COMPATIBLE";
+    /**
      * SharedEndpointRegionV1
      * @enum {string}
      */
@@ -12222,7 +13015,7 @@ export type components = {
        * @example OPENAI_COMPATIBLE
        * @example BASETEN
        */
-      provider: components["schemas"]["GatewayProvider"];
+      provider: components["schemas"]["GatewayEndpointProvider"];
       /**
        * Secret Id
        * @description Secret holding the provider credential. Required for external providers.
@@ -12476,6 +13269,28 @@ export type components = {
       rate_limits?: components["schemas"]["RateLimit"][];
       /** Usage Limits */
       usage_limits?: components["schemas"]["UsageLimit"][];
+    };
+    /** RateLimitV1 */
+    RateLimit: {
+      /**
+       * @description The type of the rate limit
+       * @example TOKEN
+       * @example REQUEST
+       */
+      type: components["schemas"]["LimitType"];
+      /**
+       * @description The unit of the rate limit
+       * @example SECOND
+       * @example MINUTE
+       */
+      unit: components["schemas"]["RateLimitUnit"];
+      /**
+       * Threshold
+       * @description The threshold for the rate limit
+       * @example 1000
+       * @example 50000
+       */
+      threshold: number;
     };
     /**
      * UsageLimitUnitV1
@@ -13222,6 +14037,7 @@ export type components = {
      *       ],
      *       "image": "baseten/base-image:latest",
      *       "memory": 4096,
+     *       "cpu": 2,
      *       "ports": [
      *         {
      *           "name": "http",
@@ -13327,10 +14143,15 @@ export type components = {
        */
       image?: string;
       /**
-       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Must be between 1024 and 262144.
+       * @description Memory allocation in megabytes. Must be between 1024 and 262144. When cpu is not set at creation, memory also determines the CPU allocation (by default 2048 MB = 1 vCPU, 4096 MB = 2, 8192 MB = 4, 16384 MB = 6, 32768 MB = 8, 65536 MB = 16, 131072 MB or more = 32).
        * @example 4096
        */
       memory?: number;
+      /**
+       * @description Number of vCPUs the sandbox runs with. Always returned, including for sandboxes created without cpu, whose CPU allocation was derived from memory. Set at creation only.
+       * @example 2
+       */
+      cpu?: number;
       /**
        * @description Filesystem configuration. Set at creation only.
        * @example {
@@ -13439,6 +14260,7 @@ export type components = {
      *       ],
      *       "image": "baseten/base-image:latest",
      *       "memory": 4096,
+     *       "cpu": 2,
      *       "ports": [
      *         {
      *           "name": "http",
@@ -13551,10 +14373,15 @@ export type components = {
        */
       image?: string;
       /**
-       * @description Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096. Must be between 1024 and 262144.
+       * @description Memory allocation in megabytes. Must be between 1024 and 262144. Defaults to 4096, or to 8192 MB per vCPU (a 1:8 ratio) when only cpu is set, capped at the account's memory quota. When cpu is omitted, memory also determines the CPU allocation (by default 2048 MB = 1 vCPU, 4096 MB = 2, 8192 MB = 4, 16384 MB = 6, 32768 MB = 8, 65536 MB = 16, 131072 MB or more = 32).
        * @example 4096
        */
       memory?: number;
+      /**
+       * @description Optional number of vCPUs, a whole number between 1 and 32. When omitted, the CPU allocation is derived from memory. When set, memory must be between 1024 and 8192 megabytes per vCPU (a ratio from 1:1 to 1:8), and cpu must not exceed the account's per-sandbox cpu quota. A value equal to the allocation memory alone would give is always accepted. When memory is omitted, it defaults to 8192 MB per vCPU, capped at the account's memory quota. Immutable after creation.
+       * @example 2
+       */
+      cpu?: number;
       /**
        * @description Filesystem configuration. Set at creation only.
        * @example {
@@ -13591,7 +14418,7 @@ export type components = {
       labels?: components["schemas"]["SandboxMetadataLabels"];
     };
     /**
-     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, network, region, image, ports, filesystem, and volumes are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
+     * @description Partial sandbox update. Omitted fields remain unchanged. Supplied arrays and maps (including labels) replace their previous values; supplied structured objects update only their supplied fields. Null is not accepted. The name, memory, cpu, network, region, image, ports, filesystem, and volumes are immutable after creation. Supplying any of these fields returns 400, including unchanged, empty, or null values.
      * @example {
      *       "lifecycle": {
      *         "expiration_policies": [
@@ -13760,6 +14587,7 @@ export type components = {
      *       ],
      *       "image": "baseten/base-image:latest",
      *       "memory": 4096,
+     *       "cpu": 2,
      *       "ports": [
      *         {
      *           "name": "http",
@@ -13943,6 +14771,7 @@ export type components = {
      *           ],
      *           "image": "baseten/base-image:latest",
      *           "memory": 4096,
+     *           "cpu": 2,
      *           "ports": [
      *             {
      *               "name": "http",
@@ -14044,6 +14873,7 @@ export type components = {
        *         ],
        *         "image": "baseten/base-image:latest",
        *         "memory": 4096,
+       *         "cpu": 2,
        *         "ports": [
        *           {
        *             "name": "http",
@@ -14891,7 +15721,7 @@ export type components = {
     };
     GetModelsDeploymentsMetricsParams: {
       /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
-      mode?: components["schemas"]["ModelMetricMode"];
+      mode?: components["schemas"]["MetricMode"];
       /**
        * Start Epoch Millis
        * @description Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.
@@ -15021,7 +15851,7 @@ export type components = {
     };
     GetModelsEnvironmentsMetricsParams: {
       /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
-      mode?: components["schemas"]["ModelMetricMode"];
+      mode?: components["schemas"]["MetricMode"];
       /**
        * Start Epoch Millis
        * @description Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.
@@ -15208,6 +16038,23 @@ export type components = {
        */
       excludes?: string[];
     };
+    GetTrainingProjectsParams: {
+      /**
+       * Name
+       * @description Return only the project with this exact name.
+       */
+      name?: string | null;
+      /**
+       * Cursor
+       * @description Opaque cursor from the pagination.cursor field of a previous response. Omit both cursor and limit to get every project in one response.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of projects to return, up to 1000.
+       */
+      limit?: number | null;
+    };
     GetTrainingProjectsJobsLogsParams: {
       /**
        * Start Epoch Millis
@@ -15261,7 +16108,7 @@ export type components = {
     GetLoopsCapabilitiesParams: {
       /**
        * Model
-       * @description Restrict the response to one model, identified by its HuggingFace repo id. A supported model comes back with its 'enabled' flag and, when false, its 'enablement_details'. An empty list means Baseten does not support that model. Omit to list every supported model.
+       * @description Restrict the response to one model, identified by its HuggingFace repo id. A supported model comes back with its 'enabled' flag and, when false, its 'enablement_details'. Without 'enabled', an empty list means Baseten does not support that model. Omit to list every supported model.
        * @example Qwen/Qwen3-8B
        */
       model?: string | null;
@@ -15276,6 +16123,12 @@ export type components = {
        * @example 32768
        */
       max_seq_len?: number | null;
+      /**
+       * Enabled
+       * @description Pass true to list only the models this workspace can run now, or false for only the ones it cannot. Omit to list both. With 'model', an empty list can also mean the model is supported but filtered out.
+       * @example true
+       */
+      enabled?: boolean | null;
     };
     GetLoopsRunsParams: {
       /**
@@ -15291,6 +16144,12 @@ export type components = {
        */
       base_model?: string | null;
       /**
+       * Session Id
+       * @description Filter runs by the session that created them. An unknown or inaccessible session returns an empty list.
+       * @example k4q95w5
+       */
+      session_id?: string | null;
+      /**
        * Scope
        * @description Defaults to the caller's own runs; pass 'org' to list every run in the caller's organization.
        * @example org
@@ -15298,6 +16157,12 @@ export type components = {
       scope?: string | null;
     };
     GetLoopsSamplersParams: {
+      /**
+       * Session Id
+       * @description Filter samplers by the session that created them. An unknown or inaccessible session returns an empty list.
+       * @example k4q95w5
+       */
+      session_id?: string | null;
       /**
        * Scope
        * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
@@ -15392,6 +16257,12 @@ export type components = {
        */
       base_model?: string | null;
       /**
+       * Session Id
+       * @description Filter runs by the session that created them. An unknown or inaccessible session returns an empty list.
+       * @example k4q95w5
+       */
+      session_id?: string | null;
+      /**
        * Scope
        * @description Defaults to the caller's own runs; pass 'org' to list every run in the caller's organization.
        * @example org
@@ -15399,6 +16270,12 @@ export type components = {
       scope?: string | null;
     };
     GetTeamsLoopsSamplersParams: {
+      /**
+       * Session Id
+       * @description Filter samplers by the session that created them. An unknown or inaccessible session returns an empty list.
+       * @example k4q95w5
+       */
+      session_id?: string | null;
       /**
        * Scope
        * @description Defaults to the caller's own samplers; pass 'org' to include samplers owned by other users in the caller's organization.
@@ -15427,8 +16304,13 @@ export type components = {
        */
       limit?: number;
       /**
+       * Team Ids
+       * @description Select teams for added-model details, filtering, and ordering, repeated once per team. Defaults to all teams where you can invoke Model APIs. Any unauthorized team causes a 403.
+       */
+      team_ids?: string[];
+      /**
        * Added Only
-       * @description When true, restrict the result to Model APIs the workspace has added. Defaults to the full visible catalog.
+       * @description When true, restrict the result to Model APIs added by any team where you can invoke Model APIs. Explicit team_ids narrow this to the selected teams. Defaults to the full visible catalog.
        */
       added_only?: boolean;
     };
@@ -15481,6 +16363,32 @@ export type components = {
        */
       cursor?: string | null;
     };
+    GetModelApisMetricsParams: {
+      /** @description 'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration. */
+      mode?: components["schemas"]["MetricMode"];
+      /**
+       * Start Epoch Millis
+       * @description Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.
+       */
+      start_epoch_millis?: number | null;
+      /**
+       * End Epoch Millis
+       * @description Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.
+       */
+      end_epoch_millis?: number | null;
+      /**
+       * Metrics
+       * @description Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_model_api_inference_requests_total, baseten_model_api_incoming_inference_requests_total, and baseten_model_api_tokens_total. Unknown names are rejected; valid names that are not enabled for your organization are omitted from the response.
+       */
+      metrics?: string[];
+    };
+    GetModelApisModelApiNameParams: {
+      /**
+       * Team Ids
+       * @description Select teams for added-model details, repeated once per team. Defaults to all teams where you can invoke Model APIs. Any unauthorized team causes a 403.
+       */
+      team_ids?: string[];
+    };
     GetBillingModelApisParams: {
       /**
        * Cursor
@@ -15504,7 +16412,7 @@ export type components = {
       end_date?: string | null;
       /**
        * Group By
-       * @description Dimensions to break costs down by, repeated once per dimension: api_key_prefix, user, model, or service_tier. Each result represents one observed combination of the requested dimensions within that day. For example, grouping by api_key_prefix and user returns each API-key and user pair that had usage. Combinations without usage are omitted, so result counts can differ between days. Omit for daily organization totals.
+       * @description Dimensions to break costs down by, repeated once per dimension: api_key_prefix, user, model, service_tier, or team. Each result represents one observed combination of the requested dimensions within that day. For example, grouping by api_key_prefix and user returns each API-key and user pair that had usage. Combinations without usage are omitted, so result counts can differ between days. Omit for daily totals across all teams you can manage.
        */
       group_by?: components["schemas"]["ModelApiCostDimension"][];
       /**
@@ -15527,6 +16435,11 @@ export type components = {
        * @description Return only costs for these exact service tiers, repeated once per tier.
        */
       service_tiers?: string[];
+      /**
+       * Team Ids
+       * @description Return only costs attributed to these teams, repeated once per team. Defaults to all teams you can manage.
+       */
+      team_ids?: string[];
     };
     GetBillingUsageSummaryParams: {
       /**
@@ -15554,6 +16467,16 @@ export type components = {
        * @description Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included. The date range cannot exceed 90 days.
        */
       end_date?: string | null;
+      /**
+       * Team Ids
+       * @description Return only usage for these teams, repeated once per team. Defaults to all teams you can manage. An unauthorized team ID causes a 403 response.
+       */
+      team_ids?: string[];
+      /**
+       * Group By
+       * @description Pass TEAM to split daily rows by team. Defaults to aggregating across teams.
+       */
+      group_by?: components["schemas"]["ToolCallUsageDimension"][];
     };
     GetUsersParams: {
       /**
@@ -15681,7 +16604,7 @@ export type components = {
       end_date?: string | null;
       /**
        * Group By
-       * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, or ROUTER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. Defaults to MODEL.
+       * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, ROUTER, or HARNESS. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. Defaults to MODEL.
        */
       group_by?: components["schemas"]["GridRouteUsageDimension"][];
       /**
@@ -15699,6 +16622,11 @@ export type components = {
        * @description Return only usage for these providers, repeated once per provider.
        */
       providers?: components["schemas"]["GridProvider"][];
+      /**
+       * Harnesses
+       * @description Return only usage for these harnesses, repeated once per harness. Omit to include all usage, including usage with no recorded harness.
+       */
+      harnesses?: components["schemas"]["GridRouteUsageHarness"][];
     };
     GetGridTeamSettingsParams: {
       /**
@@ -15762,6 +16690,35 @@ export type components = {
        * @description Maximum number of items to return.
        */
       limit?: number;
+    };
+    GetGridRouteClassifiersParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+    };
+    GetGridMachineUsersParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Team Id
+       * @description Limit machine users to this team. Without it, every team you administer.
+       */
+      team_id?: string | null;
     };
     GetSandboxMetricsParams: {
       /** @description Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden. */
@@ -16167,6 +17124,8 @@ export type components = {
     route_id: string;
     connection_id: string;
     classifier_id: string;
+    route_classifier_id: string;
+    machine_user_id: string;
     endpoint_id: string;
     group_id: string;
     /** @description Defaults to CURRENT, which rejects start_epoch_millis and end_epoch_millis. SERIES uses a server-selected step of 30 seconds up to 2 hours, 60 seconds up to 1 day, 600 seconds up to 3 days, and 3600 seconds beyond 3 days. */
@@ -16204,7 +17163,6 @@ export type components = {
 };
 export type DeploymentConfigOutputFormat = components["schemas"]["DeploymentConfigOutputFormat"];
 export type CheckpointSyncStatus = components["schemas"]["CheckpointSyncStatus"];
-export type V1AvailabilityModel = components["schemas"]["V1AvailabilityModel"];
 export type AuthMethod = components["schemas"]["AuthMethod"];
 export type BasetenLatestCheckpointConfig = components["schemas"]["BasetenLatestCheckpointConfig"];
 export type BasetenNamedCheckpointConfig = components["schemas"]["BasetenNamedCheckpointConfig"];
@@ -16229,7 +17187,6 @@ export type ApiKeyCategory = components["schemas"]["APIKeyCategory"];
 export type BucketWidth = components["schemas"]["BucketWidth"];
 export type LibraryListingModality = components["schemas"]["LibraryListingModality"];
 export type ResourceKind = components["schemas"]["ResourceKind"];
-export type GatewayProvider = components["schemas"]["GatewayProvider"];
 export type PaginationResponse = components["schemas"]["PaginationResponse"];
 export type VolumeTag = components["schemas"]["VolumeTag"];
 export type Volume = components["schemas"]["Volume"];
@@ -16245,6 +17202,8 @@ export type VolumeSyncAuthenticationAwsoidc =
   components["schemas"]["VolumeSyncAuthenticationAWSOIDC"];
 export type VolumeSyncAuthenticationGcpoidc =
   components["schemas"]["VolumeSyncAuthenticationGCPOIDC"];
+export type VolumeSyncAuthenticationHuggingFaceOidc =
+  components["schemas"]["VolumeSyncAuthenticationHuggingFaceOIDC"];
 export type VolumeSyncDestination = components["schemas"]["VolumeSyncDestination"];
 export type VolumeSyncError = components["schemas"]["VolumeSyncError"];
 export type VolumeSyncSourceAzure = components["schemas"]["VolumeSyncSourceAzure"];
@@ -16328,6 +17287,8 @@ export type AuditLogApiKeyType = components["schemas"]["AuditLogApiKeyType"];
 export type AuditLogEntry = components["schemas"]["AuditLogEntry"];
 export type AuditLogEventApiKeyCreated = components["schemas"]["AuditLogEventApiKeyCreated"];
 export type AuditLogEventApiKeyDeleted = components["schemas"]["AuditLogEventApiKeyDeleted"];
+export type AuditLogEventApiKeyLifetimeLimitsUpdated =
+  components["schemas"]["AuditLogEventApiKeyLifetimeLimitsUpdated"];
 export type AuditLogEventAutoscalingScheduleAction =
   components["schemas"]["AuditLogEventAutoscalingScheduleAction"];
 export type AuditLogEventAutoscalingScheduleChange =
@@ -16376,6 +17337,12 @@ export type AuditLogEventGatewayEndpointDeleted =
   components["schemas"]["AuditLogEventGatewayEndpointDeleted"];
 export type AuditLogEventGatewayEndpointUpdated =
   components["schemas"]["AuditLogEventGatewayEndpointUpdated"];
+export type AuditLogEventGridMachineUserCreated =
+  components["schemas"]["AuditLogEventGridMachineUserCreated"];
+export type AuditLogEventGridMachineUserDeleted =
+  components["schemas"]["AuditLogEventGridMachineUserDeleted"];
+export type AuditLogEventGridMachineUserUpdated =
+  components["schemas"]["AuditLogEventGridMachineUserUpdated"];
 export type AuditLogEventModelDeleted = components["schemas"]["AuditLogEventModelDeleted"];
 export type AuditLogEventModelDeployed = components["schemas"]["AuditLogEventModelDeployed"];
 export type AuditLogEventModelDeploymentActivated =
@@ -16499,12 +17466,12 @@ export type GetDeploymentPatchesStateResponse =
   components["schemas"]["GetDeploymentPatchesStateResponse"];
 export type SyncDeploymentPatchesRequest = components["schemas"]["SyncDeploymentPatchesRequest"];
 export type SyncDeploymentPatchesResponse = components["schemas"]["SyncDeploymentPatchesResponse"];
-export type ModelMetricDescriptor = components["schemas"]["ModelMetricDescriptor"];
-export type ModelMetricKind = components["schemas"]["ModelMetricKind"];
-export type ModelMetricMode = components["schemas"]["ModelMetricMode"];
-export type ModelMetricUnitHint = components["schemas"]["ModelMetricUnitHint"];
-export type ModelMetricValueSet = components["schemas"]["ModelMetricValueSet"];
-export type GetModelMetricsResponse = components["schemas"]["GetModelMetricsResponse"];
+export type MetricDescriptor = components["schemas"]["MetricDescriptor"];
+export type MetricKind = components["schemas"]["MetricKind"];
+export type MetricMode = components["schemas"]["MetricMode"];
+export type MetricUnitHint = components["schemas"]["MetricUnitHint"];
+export type MetricValueSet = components["schemas"]["MetricValueSet"];
+export type GetMetricsResponse = components["schemas"]["GetMetricsResponse"];
 export type StartupAttempt = components["schemas"]["StartupAttempt"];
 export type StartupOutcome = components["schemas"]["StartupOutcome"];
 export type StartupPhaseStatus = components["schemas"]["StartupPhaseStatus"];
@@ -16577,6 +17544,7 @@ export type UpdateChainletEnvironmentInstanceTypeResponse =
   components["schemas"]["UpdateChainletEnvironmentInstanceTypeResponse"];
 export type UpsertTrainingProject = components["schemas"]["UpsertTrainingProject"];
 export type UpsertTrainingProjectRequest = components["schemas"]["UpsertTrainingProjectRequest"];
+export type AvailabilityModel = components["schemas"]["AvailabilityModel"];
 export type TrainingJob = components["schemas"]["TrainingJob"];
 export type TrainingProjectSummary = components["schemas"]["TrainingProjectSummary"];
 export type TrainingProject = components["schemas"]["TrainingProject"];
@@ -16653,6 +17621,7 @@ export type CreateLoopsRunRequest = components["schemas"]["CreateLoopsRunRequest
 export type CreateLoopsRunResponse = components["schemas"]["CreateLoopsRunResponse"];
 export type DeactivateLoopsRunResponse = components["schemas"]["DeactivateLoopsRunResponse"];
 export type GetLoopsRunResponse = components["schemas"]["GetLoopsRunResponse"];
+export type LoopsPlacementScope = components["schemas"]["LoopsPlacementScope"];
 export type CreateLoopsTrainerRequest = components["schemas"]["CreateLoopsTrainerRequest"];
 export type ListLoopsSamplersResponse = components["schemas"]["ListLoopsSamplersResponse"];
 export type CreateLoopsSamplerRequest = components["schemas"]["CreateLoopsSamplerRequest"];
@@ -16712,9 +17681,11 @@ export type ApiKeys = components["schemas"]["APIKeys"];
 export type ApiKeyTombstone = components["schemas"]["APIKeyTombstone"];
 export type LimitType = components["schemas"]["LimitType"];
 export type ModelApiOrgDetails = components["schemas"]["ModelAPIOrgDetails"];
+export type ModelApiRateLimit = components["schemas"]["ModelAPIRateLimit"];
+export type ModelApiServiceTier = components["schemas"]["ModelAPIServiceTier"];
+export type ModelApiTeamDetails = components["schemas"]["ModelAPITeamDetails"];
 export type ModelApi = components["schemas"]["ModelAPI"];
 export type RateLimitUnit = components["schemas"]["RateLimitUnit"];
-export type RateLimit = components["schemas"]["RateLimit"];
 export type ModelApIsResponse = components["schemas"]["ModelAPIsResponse"];
 export type ModelApisUsageBucket = components["schemas"]["ModelApisUsageBucket"];
 export type ModelApisUsageResult = components["schemas"]["ModelApisUsageResult"];
@@ -16751,10 +17722,15 @@ export type ModelApiCostDimension = components["schemas"]["ModelApiCostDimension
 export type BillableResource = components["schemas"]["BillableResource"];
 export type ChainMetadata = components["schemas"]["ChainMetadata"];
 export type DailyDedicatedUsage = components["schemas"]["DailyDedicatedUsage"];
+export type DailyLoopsUsage = components["schemas"]["DailyLoopsUsage"];
 export type DailyModelApiUsage = components["schemas"]["DailyModelApiUsage"];
 export type DailyTrainingUsage = components["schemas"]["DailyTrainingUsage"];
 export type DedicatedItem = components["schemas"]["DedicatedItem"];
 export type DedicatedUsage = components["schemas"]["DedicatedUsage"];
+export type LoopsBaseModelItem = components["schemas"]["LoopsBaseModelItem"];
+export type LoopsMeterUsage = components["schemas"]["LoopsMeterUsage"];
+export type LoopsResourceItem = components["schemas"]["LoopsResourceItem"];
+export type LoopsUsage = components["schemas"]["LoopsUsage"];
 export type ModelApiItem = components["schemas"]["ModelApiItem"];
 export type ModelApisUsage = components["schemas"]["ModelApisUsage"];
 export type TrainingItem = components["schemas"]["TrainingItem"];
@@ -16762,6 +17738,7 @@ export type TrainingUsage = components["schemas"]["TrainingUsage"];
 export type UsageSummary = components["schemas"]["UsageSummary"];
 export type ToolCallUsageBucket = components["schemas"]["ToolCallUsageBucket"];
 export type ToolCallUsageResponse = components["schemas"]["ToolCallUsageResponse"];
+export type ToolCallUsageDimension = components["schemas"]["ToolCallUsageDimension"];
 export type UserInfo = components["schemas"]["UserInfo"];
 export type UsersResponse = components["schemas"]["UsersResponse"];
 export type AwsAssumeRole = components["schemas"]["AwsAssumeRole"];
@@ -16774,12 +17751,16 @@ export type ExploreCostValues = components["schemas"]["ExploreCostValues"];
 export type ExploreMetadataApiFormats = components["schemas"]["ExploreMetadataAPIFormats"];
 export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
 export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
+export type CreateGridTokenRequest = components["schemas"]["CreateGridTokenRequest"];
+export type GridToken = components["schemas"]["GridToken"];
 export type GridClassifier = components["schemas"]["GridClassifier"];
+export type GridRouteClassifier = components["schemas"]["GridRouteClassifier"];
 export type GridRouteRef = components["schemas"]["GridRouteRef"];
 export type GridRouteTargetBasetenModelApi =
   components["schemas"]["GridRouteTargetBasetenModelAPI"];
 export type GridRouteTargetClassifier = components["schemas"]["GridRouteTargetClassifier"];
 export type GridRouteTargetConnection = components["schemas"]["GridRouteTargetConnection"];
+export type GridRouteTargetIntelligent = components["schemas"]["GridRouteTargetIntelligent"];
 export type GridRoute = components["schemas"]["GridRoute"];
 export type GridRoutesResponse = components["schemas"]["GridRoutesResponse"];
 export type UpsertGridRouteTargetBasetenModelApi =
@@ -16791,6 +17772,7 @@ export type UpsertGridRouteTargetConnection =
 export type CreateGridRouteRequest = components["schemas"]["CreateGridRouteRequest"];
 export type GridProvider = components["schemas"]["GridProvider"];
 export type GridRouteUsageBucket = components["schemas"]["GridRouteUsageBucket"];
+export type GridRouteUsageHarness = components["schemas"]["GridRouteUsageHarness"];
 export type GridRouteUsageResult = components["schemas"]["GridRouteUsageResult"];
 export type GridRouteUsageResponse = components["schemas"]["GridRouteUsageResponse"];
 export type GridRouteUsageDimension = components["schemas"]["GridRouteUsageDimension"];
@@ -16799,15 +17781,12 @@ export type UpdateGridRouteRequest = components["schemas"]["UpdateGridRouteReque
 export type GridBackgroundHarnessDefaults = components["schemas"]["GridBackgroundHarnessDefaults"];
 export type GridHarnessDefaults = components["schemas"]["GridHarnessDefaults"];
 export type GridHarnessModel = components["schemas"]["GridHarnessModel"];
-export type GridPrimaryHarnessDefaults = components["schemas"]["GridPrimaryHarnessDefaults"];
 export type GridSettingSource = components["schemas"]["GridSettingSource"];
 export type GridTeamSpendLimitSetting = components["schemas"]["GridTeamSpendLimitSetting"];
 export type GridTeamSettings = components["schemas"]["GridTeamSettings"];
 export type UpdateGridBackgroundHarnessModels =
   components["schemas"]["UpdateGridBackgroundHarnessModels"];
 export type UpdateGridHarnessDefaults = components["schemas"]["UpdateGridHarnessDefaults"];
-export type UpdateGridPrimaryHarnessModels =
-  components["schemas"]["UpdateGridPrimaryHarnessModels"];
 export type UpdateGridTeamSpendLimitSetting =
   components["schemas"]["UpdateGridTeamSpendLimitSetting"];
 export type UpdateGridTeamSettingsRequest = components["schemas"]["UpdateGridTeamSettingsRequest"];
@@ -16819,22 +17798,46 @@ export type GridTeamUserSettings = components["schemas"]["GridTeamUserSettings"]
 export type GridTeamUserSettingsList = components["schemas"]["GridTeamUserSettingsList"];
 export type UpdateGridSpendLimitSetting = components["schemas"]["UpdateGridSpendLimitSetting"];
 export type UpdateGridUserSettingsRequest = components["schemas"]["UpdateGridUserSettingsRequest"];
+export type GridConnectionBedrockAccessKeysAuth =
+  components["schemas"]["GridConnectionBedrockAccessKeysAuth"];
+export type GridConnectionBedrockApiKeyAuth =
+  components["schemas"]["GridConnectionBedrockApiKeyAuth"];
 export type GridConnectionConfigAnthropic = components["schemas"]["GridConnectionConfigAnthropic"];
+export type GridConnectionConfigBedrock = components["schemas"]["GridConnectionConfigBedrock"];
 export type GridConnectionConfigOpenAi = components["schemas"]["GridConnectionConfigOpenAI"];
+export type GridConnectionConfigVertex = components["schemas"]["GridConnectionConfigVertex"];
 export type GridConnectionConfigXai = components["schemas"]["GridConnectionConfigXAI"];
 export type GridConnection = components["schemas"]["GridConnection"];
 export type GridConnectionsResponse = components["schemas"]["GridConnectionsResponse"];
+export type UpsertGridConnectionBedrockAccessKeysAuth =
+  components["schemas"]["UpsertGridConnectionBedrockAccessKeysAuth"];
+export type UpsertGridConnectionBedrockApiKeyAuth =
+  components["schemas"]["UpsertGridConnectionBedrockApiKeyAuth"];
 export type UpsertGridConnectionConfigAnthropic =
   components["schemas"]["UpsertGridConnectionConfigAnthropic"];
+export type UpsertGridConnectionConfigBedrock =
+  components["schemas"]["UpsertGridConnectionConfigBedrock"];
 export type UpsertGridConnectionConfigOpenAi =
   components["schemas"]["UpsertGridConnectionConfigOpenAI"];
+export type UpsertGridConnectionConfigVertex =
+  components["schemas"]["UpsertGridConnectionConfigVertex"];
 export type UpsertGridConnectionConfigXai = components["schemas"]["UpsertGridConnectionConfigXAI"];
 export type CreateGridConnectionRequest = components["schemas"]["CreateGridConnectionRequest"];
 export type GridConnectionTombstone = components["schemas"]["GridConnectionTombstone"];
 export type UpdateGridConnectionRequest = components["schemas"]["UpdateGridConnectionRequest"];
 export type GridClassifiersResponse = components["schemas"]["GridClassifiersResponse"];
+export type GridRouteClassifiersResponse = components["schemas"]["GridRouteClassifiersResponse"];
+export type GridMachineUser = components["schemas"]["GridMachineUser"];
+export type GridMachineUsersResponse = components["schemas"]["GridMachineUsersResponse"];
+export type CreateGridMachineUserApiKeyRequest =
+  components["schemas"]["CreateGridMachineUserAPIKeyRequest"];
+export type CreateGridMachineUserRequest = components["schemas"]["CreateGridMachineUserRequest"];
+export type CreatedGridMachineUser = components["schemas"]["CreatedGridMachineUser"];
+export type GridMachineUserTombstone = components["schemas"]["GridMachineUserTombstone"];
+export type UpdateGridMachineUserRequest = components["schemas"]["UpdateGridMachineUserRequest"];
 export type EndpointTarget = components["schemas"]["EndpointTarget"];
 export type Endpoint = components["schemas"]["Endpoint"];
+export type GatewayEndpointProvider = components["schemas"]["GatewayEndpointProvider"];
 export type SharedEndpointRegion = components["schemas"]["SharedEndpointRegion"];
 export type VertexTargetConfig = components["schemas"]["VertexTargetConfig"];
 export type EndpointsResponse = components["schemas"]["EndpointsResponse"];
@@ -16850,6 +17853,7 @@ export type GroupMetadata = components["schemas"]["GroupMetadata"];
 export type Group = components["schemas"]["Group"];
 export type LimitEnforcement = components["schemas"]["LimitEnforcement"];
 export type ModelConfig = components["schemas"]["ModelConfig"];
+export type RateLimit = components["schemas"]["RateLimit"];
 export type UsageLimitUnit = components["schemas"]["UsageLimitUnit"];
 export type UsageLimit = components["schemas"]["UsageLimit"];
 export type GroupsResponse = components["schemas"]["GroupsResponse"];
@@ -16962,6 +17966,7 @@ export type GetModelsEnvironmentsStartupsSummaryParams =
 export type GetChainsAuditLogsParams = components["schemas"]["GetChainsAuditLogsParams"];
 export type GetChainsDeploymentsChainletsLogsParams =
   components["schemas"]["GetChainsDeploymentsChainletsLogsParams"];
+export type GetTrainingProjectsParams = components["schemas"]["GetTrainingProjectsParams"];
 export type GetTrainingProjectsJobsLogsParams =
   components["schemas"]["GetTrainingProjectsJobsLogsParams"];
 export type GetTrainingProjectsJobsMetricsParams =
@@ -16983,6 +17988,9 @@ export type GetTeamsLoopsSamplersParams = components["schemas"]["GetTeamsLoopsSa
 export type GetApiKeysParams = components["schemas"]["GetApiKeysParams"];
 export type GetModelApisParams = components["schemas"]["GetModelApisParams"];
 export type GetModelApisUsageParams = components["schemas"]["GetModelApisUsageParams"];
+export type GetModelApisMetricsParams = components["schemas"]["GetModelApisMetricsParams"];
+export type GetModelApisModelApiNameParams =
+  components["schemas"]["GetModelApisModelApiNameParams"];
 export type GetBillingModelApisParams = components["schemas"]["GetBillingModelApisParams"];
 export type GetBillingUsageSummaryParams = components["schemas"]["GetBillingUsageSummaryParams"];
 export type GetBillingToolCallUsageParams = components["schemas"]["GetBillingToolCallUsageParams"];
@@ -16998,6 +18006,8 @@ export type GetGridTeamSettingsUsersUserIdParams =
   components["schemas"]["GetGridTeamSettingsUsersUserIdParams"];
 export type GetGridConnectionsParams = components["schemas"]["GetGridConnectionsParams"];
 export type GetGridClassifiersParams = components["schemas"]["GetGridClassifiersParams"];
+export type GetGridRouteClassifiersParams = components["schemas"]["GetGridRouteClassifiersParams"];
+export type GetGridMachineUsersParams = components["schemas"]["GetGridMachineUsersParams"];
 export type GetSandboxMetricsParams = components["schemas"]["GetSandboxMetricsParams"];
 export type GetSandboxLogsParams = components["schemas"]["GetSandboxLogsParams"];
 export type ListSandboxesParams = components["schemas"]["ListSandboxesParams"];

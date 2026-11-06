@@ -107,6 +107,19 @@ export type components = {
       /** @example 5 */
       total: number;
     };
+    CopyRequest: {
+      /** @example /app/destination */
+      destination: string;
+      /** @example false */
+      noOverwrite?: boolean;
+      /** @example /app/source */
+      source: string;
+    };
+    CopyResponse: {
+      destination: string;
+      message: string;
+      source: string;
+    };
     Directory: {
       files: components["schemas"]["File"][];
       name: string;
@@ -163,6 +176,8 @@ export type components = {
       success?: boolean;
     };
     ErrorResponse: {
+      /** @example FILE_ALREADY_EXISTS */
+      code?: string;
       /** @example Error message */
       error: string;
     };
@@ -435,6 +450,16 @@ export type components = {
       stdout: string;
     };
     ProcessRequest: {
+      /**
+       * @description Key the webhook is signed with (HMAC-SHA256, X-Blaxel-Signature header). At least 32 characters; required with callbackUrl. Never returned by the API.
+       * @example a-random-secret-of-at-least-32-chars
+       */
+      callbackSecret?: string;
+      /**
+       * @description URL that receives a signed process.exited webhook when the process ends for good (not on auto-restart). Requires callbackSecret.
+       * @example https://example.com/hooks/process
+       */
+      callbackUrl?: string;
       /** @example ls -la */
       command: string;
       /**
@@ -628,13 +653,10 @@ export type components = {
       config: string;
     };
     UpgradeRequest: {
-      /**
-       * @description Base URL for releases (useful for forks)
-       * @example https://github.com/blaxel-ai/sandbox/releases
-       */
+      /** @description Deprecated: custom binary sources are not accepted */
       baseUrl?: string;
       /**
-       * @description Version to upgrade to: "latest" (default), "develop", "main", or specific tag like "v1.0.0"
+       * @description Version to upgrade to: "latest" (default), "develop", "main", or a release tag like "v1.0.0"
        * @example latest
        */
       version?: string;
@@ -808,6 +830,10 @@ export type components = {
       /** @description With content=true, fail with 422 when the matching files hold more bytes (default: 33554432, 32 MiB; at most 268435456, 256 MiB) */
       maxBytes?: number;
     };
+    GetProcessWaitParams: {
+      /** @description Seconds to wait (default and max 119; larger values are capped) */
+      timeout?: number;
+    };
     GetWatchFilesystemParams: {
       /** @description Comma-separated substrings; events whose full path contains one are skipped, and matching directories are not watched at all */
       ignore?: string;
@@ -838,6 +864,8 @@ export type ApplyEditResponse = components["schemas"]["ApplyEditResponse"];
 export type ArchiveManifest = components["schemas"]["ArchiveManifest"];
 export type ContentSearchMatch = components["schemas"]["ContentSearchMatch"];
 export type ContentSearchResponse = components["schemas"]["ContentSearchResponse"];
+export type CopyRequest = components["schemas"]["CopyRequest"];
+export type CopyResponse = components["schemas"]["CopyResponse"];
 export type Directory = components["schemas"]["Directory"];
 export type DriveListResponse = components["schemas"]["DriveListResponse"];
 export type DriveMountInfo = components["schemas"]["DriveMountInfo"];
@@ -898,6 +926,7 @@ export type DeleteFilesystemParams = components["schemas"]["DeleteFilesystemPara
 export type GetFilesystemParams = components["schemas"]["GetFilesystemParams"];
 export type DeleteFilesystemTreeParams = components["schemas"]["DeleteFilesystemTreeParams"];
 export type GetFilesystemTreeParams = components["schemas"]["GetFilesystemTreeParams"];
+export type GetProcessWaitParams = components["schemas"]["GetProcessWaitParams"];
 export type GetWatchFilesystemParams = components["schemas"]["GetWatchFilesystemParams"];
 export type GetFilesystemResponse = components["schemas"]["GetFilesystemResponse"];
 export type DeleteNetworkProcessMonitorResponse =

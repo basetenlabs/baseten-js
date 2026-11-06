@@ -24,7 +24,10 @@ import type {
   CreateEndpointRequest,
   CreateEnvironmentRequest,
   CreateGridConnectionRequest,
+  CreateGridMachineUserApiKeyRequest,
+  CreateGridMachineUserRequest,
   CreateGridRouteRequest,
+  CreateGridTokenRequest,
   CreateGroupRequest,
   CreateLibraryListingRequest,
   CreateLibraryListingVersionRequest,
@@ -52,6 +55,7 @@ import type {
   CreateVolumeSyncRequest,
   CreateVolumeTokenRequest,
   CreateVolumeTokenResponse,
+  CreatedGridMachineUser,
   CreatedModelDeployment,
   DeactivateLoopsDeploymentResponse,
   DeactivateLoopsRunResponse,
@@ -104,6 +108,8 @@ import type {
   GetGatewayEventsParams,
   GetGridClassifiersParams,
   GetGridConnectionsParams,
+  GetGridMachineUsersParams,
+  GetGridRouteClassifiersParams,
   GetGridRoutesParams,
   GetGridRoutesUsageParams,
   GetGridTeamSettingsParams,
@@ -128,9 +134,11 @@ import type {
   GetLoopsSamplersParams,
   GetLoopsSessionResponse,
   GetLoopsUserConfigResponse,
+  GetMetricsResponse,
+  GetModelApisMetricsParams,
+  GetModelApisModelApiNameParams,
   GetModelApisParams,
   GetModelApisUsageParams,
-  GetModelMetricsResponse,
   GetModelsAuditLogsParams,
   GetModelsDeploymentsConfigParams,
   GetModelsDeploymentsLogsParams,
@@ -165,6 +173,7 @@ import type {
   GetTrainingProjectsJobsCheckpointFilesParams,
   GetTrainingProjectsJobsLogsParams,
   GetTrainingProjectsJobsMetricsParams,
+  GetTrainingProjectsParams,
   GetUsersParams,
   GetVolumesNamespacesParams,
   GetVolumesParams,
@@ -175,13 +184,19 @@ import type {
   GridConnection,
   GridConnectionTombstone,
   GridConnectionsResponse,
+  GridMachineUser,
+  GridMachineUserTombstone,
+  GridMachineUsersResponse,
   GridRoute,
+  GridRouteClassifier,
+  GridRouteClassifiersResponse,
   GridRouteTombstone,
   GridRouteUsageResponse,
   GridRoutesResponse,
   GridTeamSettings,
   GridTeamUserSettings,
   GridTeamUserSettingsList,
+  GridToken,
   Group,
   GroupsResponse,
   InstanceTypePrices,
@@ -296,6 +311,7 @@ import type {
   UpdateEnvironmentRequest,
   UpdateEnvironmentResponse,
   UpdateGridConnectionRequest,
+  UpdateGridMachineUserRequest,
   UpdateGridRouteRequest,
   UpdateGridTeamSettingsRequest,
   UpdateGridUserSettingsRequest,
@@ -506,6 +522,35 @@ export class ApiClient {
       method: "DELETE",
       pathFmt: "/v1/grid/connections/{}",
       pathArgs: [params.connection_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Deletes a machine user */
+  async deleteGridMachineUsers(params: {
+    machine_user_id: string;
+  }): Promise<GridMachineUserTombstone> {
+    return this._doJson<GridMachineUserTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/grid/machine_users/{}",
+      pathArgs: [params.machine_user_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Revokes a machine user's API key */
+  async deleteGridMachineUsersApiKeys(params: {
+    machine_user_id: string;
+    api_key_prefix: string;
+  }): Promise<ApiKeyTombstone> {
+    return this._doJson<ApiKeyTombstone>({
+      method: "DELETE",
+      pathFmt: "/v1/grid/machine_users/{}/api_keys/{}",
+      pathArgs: [params.machine_user_id, params.api_key_prefix],
       query: null,
       body: null,
       errorCodes: null,
@@ -1181,6 +1226,86 @@ export class ApiClient {
     });
   }
 
+  /** Gets a connection */
+  async getGridConnectionsConnectionId(params: { connection_id: string }): Promise<GridConnection> {
+    return this._doJson<GridConnection>({
+      method: "GET",
+      pathFmt: "/v1/grid/connections/{}",
+      pathArgs: [params.connection_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists machine users */
+  async getGridMachineUsers(params?: {
+    params?: GetGridMachineUsersParams;
+  }): Promise<GridMachineUsersResponse> {
+    return this._doJson<GridMachineUsersResponse>({
+      method: "GET",
+      pathFmt: "/v1/grid/machine_users",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists a machine user's API keys */
+  async getGridMachineUsersApiKeys(params: { machine_user_id: string }): Promise<ApiKeys> {
+    return this._doJson<ApiKeys>({
+      method: "GET",
+      pathFmt: "/v1/grid/machine_users/{}/api_keys",
+      pathArgs: [params.machine_user_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a machine user */
+  async getGridMachineUsersMachineUserId(params: {
+    machine_user_id: string;
+  }): Promise<GridMachineUser> {
+    return this._doJson<GridMachineUser>({
+      method: "GET",
+      pathFmt: "/v1/grid/machine_users/{}",
+      pathArgs: [params.machine_user_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Lists route classifiers available for intelligent routes */
+  async getGridRouteClassifiers(params?: {
+    params?: GetGridRouteClassifiersParams;
+  }): Promise<GridRouteClassifiersResponse> {
+    return this._doJson<GridRouteClassifiersResponse>({
+      method: "GET",
+      pathFmt: "/v1/grid/route_classifiers",
+      pathArgs: [],
+      query: params?.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
+  /** Gets a route classifier available for intelligent routes */
+  async getGridRouteClassifiersRouteClassifierId(params: {
+    route_classifier_id: string;
+  }): Promise<GridRouteClassifier> {
+    return this._doJson<GridRouteClassifier>({
+      method: "GET",
+      pathFmt: "/v1/grid/route_classifiers/{}",
+      pathArgs: [params.route_classifier_id],
+      query: null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Lists routes */
   async getGridRoutes(params?: { params?: GetGridRoutesParams }): Promise<GridRoutesResponse> {
     return this._doJson<GridRoutesResponse>({
@@ -1571,13 +1696,31 @@ export class ApiClient {
     });
   }
 
+  /** Gets the metrics for a Model API */
+  async getModelApisMetrics(params: {
+    model_api_name: string;
+    params?: GetModelApisMetricsParams;
+  }): Promise<GetMetricsResponse> {
+    return this._doJson<GetMetricsResponse>({
+      method: "GET",
+      pathFmt: "/v1/model_apis/{}/metrics",
+      pathArgs: [params.model_api_name],
+      query: params.params ?? null,
+      body: null,
+      errorCodes: null,
+    });
+  }
+
   /** Gets a Model API */
-  async getModelApisModelApiName(params: { model_api_name: string }): Promise<ModelApi> {
+  async getModelApisModelApiName(params: {
+    model_api_name: string;
+    params?: GetModelApisModelApiNameParams;
+  }): Promise<ModelApi> {
     return this._doJson<ModelApi>({
       method: "GET",
       pathFmt: "/v1/model_apis/{}",
       pathArgs: [params.model_api_name],
-      query: null,
+      query: params.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -1718,8 +1861,8 @@ export class ApiClient {
     model_id: string;
     deployment_id: string;
     params?: GetModelsDeploymentsMetricsParams;
-  }): Promise<GetModelMetricsResponse> {
-    return this._doJson<GetModelMetricsResponse>({
+  }): Promise<GetMetricsResponse> {
+    return this._doJson<GetMetricsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/deployments/{}/metrics",
       pathArgs: [params.model_id, params.deployment_id],
@@ -1836,8 +1979,8 @@ export class ApiClient {
     model_id: string;
     env_name: string;
     params?: GetModelsEnvironmentsMetricsParams;
-  }): Promise<GetModelMetricsResponse> {
-    return this._doJson<GetModelMetricsResponse>({
+  }): Promise<GetMetricsResponse> {
+    return this._doJson<GetMetricsResponse>({
       method: "GET",
       pathFmt: "/v1/models/{}/environments/{}/metrics",
       pathArgs: [params.model_id, params.env_name],
@@ -2159,12 +2302,14 @@ export class ApiClient {
   }
 
   /** Lists training projects */
-  async getTrainingProjects(): Promise<ListTrainingProjectsResponse> {
+  async getTrainingProjects(params?: {
+    params?: GetTrainingProjectsParams;
+  }): Promise<ListTrainingProjectsResponse> {
     return this._doJson<ListTrainingProjectsResponse>({
       method: "GET",
       pathFmt: "/v1/training_projects",
       pathArgs: [],
-      query: null,
+      query: params?.params ?? null,
       body: null,
       errorCodes: null,
     });
@@ -2641,6 +2786,21 @@ export class ApiClient {
     });
   }
 
+  /** Updates a machine user */
+  async patchGridMachineUsers(params: {
+    machine_user_id: string;
+    request: UpdateGridMachineUserRequest;
+  }): Promise<GridMachineUser> {
+    return this._doJson<GridMachineUser>({
+      method: "PATCH",
+      pathFmt: "/v1/grid/machine_users/{}",
+      pathArgs: [params.machine_user_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
   /** Updates a route */
   async patchGridRoutes(params: {
     route_id: string;
@@ -3057,11 +3217,52 @@ export class ApiClient {
     });
   }
 
+  /** Creates a machine user */
+  async postGridMachineUsers(params: {
+    request: CreateGridMachineUserRequest;
+  }): Promise<CreatedGridMachineUser> {
+    return this._doJson<CreatedGridMachineUser>({
+      method: "POST",
+      pathFmt: "/v1/grid/machine_users",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates an API key for a machine user */
+  async postGridMachineUsersApiKeys(params: {
+    machine_user_id: string;
+    request: CreateGridMachineUserApiKeyRequest;
+  }): Promise<ApiKey> {
+    return this._doJson<ApiKey>({
+      method: "POST",
+      pathFmt: "/v1/grid/machine_users/{}/api_keys",
+      pathArgs: [params.machine_user_id],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
   /** Creates a route */
   async postGridRoutes(params: { request: CreateGridRouteRequest }): Promise<GridRoute> {
     return this._doJson<GridRoute>({
       method: "POST",
       pathFmt: "/v1/grid/routes",
+      pathArgs: [],
+      query: null,
+      body: params.request,
+      errorCodes: null,
+    });
+  }
+
+  /** Creates a Grid access token */
+  async postGridToken(params: { request: CreateGridTokenRequest }): Promise<GridToken> {
+    return this._doJson<GridToken>({
+      method: "POST",
+      pathFmt: "/v1/grid/token",
       pathArgs: [],
       query: null,
       body: params.request,

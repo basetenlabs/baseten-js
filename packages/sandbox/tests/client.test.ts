@@ -87,6 +87,7 @@ describe("SandboxClient", () => {
       name: "sb-1",
       image: "custom:1",
       memory: 2048,
+      cpu: 1,
       region: "us-pdx-1",
       envs: { PLAIN: { value: "a" }, HIDDEN: { value: "b", secret: true } },
       labels: { team: "eng" },
@@ -124,6 +125,7 @@ describe("SandboxClient", () => {
       name: "sb-1",
       image: "custom:1",
       memory: 2048,
+      cpu: 1,
       region: "us-pdx-1",
       envs: [
         { name: "PLAIN", value: "a" },
@@ -198,6 +200,7 @@ describe("SandboxClient", () => {
         state: "RUNNING",
         image: "blaxel/base-image:latest",
         memory: 4096,
+        cpu: 2,
         region: "us-pdx-1",
         envs: [
           { name: "PLAIN", value: "a", secret: false },
@@ -244,6 +247,7 @@ describe("SandboxClient", () => {
       status: "DEPLOYED",
       image: "blaxel/base-image:latest",
       memory: 4096,
+      cpu: 2,
       region: "us-pdx-1",
       envs: { PLAIN: { value: "a", secret: false }, HIDDEN: { value: "", secret: true } },
       labels: { team: "eng" },
