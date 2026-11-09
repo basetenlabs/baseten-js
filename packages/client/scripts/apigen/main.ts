@@ -23,7 +23,7 @@ const INFERENCE_SPEC_URL = "https://api.baseten.co/inference-spec";
 const TRUSS_CONFIG_SCHEMA_URL =
   "https://raw.githubusercontent.com/basetenlabs/truss/main/truss/config.schema.json";
 const SANDBOX_SPEC_URL =
-  "https://raw.githubusercontent.com/blaxel-ai/sandbox/main/sandbox-api/docs/openapi.yml";
+  "https://raw.githubusercontent.com/basetenlabs/sandbox/main/sandbox-api/docs/openapi.yml";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SPECS_DIR = resolve(SCRIPT_DIR, "specs");

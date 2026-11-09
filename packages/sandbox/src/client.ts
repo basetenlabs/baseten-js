@@ -9,13 +9,11 @@ import {
   type SandboxFileSystemOptions,
   type SandboxInfo,
   type SandboxLifecycle,
-  type SandboxNetwork,
   type SandboxPort,
   sandboxEnvsToApi,
   sandboxFileSystemToApi,
   sandboxInfoFromApi,
   sandboxLifecycleToApi,
-  sandboxNetworkToApi,
   sandboxPortsToApi,
   type SandboxStatus,
   type SandboxVolumeMount,
@@ -118,9 +116,6 @@ export interface SandboxCreateRequest {
 
   ports?: SandboxPort[];
 
-  /** Network configuration, which cannot be changed after creation. */
-  network?: SandboxNetwork;
-
   /** Filesystem configuration, which cannot be changed after creation. */
   filesystem?: SandboxFileSystemOptions;
 
@@ -194,7 +189,7 @@ export interface SandboxListRequest {
  * set ones replace their previous values, including every entry of `envs`,
  * `labels`, `ports`, and `lifecycle.expirationPolicies`. Other `lifecycle`
  * fields change only when set. At least one field must be set. Memory, CPU,
- * network, and filesystem cannot be changed after creation.
+ * and filesystem cannot be changed after creation.
  */
 export interface SandboxUpdateRequest {
   name: string;
@@ -307,7 +302,6 @@ export class SandboxClient {
           lifecycle:
             request.lifecycle === undefined ? undefined : sandboxLifecycleToApi(request.lifecycle),
           ports: request.ports === undefined ? undefined : sandboxPortsToApi(request.ports),
-          network: request.network === undefined ? undefined : sandboxNetworkToApi(request.network),
           filesystem:
             request.filesystem === undefined
               ? undefined

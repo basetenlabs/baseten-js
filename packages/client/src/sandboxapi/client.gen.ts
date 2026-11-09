@@ -4,8 +4,6 @@ import type {
   ApplyEditRequest,
   ApplyEditResponse,
   ContentSearchResponse,
-  CopyRequest,
-  CopyResponse,
   DeleteFilesystemParams,
   DeleteFilesystemTreeParams,
   DeleteNetworkProcessMonitorResponse,
@@ -27,10 +25,8 @@ import type {
   GetFilesystemParams,
   GetFilesystemResponse,
   GetFilesystemSearchParams,
-  GetFilesystemTreeParams,
   GetNetworkProcessPortsResponse,
   GetProcessResponse,
-  GetProcessWaitParams,
   GetWatchFilesystemParams,
   HandlerReloadResponse,
   HealthResponse,
@@ -119,7 +115,7 @@ export class ApiClient {
       pathArgs: [params.mountPath],
       query: null,
       body: null,
-      errorCodes: { 400: "ErrorResponse", 404: "ErrorResponse", 500: "ErrorResponse" },
+      errorCodes: { 400: "ErrorResponse", 500: "ErrorResponse" },
     });
   }
 
@@ -370,15 +366,12 @@ export class ApiClient {
   }
 
   /** Get directory tree */
-  async getFilesystemTree(params: {
-    path: string;
-    params?: GetFilesystemTreeParams;
-  }): Promise<Directory> {
+  async getFilesystemTree(params: { path: string }): Promise<Directory> {
     return this._doJson<Directory>({
       method: "GET",
       pathFmt: "/filesystem/tree/{}",
       pathArgs: [params.path],
-      query: params.params ?? null,
+      query: null,
       body: null,
       errorCodes: { 400: "ErrorResponse", 422: "ErrorResponse", 500: "ErrorResponse" },
     });
@@ -465,21 +458,6 @@ export class ApiClient {
     });
   }
 
-  /** Wait for a process to finish */
-  async getProcessWait(params: {
-    identifier: string;
-    params?: GetProcessWaitParams;
-  }): Promise<ProcessResponse> {
-    return this._doJson<ProcessResponse>({
-      method: "GET",
-      pathFmt: "/process/{}/wait",
-      pathArgs: [params.identifier],
-      query: params.params ?? null,
-      body: null,
-      errorCodes: { 400: "ErrorResponse", 404: "ErrorResponse" },
-    });
-  }
-
   /** Stream file modification events in a directory */
   async getWatchFilesystem(params: {
     path: string;
@@ -548,7 +526,6 @@ export class ApiClient {
         403: "ErrorResponse",
         409: "ErrorResponse",
         500: "ErrorResponse",
-        507: "ErrorResponse",
       },
     });
   }
@@ -562,18 +539,6 @@ export class ApiClient {
       query: null,
       body: null,
       errorCodes: { 404: "ErrorResponse", 500: "ErrorResponse" },
-    });
-  }
-
-  /** Copy a file or directory */
-  async postFilesystemCopy(params: { request: CopyRequest }): Promise<CopyResponse> {
-    return this._doJson<CopyResponse>({
-      method: "POST",
-      pathFmt: "/filesystem-copy",
-      pathArgs: [],
-      query: null,
-      body: params.request,
-      errorCodes: { 400: "ErrorResponse", 409: "ErrorResponse", 422: "ErrorResponse" },
     });
   }
 
@@ -680,7 +645,7 @@ export class ApiClient {
       pathArgs: [],
       query: null,
       body: params.request,
-      errorCodes: { 400: "ErrorResponse", 500: "ErrorResponse" },
+      errorCodes: { 500: "ErrorResponse" },
     });
   }
 
