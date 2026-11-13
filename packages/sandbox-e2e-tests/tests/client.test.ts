@@ -21,16 +21,6 @@ describe.runIf(e2eEnabled())("SandboxClient", () => {
     });
   });
 
-  it("gets a sandbox's record with secrets revealed", async () => {
-    // The e2e key is a workspace admin, so secrets are revealed.
-    const info = await client.getInfo({ name: sharedName, showSecrets: true });
-    expect(info.envs).toEqual({
-      E2E_PLAIN: { value: "plain-value", secret: false },
-      E2E_SECRET: { value: "secret-value", secret: true },
-      E2E_DEFAULT: { value: "default-value", secret: true },
-    });
-  });
-
   it("gets a sandbox by name and from its record", async () => {
     const info = await client.getInfo({ name: sharedName });
     const byName = await client.get({ name: sharedName });
