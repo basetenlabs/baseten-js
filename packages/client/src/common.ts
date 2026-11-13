@@ -20,3 +20,12 @@ export function applyUserAgentHeader(headers: Record<string, string>): void {
   }
   headers["User-Agent"] = userAgentHeader();
 }
+
+/**
+ * The fetch used when no custom fetch is given: globalThis.fetch without
+ * following redirects, so a redirect response is returned as is. Custom fetch
+ * implementations can wrap it to keep that behavior.
+ */
+export const defaultFetch: typeof fetch = (input, init) =>
+  // Resolved per call so a fetch replaced after load is still used.
+  globalThis.fetch(input, { ...init, redirect: "manual" });
