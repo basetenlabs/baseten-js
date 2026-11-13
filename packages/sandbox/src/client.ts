@@ -144,13 +144,6 @@ export class SandboxCreateResult extends Sandbox {
 /** Request for {@link SandboxClient.getInfo}. */
 export interface SandboxGetInfoRequest {
   name: string;
-
-  /**
-   * Reveal environment variable values for workspace administrators.
-   * Defaults to false. Callers without the admin role receive masked values
-   * even when true.
-   */
-  showSecrets?: boolean;
   callOptions?: CallOptions;
 }
 
@@ -320,7 +313,7 @@ export class SandboxClient {
     const sandbox = await callControlPlane(() =>
       this.#api(signal).getSandbox({
         sandbox_name: request.name,
-        params: { team_id: this.#options.teamId, show_secrets: request.showSecrets },
+        params: { team_id: this.#options.teamId },
       }),
     );
     return sandboxInfoFromApi(sandbox);
