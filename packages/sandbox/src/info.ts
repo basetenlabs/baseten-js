@@ -34,8 +34,7 @@ export interface SandboxEnvValue {
 
   /**
    * Whether the value is a secret. Defaults to true. Secret values come back
-   * masked as `"****"`, unless read with
-   * {@link SandboxGetInfoRequest.showSecrets}.
+   * masked as `"****"`.
    */
   secret?: boolean;
 }

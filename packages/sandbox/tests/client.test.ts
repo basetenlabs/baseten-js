@@ -248,19 +248,6 @@ describe("SandboxClient", () => {
     expect(info.expiresInMs).toBeUndefined();
   });
 
-  it("gets with show_secrets only when set", async () => {
-    const server = fakeServer(() => apiSandbox("sb-1"));
-    const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
-    await client.getInfo({ name: "sb-1" });
-    await client.getInfo({ name: "sb-1", showSecrets: true });
-    await client.getInfo({ name: "sb-1", showSecrets: false });
-    expect(server.requests.map((request) => request.query.get("show_secrets"))).toEqual([
-      null,
-      "true",
-      "false",
-    ]);
-  });
-
   it("fails to map a record with an invalid duration", async () => {
     const server = fakeServer(() =>
       apiSandbox("sb-1", {
