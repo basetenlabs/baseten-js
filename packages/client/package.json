@@ -33,6 +33,10 @@
     "./sandboxapi": {
       "types": "./dist/sandboxapi.d.ts",
       "default": "./dist/sandboxapi.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "default": "./dist/internal.js"
     }
   },
   "publishConfig": {
