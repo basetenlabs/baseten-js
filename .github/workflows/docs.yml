@@ -21,11 +21,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@59b7218bfc2eaabc464f1254f6e1dac5bda91d94 # v4.4.0
 
-      - uses: pnpm/action-setup@v6
+      - uses: chainguard-actions/pnpm-action-setup@dbd76d4f034a197a459098e87afc6916ec671849 # v6.1.1
 
-      - uses: actions/setup-node@v4
+      - uses: chainguard-actions/actions-setup-node@031fc9bd73e651da81e6a7294b2af29e64d5f39c # v4.4.0
         with:
           node-version: "26"
 
@@ -53,9 +53,9 @@ jobs:
           <p><a href="https://github.com/basetenlabs/baseten-js">GitHub repository</a></p>
           EOF
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: chainguard-actions/actions-upload-pages-artifact@910d554a410bf61031b9fc5b7f6930040f193dc7 # v3.0.1
         with:
           path: _site
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: chainguard-actions/actions-deploy-pages@f4d5c29b63bb3df1e6eac647993dd0c3fe33651c # v4.0.5
