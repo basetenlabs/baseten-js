@@ -1,4 +1,4 @@
-import { ManagementClient } from "@basetenlabs/client";
+import { type Credentials, ManagementClient } from "@basetenlabs/client";
 import { abortable, fetchWithBearerToken, TokenCache } from "@basetenlabs/client/internal";
 
 /**
@@ -37,7 +37,8 @@ const TOKEN_MINT_TIMEOUT_MS = 30_000;
 
 /**
  * Where each request's bearer token comes from: a caller's token provider,
- * or a token minted from an API key, cached until shortly before it expires.
+ * or a token minted with an API key or credentials, cached until shortly
+ * before it expires.
  *
  * The API key is exchanged for a token because the sandbox APIs do not
  * accept API keys directly. Should that change, only this class changes.
@@ -47,22 +48,33 @@ export class TokenSource {
   private readonly provider?: SandboxTokenProvider;
 
   constructor(options: {
-    apiKey: string;
+    apiKey?: string;
+    credentials?: Credentials;
     tokenProvider?: SandboxTokenProvider;
     managementBaseUrlOverride?: string;
     fetch: typeof fetch;
     headers?: Record<string, string>;
   }) {
-    if (options.tokenProvider !== undefined) {
-      if (options.apiKey !== "") {
-        throw new Error("apiKey must be empty when tokenProvider is set");
-      }
-      this.provider = options.tokenProvider;
-    } else if (options.apiKey !== "") {
+    const { apiKey, credentials, tokenProvider } = options;
+    const given = [
+      apiKey !== undefined && apiKey !== "",
+      credentials !== undefined,
+      tokenProvider !== undefined,
+    ].filter(Boolean).length;
+    if (given > 1) {
+      throw new Error("only one of apiKey, credentials, and tokenProvider may be set");
+    }
+    // An empty apiKey alone is the advanced opt-out from sending Authorization.
+    if (given === 0 && apiKey === undefined) {
+      throw new Error("one of apiKey, credentials, or tokenProvider is required");
+    }
+    if (tokenProvider !== undefined) {
+      this.provider = tokenProvider;
+    } else if (given === 1) {
       this.cache = new TokenCache({
         mint: async (signal) => {
           const api = new ManagementClient({
-            apiKey: options.apiKey,
+            ...(credentials === undefined ? { apiKey } : { credentials }),
             baseUrlOverride: options.managementBaseUrlOverride,
             fetch: (input, init) => options.fetch(input, { ...init, signal }),
             headers: options.headers,
@@ -70,7 +82,7 @@ export class TokenSource {
           const minted = await api.postToken({ request: { scopes: ["sandboxes"] } });
           return { value: minted.token, expiresAtMs: Date.parse(minted.expires_at) };
         },
-        refreshBeforeMs: TOKEN_EXPIRY_LEEWAY_MS,
+        refreshLeewayMs: TOKEN_EXPIRY_LEEWAY_MS,
         mintTimeoutMs: TOKEN_MINT_TIMEOUT_MS,
         mintName: "sandbox token exchange",
       });

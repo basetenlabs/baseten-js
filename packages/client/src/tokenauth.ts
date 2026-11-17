@@ -20,7 +20,7 @@ export interface TokenCacheOptions {
    * How long before expiry a token is replaced, capped at half the token's
    * lifetime so a short-lived token is still reused.
    */
-  refreshBeforeMs: number;
+  refreshLeewayMs: number;
 
   /** Bounds one mint, which every waiting caller shares. */
   mintTimeoutMs: number;
@@ -96,7 +96,7 @@ export class TokenCache {
   }
 
   async #runMint(mint: Mint): Promise<Token> {
-    const { mintTimeoutMs, refreshBeforeMs } = this.#options;
+    const { mintTimeoutMs, refreshLeewayMs } = this.#options;
     const controller = new AbortController();
     const timer = setTimeout(() => {
       controller.abort(
@@ -108,7 +108,7 @@ export class TokenCache {
       // Raced against the timeout too, in case the mint ignores its signal.
       const token = await abortable(this.#options.mint(controller.signal), controller.signal);
       const lifetimeMs = Math.max(token.expiresAtMs - startedAtMs, 0);
-      mint.refreshAtMs = token.expiresAtMs - Math.min(refreshBeforeMs, lifetimeMs / 2);
+      mint.refreshAtMs = token.expiresAtMs - Math.min(refreshLeewayMs, lifetimeMs / 2);
       mint.token = token;
       return token;
     } catch (err) {
@@ -179,12 +179,9 @@ export async function fetchWithBearerToken(
  * it has side effects.
  */
 export function isTokenRefused(response: Response): boolean {
-  if (response.status !== 401) return false;
-  // Sandboxes, and the control plane for sandbox tokens, send this header.
-  if (response.headers.get("x-blaxel-error-code") === "TOKEN_REVOKED") return true;
-  // The RFC 6750 response to a refused access token. Headers joins repeated
-  // challenges into one value.
-  return response.headers.get("www-authenticate")?.includes('error="invalid_token"') ?? false;
+  // Both the control plane and sandboxes send this header for a sandbox
+  // token, while their bodies differ.
+  return response.status === 401 && response.headers.get("x-blaxel-error-code") === "TOKEN_REVOKED";
 }
 
 /** Returns init with "Authorization: Bearer <token>" added to the headers fetch would send. */

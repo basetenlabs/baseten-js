@@ -2,11 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type AccessTokenSource, bearerAuthFetch } from "../../src/credentials";
+import { bearerAuthFetch, type Credentials } from "../../src/credentials";
 import { InferenceClient } from "../../src/inference";
 import { ManagementClient } from "../../src/management";
+import { ResponseError } from "../../src/managementapi";
 import {
-  InvalidGrantError,
   WorkloadIdentityCredentials,
   type WorkloadIdentityCredentialsOptions,
 } from "../../src/workloadIdentity";
@@ -39,6 +39,7 @@ function fakeBaseten(
     if (new URL(request.url).pathname === "/v1/auth/token") {
       expect(request.method).toBe("POST");
       expect(request.headers.get("content-type")).toBe("application/json");
+      expect(request.redirect).toBe("manual");
       expect(authorization).toBe("");
       const body = (await request.json()) as Record<string, string>;
       expect(body).toEqual({
@@ -108,7 +109,7 @@ describe("WorkloadIdentityCredentials", () => {
 
   it("caps the refresh margin at half the token's lifetime", async () => {
     const server = fakeBaseten({ expiresIn: 60 });
-    const creds = credentials(server, { refreshBeforeExpiryMs: 10 * 60_000 });
+    const creds = credentials(server, { refreshLeewayMs: 10 * 60_000 });
     await creds.accessToken();
     vi.setSystemTime(NOW + 29_000);
     expect((await creds.accessToken()).token).toBe("access-1");
@@ -125,7 +126,7 @@ describe("WorkloadIdentityCredentials", () => {
       const creds = credentials(server, { identityTokenFile: file });
       await creds.accessToken();
       writeFileSync(file, "jwt-2");
-      creds.invalidateAccessToken("access-1");
+      vi.setSystemTime(NOW + 3600_000);
       expect((await creds.accessToken()).token).toBe("access-2");
       expect(server.assertions).toEqual(["jwt-1", "jwt-2"]);
     } finally {
@@ -151,34 +152,41 @@ describe("WorkloadIdentityCredentials", () => {
     }
   });
 
-  it("explains an invalid_grant refusal", async () => {
-    const server = fakeBaseten({
-      exchange: () => Response.json({ error: "invalid_grant" }, { status: 400 }),
-    });
-    const err = await credentials(server)
+  async function exchangeError(response: Response): Promise<ResponseError> {
+    const err = await credentials(fakeBaseten({ exchange: () => response }))
       .accessToken()
       .catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(InvalidGrantError);
-    expect((err as InvalidGrantError).trustRuleId).toBe("rule-1");
-    expect((err as Error).message).toContain("trust rule rule-1");
+    expect(err).toBeInstanceOf(ResponseError);
+    return err as ResponseError;
+  }
+
+  it("explains an invalid_grant refusal", async () => {
+    const err = await exchangeError(Response.json({ error: "invalid_grant" }, { status: 400 }));
+    expect(err.statusCode).toBe(400);
+    expect(err.body).toBe('{"error":"invalid_grant"}');
+    expect(err.message).toContain("refused for trust rule rule-1 (the trust rule may not exist");
   });
 
-  it("reports a non-JSON response", async () => {
-    const server = fakeBaseten({
-      exchange: () => new Response("<html>bad gateway</html>", { status: 502 }),
-    });
-    await expect(credentials(server).accessToken()).rejects.toThrow(
-      "HTTP 502 with a non-JSON response: <html>bad gateway</html>",
+  it("reports another error status with the whole body", async () => {
+    const body = `<html>${"x".repeat(2000)}</html>`;
+    const err = await exchangeError(new Response(body, { status: 502 }));
+    expect(err.statusCode).toBe(502);
+    expect(err.body).toBe(body);
+    expect(err.message).toBe(
+      `workload identity token exchange: baseten API error (HTTP 502): ${body}`,
     );
   });
 
-  it("reports another error status", async () => {
-    const server = fakeBaseten({
-      exchange: () => Response.json({ error: "server_error" }, { status: 500 }),
-    });
-    await expect(credentials(server).accessToken()).rejects.toThrow(
-      'HTTP 500: {"error":"server_error"}',
+  it("returns a redirect as an error rather than following it", async () => {
+    const err = await exchangeError(
+      new Response(null, { status: 307, headers: { location: "https://elsewhere.example.com/" } }),
     );
+    expect(err.statusCode).toBe(307);
+  });
+
+  it("reports a non-JSON success", async () => {
+    const server = fakeBaseten({ exchange: () => new Response("<html>ok</html>") });
+    await expect(credentials(server).accessToken()).rejects.toThrow("decoding response");
   });
 
   it.each([
@@ -229,7 +237,7 @@ describe("WorkloadIdentityCredentials", () => {
       "exactly one of",
     ],
     ["no trust rule", { trustRuleId: "" }, "trustRuleId is required"],
-    ["a negative margin", { refreshBeforeExpiryMs: -1 }, "must not be negative"],
+    ["a negative margin", { refreshLeewayMs: -1 }, "must not be negative"],
   ])("rejects %s", (_name, options, message) => {
     expect(
       () =>
@@ -272,46 +280,54 @@ describe("clients with credentials", () => {
     expect(server.seenAuth).toEqual(["Bearer access-1", "Bearer access-2", "Bearer access-2"]);
   });
 
-  function refusingServer() {
-    return fakeBaseten({
-      api: (authorization) =>
-        authorization === "Bearer access-1"
-          ? new Response(null, {
-              status: 401,
-              headers: { "www-authenticate": 'Bearer realm="baseten", error="invalid_token"' },
-            })
-          : undefined,
+  it("return a 401 as is, without sending again", async () => {
+    const server = fakeBaseten({
+      api: () =>
+        new Response(null, {
+          status: 401,
+          headers: { "www-authenticate": 'Bearer realm="baseten", error="invalid_token"' },
+        }),
     });
-  }
-
-  it("resend a refused token for a source that can invalidate it", async () => {
-    const server = refusingServer();
+    const creds = credentials(server);
     const management = new ManagementClient({
-      credentials: credentials(server),
+      credentials: creds,
+      baseUrlOverride: BASE_URL,
+      fetch: server.fetch,
+    });
+    const err = await management.api.getOrganizationsMe().catch((e: unknown) => e);
+    expect((err as ResponseError).statusCode).toBe(401);
+    const inference = new InferenceClient({
+      credentials: creds,
+      baseUrlOverride: BASE_URL,
+      fetch: server.fetch,
+    });
+    await expect(inference.api.getAsyncQueueStatusProduction()).rejects.toThrow();
+    expect(server.seenAuth).toEqual(["Bearer access-1", "Bearer access-1"]);
+    expect(server.exchanges()).toBe(1);
+  });
+
+  it("pass an options object to custom credentials", async () => {
+    const server = fakeBaseten();
+    const seen: unknown[] = [];
+    const custom: Credentials = {
+      accessToken: async (options) => {
+        seen.push(options);
+        return { token: "custom", expiresAt: new Date(NOW + 3600_000) };
+      },
+    };
+    const management = new ManagementClient({
+      credentials: custom,
       baseUrlOverride: BASE_URL,
       fetch: server.fetch,
     });
     await management.api.getOrganizationsMe();
-    expect(server.seenAuth).toEqual(["Bearer access-1", "Bearer access-2"]);
-  });
-
-  it("send once for a source that cannot invalidate", async () => {
-    const server = refusingServer();
-    const source: AccessTokenSource = {
-      accessToken: async () => ({ token: "access-1", expiresAt: new Date(NOW + 3600_000) }),
-    };
-    const management = new ManagementClient({
-      credentials: source,
-      baseUrlOverride: BASE_URL,
-      fetch: server.fetch,
-    });
-    await expect(management.api.getOrganizationsMe()).rejects.toThrow();
-    expect(server.seenAuth).toEqual(["Bearer access-1"]);
+    expect(seen).toEqual([{ signal: undefined }]);
+    expect(server.seenAuth).toEqual(["Bearer custom"]);
   });
 
   it("leave requests to other origins alone", async () => {
     const seen: (string | null)[] = [];
-    const source: AccessTokenSource = {
+    const source: Credentials = {
       accessToken: async () => {
         throw new Error("token fetched for a foreign origin");
       },

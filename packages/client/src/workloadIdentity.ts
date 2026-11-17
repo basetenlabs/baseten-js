@@ -1,5 +1,6 @@
-import type { AccessToken, AccessTokenOptions, AccessTokenSource } from "./credentials";
+import type { AccessToken, AccessTokenOptions, Credentials } from "./credentials";
 import { ManagementClient } from "./management";
+import { ResponseError } from "./managementapi";
 import { TokenCache, type Token } from "./tokenauth";
 import { applyUserAgentHeader } from "./userAgent";
 
@@ -7,7 +8,7 @@ import { applyUserAgentHeader } from "./userAgent";
 const TOKEN_EXCHANGE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchange";
 const JWT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:jwt";
 
-const DEFAULT_REFRESH_BEFORE_EXPIRY_MS = 5 * 60_000;
+const DEFAULT_REFRESH_LEEWAY_MS = 5 * 60_000;
 const DEFAULT_EXCHANGE_TIMEOUT_MS = 10_000;
 
 /** Options for {@link IdentityTokenGetter}. */
@@ -44,46 +45,48 @@ export interface WorkloadIdentityCredentialsOptions {
   /** Management API base URL the exchange is sent to. Defaults to https://api.baseten.co. */
   baseUrl?: string;
 
-  /** Custom fetch implementation for the exchange. Defaults to globalThis.fetch. */
+  /**
+   * Custom fetch implementation for the exchange. Defaults to
+   * globalThis.fetch. The exchange asks not to follow redirects, since its
+   * body carries the identity token, so a custom fetch should honor
+   * `redirect: "manual"`.
+   */
   fetch?: typeof fetch;
 
   /**
    * How long before expiry the access token is replaced. Defaults to five
    * minutes. Either way it is capped at half the token's lifetime.
    */
-  refreshBeforeExpiryMs?: number;
+  refreshLeewayMs?: number;
 
   /** Bounds one exchange, which every caller waiting for a token shares. Defaults to 10 seconds. */
   exchangeTimeoutMs?: number;
 }
 
 /**
- * Thrown when Baseten refuses a workload identity token exchange. The server
- * gives no reason: the trust rule may not exist, may not match the identity
- * token's issuer or claims, or the identity token may be expired or have the
- * wrong audience.
- */
-export class InvalidGrantError extends Error {
-  readonly trustRuleId: string;
-
-  constructor(trustRuleId: string) {
-    super(
-      `workload identity token exchange refused for trust rule ${trustRuleId}: invalid_grant ` +
-        "(the trust rule may not exist or may not match the identity token's issuer, audience, or claims, " +
-        "or the identity token may have expired)",
-    );
-    this.name = "InvalidGrantError";
-    this.trustRuleId = trustRuleId;
-  }
-}
-
-/**
  * Exchanges an identity provider's JWT for a Baseten access token under a
- * trust rule (OIDC workload identity federation). The exchange happens on
- * first use; the access token is cached in memory and replaced shortly before
- * it expires. Concurrent callers share one exchange.
+ * trust rule (OIDC workload identity federation), for use as a client's
+ * `credentials` instead of an API key. The exchange happens on first use; the
+ * access token is cached in memory and replaced shortly before it expires.
+ * Concurrent callers share one exchange.
+ *
+ * A failed exchange throws the management API's `ResponseError`, carrying the
+ * status code and response body.
+ *
+ * @example
+ * A workload exchanges a projected Kubernetes service account token:
+ * ```typescript
+ * import { ManagementClient, WorkloadIdentityCredentials } from "@basetenlabs/client";
+ *
+ * const credentials = new WorkloadIdentityCredentials({
+ *   identityTokenFile: "/var/run/secrets/tokens/baseten",
+ *   trustRuleId: "my-trust-rule-id",
+ * });
+ * const client = new ManagementClient({ credentials });
+ * console.log((await client.api.getOrganizationsMe()).org_id);
+ * ```
  */
-export class WorkloadIdentityCredentials implements AccessTokenSource {
+export class WorkloadIdentityCredentials implements Credentials {
   readonly #trustRuleId: string;
   readonly #identityToken: IdentityTokenGetter;
   readonly #exchangeUrl: string;
@@ -96,10 +99,8 @@ export class WorkloadIdentityCredentials implements AccessTokenSource {
       throw new Error("exactly one of identityToken and identityTokenFile is required");
     }
     if (!options.trustRuleId) throw new Error("trustRuleId is required");
-    const refreshBeforeMs = options.refreshBeforeExpiryMs ?? DEFAULT_REFRESH_BEFORE_EXPIRY_MS;
-    if (!(refreshBeforeMs >= 0)) {
-      throw new Error("refreshBeforeExpiryMs must not be negative");
-    }
+    const refreshLeewayMs = options.refreshLeewayMs ?? DEFAULT_REFRESH_LEEWAY_MS;
+    if (!(refreshLeewayMs >= 0)) throw new Error("refreshLeewayMs must not be negative");
     const exchangeTimeoutMs = options.exchangeTimeoutMs ?? DEFAULT_EXCHANGE_TIMEOUT_MS;
     if (!(exchangeTimeoutMs > 0)) throw new Error("exchangeTimeoutMs must be positive");
     this.#trustRuleId = options.trustRuleId;
@@ -112,7 +113,7 @@ export class WorkloadIdentityCredentials implements AccessTokenSource {
     this.#fetch = customFetch ?? ((input, init) => globalThis.fetch(input, init));
     this.#cache = new TokenCache({
       mint: (signal) => this.#exchange(signal),
-      refreshBeforeMs,
+      refreshLeewayMs,
       mintTimeoutMs: exchangeTimeoutMs,
       mintName: "workload identity token exchange",
     });
@@ -120,16 +121,12 @@ export class WorkloadIdentityCredentials implements AccessTokenSource {
 
   /**
    * Returns a current access token, exchanging the identity token for a new
-   * one when none is cached or the cached one is due for refresh.
+   * one when none is cached or the cached one is within the refresh leeway of
+   * expiry.
    */
   async accessToken(options?: AccessTokenOptions): Promise<AccessToken> {
     const token = await this.#cache.token(options?.signal);
     return { token: token.value, expiresAt: new Date(token.expiresAtMs) };
-  }
-
-  /** Drops token if it is still the cached one, so the next call exchanges again. */
-  invalidateAccessToken(token: string): void {
-    this.#cache.invalidate(token);
   }
 
   async #exchange(signal: AbortSignal): Promise<Token> {
@@ -160,29 +157,22 @@ export class WorkloadIdentityCredentials implements AccessTokenSource {
           audience: this.#trustRuleId,
         }),
         signal,
+        // The body carries the identity token, so it must not follow a
+        // redirect to wherever that points.
+        redirect: "manual",
       });
       text = await response.text();
     } catch (err) {
       throw new Error(`workload identity token exchange: ${errorMessage(err)}`, { cause: err });
     }
-    let decoded: {
-      access_token?: unknown;
-      token_type?: unknown;
-      expires_in?: unknown;
-      error?: unknown;
-    };
+    if (response.status !== 200) throw this.#exchangeError(response.status, text);
+    let decoded: { access_token?: unknown; token_type?: unknown; expires_in?: unknown } | null;
     try {
       decoded = JSON.parse(text);
-    } catch {
-      throw new Error(
-        `workload identity token exchange: HTTP ${response.status} with a non-JSON response: ${truncateForError(text)}`,
-      );
-    }
-    if (response.status !== 200) {
-      if (decoded?.error === "invalid_grant") throw new InvalidGrantError(this.#trustRuleId);
-      throw new Error(
-        `workload identity token exchange: HTTP ${response.status}: ${truncateForError(text)}`,
-      );
+    } catch (err) {
+      throw new Error(`workload identity token exchange: decoding response: ${errorMessage(err)}`, {
+        cause: err,
+      });
     }
     const { access_token, token_type, expires_in } = decoded ?? {};
     if (typeof access_token !== "string" || access_token === "") {
@@ -199,6 +189,20 @@ export class WorkloadIdentityCredentials implements AccessTokenSource {
       );
     }
     return { value: access_token, expiresAtMs: issuedAtMs + expires_in * 1000 };
+  }
+
+  #exchangeError(status: number, body: string): ResponseError {
+    const err = new ResponseError(status, body.trim());
+    // The server sends every refusal as the same OAuth invalid_grant, so the
+    // hint covers each possible cause.
+    const context =
+      oauthErrorCode(body) === "invalid_grant"
+        ? `workload identity token exchange refused for trust rule ${this.#trustRuleId} ` +
+          "(the trust rule may not exist or may not match the identity token's issuer, audience, or claims, " +
+          "or the identity token may have expired)"
+        : "workload identity token exchange";
+    err.message = `${context}: ${err.message}`;
+    return err;
   }
 }
 
@@ -228,10 +232,12 @@ export function identityTokenFromFile(path: string): IdentityTokenGetter {
   };
 }
 
-function truncateForError(body: string): string {
-  const maxLength = 512;
-  const trimmed = body.trim();
-  return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength)}...` : trimmed;
+function oauthErrorCode(body: string): unknown {
+  try {
+    return (JSON.parse(body) as { error?: unknown } | null)?.error;
+  } catch {
+    return undefined;
+  }
 }
 
 function errorMessage(err: unknown): string {

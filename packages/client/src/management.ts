@@ -1,5 +1,5 @@
 import { ApiClient } from "./managementapi";
-import { type AccessTokenSource, authenticatedTransport } from "./credentials";
+import { authenticatedTransport, type Credentials } from "./credentials";
 
 /** Options for {@link ManagementClient}. */
 export interface ManagementClientOptions {
@@ -16,7 +16,7 @@ export interface ManagementClientOptions {
    * request, and sent as "Authorization: Bearer <token>" to the client's own
    * base URL only.
    */
-  credentials?: AccessTokenSource;
+  credentials?: Credentials;
 
   /** Explicit base URL override, or undefined to use the default. */
   baseUrlOverride?: string;

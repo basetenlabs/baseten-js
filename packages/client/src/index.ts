@@ -1,4 +1,4 @@
-export type { AccessToken, AccessTokenOptions, AccessTokenSource } from "./credentials";
+export type { AccessToken, AccessTokenOptions, Credentials } from "./credentials";
 export { InferenceClient } from "./inference";
 export type { InferenceClientOptions } from "./inference";
 export { ManagementClient } from "./management";
@@ -7,7 +7,6 @@ export { SandboxClient } from "./sandbox";
 export type { SandboxClientOptions } from "./sandbox";
 export {
   identityTokenFromFile,
-  InvalidGrantError,
   WorkloadIdentityCredentials,
   type IdentityTokenGetter,
   type IdentityTokenOptions,

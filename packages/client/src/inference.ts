@@ -1,5 +1,5 @@
 import { ApiClient } from "./inferenceapi";
-import { type AccessTokenSource, authenticatedTransport } from "./credentials";
+import { authenticatedTransport, type Credentials } from "./credentials";
 
 /** Options for {@link InferenceClient}. */
 export interface InferenceClientOptions {
@@ -16,7 +16,7 @@ export interface InferenceClientOptions {
    * request, and sent as "Authorization: Bearer <token>" to the client's own
    * base URL only.
    */
-  credentials?: AccessTokenSource;
+  credentials?: Credentials;
 
   /** Model ID. Mutually exclusive with chainId. */
   modelId?: string;

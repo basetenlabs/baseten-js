@@ -66,6 +66,18 @@ describe("TokenSource", () => {
     expect(await request!.json()).toEqual({ scopes: ["sandboxes"] });
   });
 
+  it("mints with credentials", async () => {
+    const server = mintServer();
+    const tokens = new TokenSource({
+      credentials: {
+        accessToken: async () => ({ token: "access", expiresAt: new Date(NOW + 3600_000) }),
+      },
+      fetch: server.fetch,
+    });
+    expect(await tokens.token()).toBe("token-1");
+    expect(server.requests[0]!.headers.get("authorization")).toBe("Bearer access");
+  });
+
   it("refreshes within a minute of expiry", async () => {
     const server = mintServer({ lifetimeMs: 120_000 });
     const tokens = new TokenSource({ apiKey: "test-key", fetch: server.fetch });
@@ -165,7 +177,23 @@ describe("TokenSource", () => {
           tokenProvider: async () => "provided",
           fetch: mintServer().fetch,
         }),
-    ).toThrow("apiKey must be empty when tokenProvider is set");
+    ).toThrow("only one of apiKey, credentials, and tokenProvider may be set");
+  });
+
+  it.each<[string, Omit<ConstructorParameters<typeof TokenSource>[0], "fetch">, string]>([
+    [
+      "an API key alongside credentials",
+      { apiKey: "k", credentials: { accessToken: async () => ({}) as never } },
+      "only one of",
+    ],
+    [
+      "credentials alongside a token provider",
+      { credentials: { accessToken: async () => ({}) as never }, tokenProvider: async () => "t" },
+      "only one of",
+    ],
+    ["nothing", {}, "one of apiKey, credentials, or tokenProvider is required"],
+  ])("rejects %s", (_name, options, message) => {
+    expect(() => new TokenSource({ ...options, fetch: mintServer().fetch })).toThrow(message);
   });
 
   it("returns no token for an empty API key without a provider", async () => {

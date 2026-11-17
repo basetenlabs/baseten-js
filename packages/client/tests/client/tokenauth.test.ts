@@ -8,7 +8,7 @@ const MINUTE_MS = 60_000;
 // the mint, or as the given mint answers.
 function testCache(
   lifetimeMs: number,
-  refreshBeforeMs: number,
+  refreshLeewayMs: number,
   mint?: (n: number) => Promise<Token | undefined> | undefined,
 ): { cache: TokenCache; mints: () => number } {
   let mints = 0;
@@ -17,7 +17,7 @@ function testCache(
       const n = ++mints;
       return (await mint?.(n)) ?? { value: `token-${n}`, expiresAtMs: Date.now() + lifetimeMs };
     },
-    refreshBeforeMs,
+    refreshLeewayMs,
     mintTimeoutMs: 1000,
     mintName: "test mint",
   });
@@ -141,15 +141,8 @@ describe("TokenCache", () => {
 describe("isTokenRefused", () => {
   it.each([
     ["a revoked sandbox token", 401, { "x-blaxel-error-code": "TOKEN_REVOKED" }, true],
-    [
-      "an invalid_token challenge",
-      401,
-      { "www-authenticate": 'Bearer realm="baseten", error="invalid_token"' },
-      true,
-    ],
     ["a plain 401", 401, {}, false],
-    ["another challenge", 401, { "www-authenticate": 'Bearer realm="baseten"' }, false],
-    ["a 403", 403, { "www-authenticate": 'Bearer error="invalid_token"' }, false],
+    ["a 403", 403, { "x-blaxel-error-code": "TOKEN_REVOKED" }, false],
   ])("reports %s", (_name, status, headers, want) => {
     expect(isTokenRefused(new Response(null, { status, headers }))).toBe(want);
   });
@@ -157,10 +150,7 @@ describe("isTokenRefused", () => {
 
 describe("fetchWithBearerToken", () => {
   function refused(): Response {
-    return new Response(null, {
-      status: 401,
-      headers: { "www-authenticate": 'Bearer error="invalid_token"' },
-    });
+    return new Response(null, { status: 401, headers: { "x-blaxel-error-code": "TOKEN_REVOKED" } });
   }
 
   // Answers with the next of the given responses, then 204s, recording each

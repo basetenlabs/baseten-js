@@ -1,4 +1,4 @@
-import { fetchWithBearerToken, requestHeaders, withBearer } from "./tokenauth";
+import { requestHeaders, withBearer } from "./tokenauth";
 import { applyUserAgentHeader } from "./userAgent";
 
 /** A short-lived Baseten access token, sent as "Authorization: Bearer <token>". */
@@ -7,7 +7,10 @@ export interface AccessToken {
   expiresAt: Date;
 }
 
-/** Options for {@link AccessTokenSource.accessToken}. */
+/**
+ * Options for {@link Credentials.accessToken}. Fields may be added in later
+ * versions, so implementations should ignore ones they do not know.
+ */
 export interface AccessTokenOptions {
   /** Stops the caller's wait for a token. */
   signal?: AbortSignal;
@@ -15,26 +18,12 @@ export interface AccessTokenOptions {
 
 /**
  * Supplies a current Baseten access token, for example
- * {@link WorkloadIdentityCredentials}. A client configured with one asks it
- * before every request, so the source decides when to refresh.
+ * {@link WorkloadIdentityCredentials}. A client configured with credentials
+ * asks them before every request, so the credentials decide when to refresh.
  */
-export interface AccessTokenSource {
-  accessToken(options?: AccessTokenOptions): Promise<AccessToken>;
-
-  /**
-   * Drops token if it is still the cached one. Implemented by a source that
-   * caches tokens. When Baseten refuses a token before it expires, for example
-   * because it was revoked, a client drops it with this, asks the source for a
-   * new one, and sends the request again. Clients resend only for sources that
-   * implement this.
-   */
-  invalidateAccessToken?(token: string): void;
+export interface Credentials {
+  accessToken(options: AccessTokenOptions): Promise<AccessToken>;
 }
-
-// Revocation refuses every token issued before a cutoff that can fall a moment
-// after the revoking event, so the second resend waits this long for the next
-// token to be minted past it.
-const ACCESS_TOKEN_RESEND_DELAY_MS = 1000;
 
 /**
  * Returns the headers and fetch a client sends its requests with, given
@@ -44,7 +33,7 @@ const ACCESS_TOKEN_RESEND_DELAY_MS = 1000;
 export function authenticatedTransport(
   options: {
     apiKey?: string;
-    credentials?: AccessTokenSource;
+    credentials?: Credentials;
     fetch?: typeof fetch;
     headers?: Record<string, string>;
   },
@@ -64,7 +53,7 @@ export function authenticatedTransport(
 
 function validateAuthOptions(
   apiKey: string | undefined,
-  credentials: AccessTokenSource | undefined,
+  credentials: Credentials | undefined,
   headers: Record<string, string> | undefined,
 ): void {
   if (apiKey !== undefined && credentials !== undefined) {
@@ -82,37 +71,26 @@ function validateAuthOptions(
 }
 
 /**
- * Wraps a fetch to set "Authorization: Bearer" from source on each request to
- * baseUrl's origin, so a long-running operation picks up refreshed tokens.
- * Requests to other origins, and requests that already carry Authorization,
- * are passed through untouched. Redirects to another origin drop
- * Authorization, as the Fetch standard requires; a custom fetch must do the
- * same.
+ * Wraps a fetch to set "Authorization: Bearer" from credentials on each
+ * request to baseUrl's origin, so a long-running operation picks up refreshed
+ * tokens. Requests to other origins, and requests that already carry
+ * Authorization, are passed through untouched. Redirects to another origin
+ * drop Authorization, as the Fetch standard requires; a custom fetch must do
+ * the same.
  */
 export function bearerAuthFetch(
   base: typeof fetch,
-  source: AccessTokenSource,
+  credentials: Credentials,
   baseUrl: string,
 ): typeof fetch {
   const origin = new URL(baseUrl).origin;
-  const resend = source.invalidateAccessToken !== undefined;
-  const getToken = async (signal: AbortSignal | undefined, refused: string | undefined) => {
-    if (refused !== undefined) source.invalidateAccessToken!(refused);
-    const { token } = await source.accessToken({ signal });
-    if (token === "") throw new Error("the access token source returned an empty token");
-    return token;
-  };
   return async (input, init) => {
     const url = input instanceof Request ? input.url : input.toString();
     if (new URL(url).origin !== origin || requestHeaders(input, init).has("authorization")) {
       return base(input, init);
     }
-    if (!resend) {
-      // Without a way to drop the refused token, the source would return it
-      // again, so the request is sent once.
-      const token = await getToken(init?.signal ?? undefined, undefined);
-      return base(input, withBearer(input, init, token));
-    }
-    return fetchWithBearerToken(base, input, init, getToken, ACCESS_TOKEN_RESEND_DELAY_MS);
+    const { token } = await credentials.accessToken({ signal: init?.signal ?? undefined });
+    if (token === "") throw new Error("the credentials returned an empty access token");
+    return base(input, withBearer(input, init, token));
   };
 }
