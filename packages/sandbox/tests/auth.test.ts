@@ -192,6 +192,14 @@ describe("TokenSource", () => {
       "only one of",
     ],
     ["nothing", {}, "one of apiKey, credentials, or tokenProvider is required"],
+    [
+      "credentials alongside an Authorization header",
+      {
+        credentials: { accessToken: async () => ({}) as never },
+        headers: { authorization: "Bearer other" },
+      },
+      "headers must not set Authorization when credentials is set",
+    ],
   ])("rejects %s", (_name, options, message) => {
     expect(() => new TokenSource({ ...options, fetch: mintServer().fetch })).toThrow(message);
   });

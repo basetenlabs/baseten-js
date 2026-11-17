@@ -21,8 +21,7 @@ export interface SandboxTokenProviderContext {
 }
 
 // Refresh this long before the token's stated expiry, to allow for clock skew
-// between this machine and the server, and for time spent in flight. Capped at
-// half the token's lifetime.
+// between this machine and the server, and for time spent in flight.
 const TOKEN_EXPIRY_LEEWAY_MS = 60_000;
 
 // Revocation rejects every token issued before a cutoff, the time of the
@@ -67,6 +66,12 @@ export class TokenSource {
     // An empty apiKey alone is the advanced opt-out from sending Authorization.
     if (given === 0 && apiKey === undefined) {
       throw new Error("one of apiKey, credentials, or tokenProvider is required");
+    }
+    if (
+      credentials !== undefined &&
+      Object.keys(options.headers ?? {}).some((name) => name.toLowerCase() === "authorization")
+    ) {
+      throw new Error("headers must not set Authorization when credentials is set");
     }
     if (tokenProvider !== undefined) {
       this.provider = tokenProvider;

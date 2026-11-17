@@ -238,6 +238,16 @@ describe("WorkloadIdentityCredentials", () => {
     ],
     ["no trust rule", { trustRuleId: "" }, "trustRuleId is required"],
     ["a negative margin", { refreshLeewayMs: -1 }, "must not be negative"],
+    [
+      "an identity token that is not a function",
+      { identityToken: "jwt" as never },
+      "identityToken must be a function",
+    ],
+    ["an infinite margin", { refreshLeewayMs: Infinity }, "refreshLeewayMs must be a finite"],
+    ["a margin past setTimeout's limit", { refreshLeewayMs: 2 ** 31 }, "no greater than"],
+    ["a zero timeout", { exchangeTimeoutMs: 0 }, "exchangeTimeoutMs must be positive"],
+    ["an infinite timeout", { exchangeTimeoutMs: Infinity }, "exchangeTimeoutMs must be a finite"],
+    ["a timeout past setTimeout's limit", { exchangeTimeoutMs: 2 ** 31 }, "no greater than"],
   ])("rejects %s", (_name, options, message) => {
     expect(
       () =>

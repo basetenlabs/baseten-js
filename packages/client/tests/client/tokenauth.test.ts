@@ -108,6 +108,63 @@ describe("TokenCache", () => {
     expect(mints()).toBe(2);
   });
 
+  it("bounds the mints of callers waiting on a mint that keeps failing", async () => {
+    const release = deferred();
+    const { cache, mints } = testCache(60 * MINUTE_MS, MINUTE_MS, async () => {
+      await release.promise;
+      throw new Error("mint failed");
+    });
+    const pending = Array.from({ length: 5 }, () => cache.token());
+    release.resolve();
+    for (const result of await Promise.allSettled(pending)) {
+      expect(result.status).toBe("rejected");
+    }
+    // The first mint, then one more that every waiter joins.
+    expect(mints()).toBe(2);
+  });
+
+  describe("when a refresh fails", () => {
+    // Mints succeed until failing is set.
+    function failingCache(): { cache: TokenCache; fail: (failing: boolean) => void } {
+      let failing = false;
+      const { cache } = testCache(60 * MINUTE_MS, 5 * MINUTE_MS, async () => {
+        if (failing) throw new Error("mint failed");
+        return undefined;
+      });
+      return { cache, fail: (f) => (failing = f) };
+    }
+
+    it("falls back to the replaced token while it is unexpired", async () => {
+      const { cache, fail } = failingCache();
+      expect((await cache.token()).value).toBe("token-1");
+      fail(true);
+      vi.setSystemTime(NOW + 56 * MINUTE_MS);
+      expect((await cache.token()).value).toBe("token-1");
+      fail(false);
+      expect((await cache.token()).value).toBe("token-3");
+    });
+
+    it("does not fall back to the replaced token once it expired", async () => {
+      const { cache, fail } = failingCache();
+      await cache.token();
+      fail(true);
+      vi.setSystemTime(NOW + 56 * MINUTE_MS);
+      expect((await cache.token()).value).toBe("token-1");
+      vi.setSystemTime(NOW + 60 * MINUTE_MS);
+      await expect(cache.token()).rejects.toThrow("mint failed");
+    });
+
+    it("does not fall back to an invalidated token", async () => {
+      const { cache, fail } = failingCache();
+      await cache.token();
+      fail(true);
+      vi.setSystemTime(NOW + 56 * MINUTE_MS);
+      expect((await cache.token()).value).toBe("token-1");
+      cache.invalidate("token-1");
+      await expect(cache.token()).rejects.toThrow("mint failed");
+    });
+  });
+
   it("lets a caller stop waiting without failing the shared mint", async () => {
     const release = deferred();
     const { cache, mints } = testCache(60 * MINUTE_MS, MINUTE_MS, async (n) => {

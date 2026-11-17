@@ -37,12 +37,16 @@ export interface WorkloadIdentityCredentialsOptions {
   /**
    * A file holding the identity provider's JWT, for example a projected
    * Kubernetes service account token. Re-read on every exchange, since such
-   * files are rotated in place. Node only. Exactly one of
+   * files are rotated in place. Needs Node 22.3 or newer. Exactly one of
    * {@link identityToken} and identityTokenFile is required.
    */
   identityTokenFile?: string;
 
-  /** Management API base URL the exchange is sent to. Defaults to https://api.baseten.co. */
+  /**
+   * Management API base URL the exchange is sent to. Defaults to
+   * https://api.baseten.co. Must point at the same environment as the client
+   * using these credentials, since an access token is valid only there.
+   */
   baseUrl?: string;
 
   /**
@@ -98,11 +102,16 @@ export class WorkloadIdentityCredentials implements Credentials {
     if ((options.identityToken === undefined) === (options.identityTokenFile === undefined)) {
       throw new Error("exactly one of identityToken and identityTokenFile is required");
     }
+    if (options.identityToken !== undefined && typeof options.identityToken !== "function") {
+      throw new Error("identityToken must be a function returning the identity token");
+    }
     if (!options.trustRuleId) throw new Error("trustRuleId is required");
     const refreshLeewayMs = options.refreshLeewayMs ?? DEFAULT_REFRESH_LEEWAY_MS;
     if (!(refreshLeewayMs >= 0)) throw new Error("refreshLeewayMs must not be negative");
+    checkMaxDelay("refreshLeewayMs", refreshLeewayMs);
     const exchangeTimeoutMs = options.exchangeTimeoutMs ?? DEFAULT_EXCHANGE_TIMEOUT_MS;
     if (!(exchangeTimeoutMs > 0)) throw new Error("exchangeTimeoutMs must be positive");
+    checkMaxDelay("exchangeTimeoutMs", exchangeTimeoutMs);
     this.#trustRuleId = options.trustRuleId;
     this.#identityToken =
       options.identityToken ?? identityTokenFromFile(options.identityTokenFile!);
@@ -230,6 +239,17 @@ export function identityTokenFromFile(path: string): IdentityTokenGetter {
     if (token === "") throw new Error(`reading identity token file ${path}: the file is empty`);
     return token;
   };
+}
+
+// setTimeout fires after 1 ms when given a delay above this.
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
+function checkMaxDelay(name: string, ms: number): void {
+  if (!Number.isFinite(ms) || ms > MAX_TIMEOUT_MS) {
+    throw new Error(
+      `${name} must be a finite number of milliseconds no greater than ${MAX_TIMEOUT_MS}`,
+    );
+  }
 }
 
 function oauthErrorCode(body: string): unknown {

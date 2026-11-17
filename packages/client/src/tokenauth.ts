@@ -1,7 +1,3 @@
-// What every short-lived Baseten token needs: a cache that mints a new token
-// shortly before the current one expires, and sending a request again with a
-// new token when the server refuses the current one.
-
 /** A minted bearer token. */
 export interface Token {
   value: string;
@@ -43,6 +39,9 @@ class Mint {
 export class TokenCache {
   readonly #options: TokenCacheOptions;
   #current?: Mint;
+  // The token last dropped for being due for refresh. It is still valid until
+  // it expires, so it stands in when a refresh fails.
+  #previous?: Token;
 
   constructor(options: TokenCacheOptions) {
     this.#options = options;
@@ -53,6 +52,7 @@ export class TokenCache {
    * cached one is due for refresh. The signal only stops this caller's wait.
    */
   async token(signal?: AbortSignal): Promise<Token> {
+    let joinedFailure = false;
     for (;;) {
       let mint = this.#current;
       const started = mint === undefined;
@@ -61,20 +61,33 @@ export class TokenCache {
       try {
         token = await abortable(mint.promise, signal);
       } catch (err) {
-        // Another caller's failed mint gets one more try of this caller's
-        // own; the failed one already left the cache.
-        if (signal?.aborted || started) throw err;
-        continue;
+        if (signal?.aborted) throw err;
+        // Another caller's failed mint gets one more try, which may be this
+        // caller's own; the failed one already left the cache.
+        if (!started && !joinedFailure) {
+          joinedFailure = true;
+          continue;
+        }
+        // A refresh that fails while the replaced token is still valid falls
+        // back to it, so a brief outage of the minting endpoint does not fail
+        // requests the old token can still serve.
+        const previous = this.#previous;
+        if (previous !== undefined && Date.now() < previous.expiresAtMs) return previous;
+        throw err;
       }
       // A token this caller just minted is used even if already due for
       // refresh, so a skewed clock cannot loop here forever.
       if (started || Date.now() < mint.refreshAtMs) return token;
-      if (this.#current === mint) this.#current = undefined;
+      if (this.#current === mint) {
+        this.#current = undefined;
+        this.#previous = token;
+      }
     }
   }
 
   /** Drops token if it is still the cached one, so the next caller gets a new one. */
   invalidate(token: string): void {
+    if (this.#previous?.value === token) this.#previous = undefined;
     // A mint still in flight is already newer than any refused token. Compared
     // by value, so a refusal of an older token never discards a newer one
     // another caller already minted.
@@ -110,6 +123,7 @@ export class TokenCache {
       const lifetimeMs = Math.max(token.expiresAtMs - startedAtMs, 0);
       mint.refreshAtMs = token.expiresAtMs - Math.min(refreshLeewayMs, lifetimeMs / 2);
       mint.token = token;
+      this.#previous = undefined;
       return token;
     } catch (err) {
       // A failed mint is not cached, so the next caller tries again.
