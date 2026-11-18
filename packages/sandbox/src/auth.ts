@@ -1,5 +1,5 @@
 import { type Credentials, ManagementClient } from "@basetenlabs/client";
-import { abortable, fetchWithBearerToken, TokenCache } from "@basetenlabs/client/internal";
+import { abortable, TokenCache, withBearer } from "@basetenlabs/client/internal";
 
 /**
  * Returns the bearer token to send on a request. Called for every request.
@@ -23,6 +23,11 @@ export interface SandboxTokenProviderContext {
 // Refresh this long before the token's stated expiry, to allow for clock skew
 // between this machine and the server, and for time spent in flight.
 const TOKEN_EXPIRY_LEEWAY_MS = 60_000;
+
+// A few retries cover a new token being invalidated in the same event as the
+// old one. Past that, the rejection is returned, since tokens that keep
+// getting rejected point at something a new token cannot fix.
+const TOKEN_INVALIDATION_MAX_RETRIES = 2;
 
 // Revocation rejects every token issued before a cutoff, the time of the
 // revoking event rounded up to the next whole second. A token minted right
@@ -104,21 +109,69 @@ export class TokenSource {
     // The provider cannot be told to stop, so only the waiting on it does.
     if (this.provider !== undefined) return abortable(this.provider({ revokedToken }), signal);
     if (this.cache === undefined) return undefined;
-    if (revokedToken !== undefined) this.cache.invalidate(revokedToken);
     return (await this.cache.token(signal)).value;
+  }
+
+  /** Drops a token the server rejected, so the next request gets a new one. */
+  invalidate(token: string): void {
+    this.cache?.invalidate(token);
   }
 }
 
 /**
- * Wraps a fetch to authenticate every request with a token from the source.
+ * Wraps a fetch to authenticate every request with a token from the source,
+ * and to send it again with a new one when the server rejects the token as
+ * revoked.
  */
 export function authenticatedFetch(base: typeof fetch, tokens: TokenSource): typeof fetch {
-  return (input, init) =>
-    fetchWithBearerToken(
-      base,
-      input,
-      init,
-      (signal, revokedToken) => tokens.token(signal, revokedToken),
-      TOKEN_REVOKED_RETRY_DELAY_MS,
-    );
+  return async (input, init) => {
+    const signal = init?.signal ?? undefined;
+    // A stream body can be read only once, so a request carrying one is never
+    // sent again.
+    const replayable =
+      !(init?.body instanceof ReadableStream) && !(input instanceof Request && input.body !== null);
+    let revokedToken: string | undefined;
+    for (let retry = 0; ; retry++) {
+      const token = await tokens.token(signal, revokedToken);
+      const response = await base(input, withBearer(input, init, token));
+      if (token === undefined || !isTokenRevoked(response)) return response;
+      // Dropped even when the request is not sent again, so later requests do
+      // not reuse it.
+      tokens.invalidate(token);
+      if (!replayable || retry >= TOKEN_INVALIDATION_MAX_RETRIES) return response;
+      await response.body?.cancel();
+      revokedToken = token;
+      if (retry > 0) await sleep(TOKEN_REVOKED_RETRY_DELAY_MS, signal);
+    }
+  };
+}
+
+/**
+ * Reports whether the server rejected a request's token as revoked, which it
+ * can do before the token's stated expiry, for example after a role change.
+ * The request was rejected before any work was done, so sending it again with
+ * a new token is safe even when it has side effects.
+ */
+export function isTokenRevoked(response: Response): boolean {
+  // Both the control plane and sandboxes send this header, while their bodies
+  // differ.
+  return response.status === 401 && response.headers.get("x-blaxel-error-code") === "TOKEN_REVOKED";
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal!.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }

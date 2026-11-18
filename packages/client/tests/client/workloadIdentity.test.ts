@@ -290,30 +290,39 @@ describe("clients with credentials", () => {
     expect(server.seenAuth).toEqual(["Bearer access-1", "Bearer access-2", "Bearer access-2"]);
   });
 
-  it("return a 401 as is, without sending again", async () => {
+  // Each refused request is sent once; only a refusal from Baseten's auth
+  // layer makes the next request use a new token.
+  it.each<[string, Record<string, string>, string]>([
+    [
+      "a Baseten refusal",
+      { "www-authenticate": 'Bearer realm="baseten", error="invalid_token"' },
+      "Bearer access-2",
+    ],
+    [
+      "another realm",
+      { "www-authenticate": 'Bearer realm="model", error="invalid_token"' },
+      "Bearer access-1",
+    ],
+    [
+      "authentication required",
+      { "www-authenticate": 'Bearer realm="baseten"' },
+      "Bearer access-1",
+    ],
+    ["no challenge", {}, "Bearer access-1"],
+  ])("after %s, send each request once", async (_name, headers, second) => {
+    let calls = 0;
     const server = fakeBaseten({
-      api: () =>
-        new Response(null, {
-          status: 401,
-          headers: { "www-authenticate": 'Bearer realm="baseten", error="invalid_token"' },
-        }),
+      api: () => (++calls === 1 ? new Response(null, { status: 401, headers }) : undefined),
     });
-    const creds = credentials(server);
     const management = new ManagementClient({
-      credentials: creds,
+      credentials: credentials(server),
       baseUrlOverride: BASE_URL,
       fetch: server.fetch,
     });
     const err = await management.api.getOrganizationsMe().catch((e: unknown) => e);
     expect((err as ResponseError).statusCode).toBe(401);
-    const inference = new InferenceClient({
-      credentials: creds,
-      baseUrlOverride: BASE_URL,
-      fetch: server.fetch,
-    });
-    await expect(inference.api.getAsyncQueueStatusProduction()).rejects.toThrow();
-    expect(server.seenAuth).toEqual(["Bearer access-1", "Bearer access-1"]);
-    expect(server.exchanges()).toBe(1);
+    await management.api.getOrganizationsMe();
+    expect(server.seenAuth).toEqual(["Bearer access-1", second]);
   });
 
   it("pass an options object to custom credentials", async () => {

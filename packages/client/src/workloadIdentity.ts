@@ -134,6 +134,7 @@ export class WorkloadIdentityCredentials implements Credentials {
    * expiry.
    */
   async accessToken(options?: AccessTokenOptions): Promise<AccessToken> {
+    if (options?.refusedToken !== undefined) this.#cache.invalidate(options.refusedToken);
     const token = await this.#cache.token(options?.signal);
     return { token: token.value, expiresAt: new Date(token.expiresAtMs) };
   }

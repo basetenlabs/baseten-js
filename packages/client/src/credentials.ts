@@ -14,6 +14,11 @@ export interface AccessToken {
 export interface AccessTokenOptions {
   /** Stops the caller's wait for a token. */
   signal?: AbortSignal;
+  /**
+   * A token Baseten refused before its stated expiry. Credentials that cache
+   * tokens must not return it again.
+   */
+  refusedToken?: string;
 }
 
 /**
@@ -84,13 +89,41 @@ export function bearerAuthFetch(
   baseUrl: string,
 ): typeof fetch {
   const origin = new URL(baseUrl).origin;
+  // The last token Baseten refused, passed to the next accessToken call so the
+  // credentials replace it.
+  let refused: string | undefined;
   return async (input, init) => {
     const url = input instanceof Request ? input.url : input.toString();
     if (new URL(url).origin !== origin || requestHeaders(input, init).has("authorization")) {
       return base(input, init);
     }
-    const { token } = await credentials.accessToken({ signal: init?.signal ?? undefined });
+    const options: AccessTokenOptions = { signal: init?.signal ?? undefined };
+    if (refused !== undefined) {
+      options.refusedToken = refused;
+      refused = undefined;
+    }
+    const { token } = await credentials.accessToken(options);
     if (token === "") throw new Error("the credentials returned an empty access token");
-    return base(input, withBearer(input, init, token));
+    const response = await base(input, withBearer(input, init, token));
+    // The request is not sent again, since it may have side effects; only the
+    // next request gets a new token.
+    if (refusedByBaseten(response)) refused = token;
+    return response;
   };
+}
+
+/**
+ * Reports whether Baseten's auth layer refused the request's access token,
+ * which it signals with this challenge. A model's own error response cannot
+ * carry it, since its headers are not forwarded.
+ */
+function refusedByBaseten(response: Response): boolean {
+  if (response.status !== 401) return false;
+  // Headers joins several challenges into one comma-separated value.
+  const challenge = response.headers.get("www-authenticate") ?? "";
+  return (
+    /(^|,\s*)Bearer /.test(challenge) &&
+    challenge.includes('realm="baseten"') &&
+    challenge.includes('error="invalid_token"')
+  );
 }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchWithBearerToken, isTokenRefused, type Token, TokenCache } from "../../src/tokenauth";
+import { type Token, TokenCache } from "../../src/tokenauth";
 
 const NOW = Date.parse("2026-01-01T00:00:00Z");
 const MINUTE_MS = 60_000;
@@ -192,111 +192,5 @@ describe("TokenCache", () => {
     await vi.advanceTimersByTimeAsync(1000);
     await stalled;
     expect((await cache.token()).value).toBe("token-2");
-  });
-});
-
-describe("isTokenRefused", () => {
-  it.each([
-    ["a revoked sandbox token", 401, { "x-blaxel-error-code": "TOKEN_REVOKED" }, true],
-    ["a plain 401", 401, {}, false],
-    ["a 403", 403, { "x-blaxel-error-code": "TOKEN_REVOKED" }, false],
-  ])("reports %s", (_name, status, headers, want) => {
-    expect(isTokenRefused(new Response(null, { status, headers }))).toBe(want);
-  });
-});
-
-describe("fetchWithBearerToken", () => {
-  function refused(): Response {
-    return new Response(null, { status: 401, headers: { "x-blaxel-error-code": "TOKEN_REVOKED" } });
-  }
-
-  // Answers with the next of the given responses, then 204s, recording each
-  // request's Authorization.
-  function server(...responses: Response[]): { fetch: typeof fetch; sent: string[] } {
-    const sent: string[] = [];
-    const fetchImpl = async (input: string | URL | Request, init?: RequestInit) => {
-      sent.push(new Request(input, init).headers.get("authorization") ?? "");
-      return responses.shift() ?? new Response(null, { status: 204 });
-    };
-    return { fetch: fetchImpl as typeof fetch, sent };
-  }
-
-  function tokens(): { get: (s?: AbortSignal, r?: string) => Promise<string>; refused: unknown[] } {
-    const seen: unknown[] = [];
-    let n = 0;
-    return {
-      get: async (_signal, refusedToken) => {
-        seen.push(refusedToken);
-        return `token-${++n}`;
-      },
-      refused: seen,
-    };
-  }
-
-  it("sends again with a new token, naming the refused one", async () => {
-    const s = server(refused());
-    const t = tokens();
-    const response = await fetchWithBearerToken(
-      s.fetch,
-      "https://example.com/x",
-      { method: "POST", body: "{}", headers: { "X-Custom": "v" } },
-      t.get,
-      1000,
-    );
-    expect(response.status).toBe(204);
-    expect(s.sent).toEqual(["Bearer token-1", "Bearer token-2"]);
-    expect(t.refused).toEqual([undefined, "token-1"]);
-  });
-
-  it("waits before the second resend, then returns the refusal", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    try {
-      const s = server(refused(), refused(), refused(), refused());
-      const pending = fetchWithBearerToken(
-        s.fetch,
-        "https://example.com/x",
-        undefined,
-        tokens().get,
-        1000,
-      );
-      await vi.advanceTimersByTimeAsync(999);
-      expect(s.sent).toEqual(["Bearer token-1", "Bearer token-2"]);
-      await vi.advanceTimersByTimeAsync(1);
-      expect((await pending).status).toBe(401);
-      expect(s.sent).toEqual(["Bearer token-1", "Bearer token-2", "Bearer token-3"]);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("does not send a stream body again", async () => {
-    const s = server(refused());
-    const response = await fetchWithBearerToken(
-      s.fetch,
-      "https://example.com/x",
-      { method: "POST", body: new Blob(["x"]).stream(), duplex: "half" } as RequestInit,
-      tokens().get,
-      1000,
-    );
-    expect(response.status).toBe(401);
-    expect(s.sent).toEqual(["Bearer token-1"]);
-  });
-
-  it("keeps a Request's own headers", async () => {
-    const s = server();
-    const request = new Request("https://example.com/x", { headers: { "X-Custom": "v" } });
-    let seen: Headers | undefined;
-    await fetchWithBearerToken(
-      async (input, init) => {
-        seen = new Request(input, init).headers;
-        return s.fetch(input, init);
-      },
-      request,
-      undefined,
-      tokens().get,
-      1000,
-    );
-    expect(seen?.get("x-custom")).toBe("v");
-    expect(seen?.get("authorization")).toBe("Bearer token-1");
   });
 });

@@ -6,12 +6,4 @@
  * @internal
  * @module
  */
-export {
-  abortable,
-  type BearerTokenGetter,
-  fetchWithBearerToken,
-  isTokenRefused,
-  type Token,
-  TokenCache,
-  type TokenCacheOptions,
-} from "./tokenauth";
+export { abortable, type Token, TokenCache, type TokenCacheOptions, withBearer } from "./tokenauth";

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TokenSource, authenticatedFetch } from "../src/auth";
+import { TokenSource, authenticatedFetch, isTokenRevoked } from "../src/auth";
 
 const NOW = Date.parse("2026-01-01T00:00:00Z");
 
@@ -348,6 +348,22 @@ describe("authenticatedFetch", () => {
     } as RequestInit);
     expect(response.status).toBe(401);
     expect(server.tokensSent).toEqual(["Bearer token-1"]);
+    // Not sent again, but the revoked token is still dropped, so the next
+    // request does not reuse it.
+    expect(await tokens.token()).toBe("token-2");
+  });
+
+  it("keeps a Request's own headers", async () => {
+    const base = capturingFetch();
+    const tokens = new TokenSource({
+      apiKey: "",
+      tokenProvider: async () => "provided",
+      fetch: base.fetch,
+    });
+    const request = new Request("https://example.com/x", { headers: { "X-Custom": "v" } });
+    await authenticatedFetch(base.fetch, tokens)(request);
+    expect(base.headers().get("authorization")).toBe("Bearer provided");
+    expect(base.headers().get("x-custom")).toBe("v");
   });
 
   it("sends no Authorization without a token", async () => {
@@ -355,5 +371,21 @@ describe("authenticatedFetch", () => {
     const tokens = new TokenSource({ apiKey: "", fetch: base.fetch });
     await authenticatedFetch(base.fetch, tokens)("https://example.com/x");
     expect(base.headers().has("authorization")).toBe(false);
+  });
+});
+
+describe("isTokenRevoked", () => {
+  it.each([
+    ["a revoked token", 401, { "x-blaxel-error-code": "TOKEN_REVOKED" }, true],
+    [
+      "an invalid_token challenge",
+      401,
+      { "www-authenticate": 'Bearer error="invalid_token"' },
+      false,
+    ],
+    ["a plain 401", 401, {}, false],
+    ["a 403", 403, { "x-blaxel-error-code": "TOKEN_REVOKED" }, false],
+  ])("reports %s", (_name, status, headers, want) => {
+    expect(isTokenRevoked(new Response(null, { status, headers }))).toBe(want);
   });
 });

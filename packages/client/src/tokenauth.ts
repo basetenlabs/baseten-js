@@ -135,69 +135,6 @@ export class TokenCache {
   }
 }
 
-// A few resends cover a new token being invalidated in the same event as the
-// old one. Past that, the refusal is returned, since tokens that keep getting
-// refused point at something a new token cannot fix.
-const MAX_RESENDS = 2;
-
-/**
- * Returns the token for a request, or undefined to send it without
- * Authorization. refused is the token the previous send was refused with, if
- * any, which the getter must not return again.
- */
-export type BearerTokenGetter = (
-  signal: AbortSignal | undefined,
-  refused: string | undefined,
-) => Promise<string | undefined>;
-
-/**
- * Sends a request through base with "Authorization: Bearer <token>". When the
- * server refuses the token (see {@link isTokenRefused}), asks for a token
- * again naming the refused one and sends the request again, at most twice,
- * waiting resendDelayMs before the second resend. An undefined token sends the
- * request without Authorization, once.
- *
- * Revocation refuses every token issued before a cutoff that can fall a moment
- * after the revoking event, so a token minted right after it can be refused
- * too; resendDelayMs lets the next one be minted past the cutoff.
- */
-export async function fetchWithBearerToken(
-  base: typeof fetch,
-  input: string | URL | Request,
-  init: RequestInit | undefined,
-  getToken: BearerTokenGetter,
-  resendDelayMs: number,
-): Promise<Response> {
-  const signal = init?.signal ?? undefined;
-  // A stream body can be read only once, so a request carrying one is never
-  // sent again.
-  const replayable =
-    !(init?.body instanceof ReadableStream) && !(input instanceof Request && input.body !== null);
-  let refused: string | undefined;
-  for (let resend = 0; ; resend++) {
-    const token = await getToken(signal, refused);
-    const response = await base(input, withBearer(input, init, token));
-    if (token === undefined || !replayable || resend >= MAX_RESENDS || !isTokenRefused(response)) {
-      return response;
-    }
-    await response.body?.cancel();
-    refused = token;
-    if (resend > 0) await sleep(resendDelayMs, signal);
-  }
-}
-
-/**
- * Reports whether the server refused a request's token before its stated
- * expiry, for example after it was revoked. The request was refused before
- * any work was done, so sending it again with a new token is safe even when
- * it has side effects.
- */
-export function isTokenRefused(response: Response): boolean {
-  // Both the control plane and sandboxes send this header for a sandbox
-  // token, while their bodies differ.
-  return response.status === 401 && response.headers.get("x-blaxel-error-code") === "TOKEN_REVOKED";
-}
-
 /** Returns init with "Authorization: Bearer <token>" added to the headers fetch would send. */
 export function withBearer(
   input: string | URL | Request,
@@ -235,23 +172,5 @@ export function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise
         reject(err);
       },
     );
-  });
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason);
-      return;
-    }
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(signal!.reason);
-    };
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
