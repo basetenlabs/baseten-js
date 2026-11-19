@@ -186,7 +186,7 @@ describe("WorkloadIdentityCredentials", () => {
 
   it("reports a non-JSON success", async () => {
     const server = fakeBaseten({ exchange: () => new Response("<html>ok</html>") });
-    await expect(credentials(server).accessToken()).rejects.toThrow("decoding response");
+    await expect(credentials(server).accessToken()).rejects.toThrow("expected a JSON response");
   });
 
   it.each([

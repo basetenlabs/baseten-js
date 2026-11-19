@@ -1,6 +1,6 @@
 import type { AccessToken, AccessTokenOptions, Credentials } from "./credentials";
 import { ManagementClient } from "./management";
-import { ResponseError } from "./managementapi";
+import { ApiClient, ResponseError, type TokenExchangeResponse } from "./managementapi";
 import { TokenCache, type Token } from "./tokenauth";
 import { applyUserAgentHeader } from "./userAgent";
 
@@ -93,7 +93,7 @@ export interface WorkloadIdentityCredentialsOptions {
 export class WorkloadIdentityCredentials implements Credentials {
   readonly #trustRuleId: string;
   readonly #identityToken: IdentityTokenGetter;
-  readonly #exchangeUrl: string;
+  readonly #baseUrl: string;
   readonly #fetch: typeof fetch;
   readonly #cache: TokenCache;
 
@@ -116,7 +116,7 @@ export class WorkloadIdentityCredentials implements Credentials {
     this.#identityToken =
       options.identityToken ?? identityTokenFromFile(options.identityTokenFile!);
     const baseUrl = (options.baseUrl ?? ManagementClient.defaultBaseUrl()).replace(/\/+$/, "");
-    this.#exchangeUrl = `${baseUrl}/v1/auth/token`;
+    this.#baseUrl = baseUrl;
     const customFetch = options.fetch;
     // Resolved per call so a fetch replaced after construction is still used.
     this.#fetch = customFetch ?? ((input, init) => globalThis.fetch(input, init));
@@ -147,44 +147,34 @@ export class WorkloadIdentityCredentials implements Credentials {
       throw new Error(`getting identity token: ${errorMessage(err)}`, { cause: err });
     }
     if (assertion === "") throw new Error("getting identity token: the identity token is empty");
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
+    const headers: Record<string, string> = {};
     applyUserAgentHeader(headers);
+    // No credentials: the identity token in the body is what authenticates.
+    // Built per exchange so the exchange's abort signal reaches its fetch.
+    // Redirects are not followed, as in the other SDKs, since the body carries
+    // the identity token.
+    const api = new ApiClient({
+      baseUrl: this.#baseUrl,
+      headers,
+      fetch: (input, init) => this.#fetch(input, { ...init, signal, redirect: "manual" }),
+    });
     // Taken before sending, so the computed expiry errs early.
     const issuedAtMs = Date.now();
-    let response: Response;
-    let text: string;
+    let decoded: TokenExchangeResponse;
     try {
-      response = await this.#fetch(this.#exchangeUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
+      decoded = await api.postAuthToken({
+        request: {
           grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
           subject_token: assertion,
           subject_token_type: JWT_TOKEN_TYPE,
           audience: this.#trustRuleId,
-        }),
-        signal,
-        // The body carries the identity token, so it must not follow a
-        // redirect to wherever that points.
-        redirect: "manual",
+        },
       });
-      text = await response.text();
     } catch (err) {
+      if (err instanceof ResponseError) throw this.#exchangeError(err);
       throw new Error(`workload identity token exchange: ${errorMessage(err)}`, { cause: err });
     }
-    if (response.status !== 200) throw this.#exchangeError(response.status, text);
-    let decoded: { access_token?: unknown; token_type?: unknown; expires_in?: unknown } | null;
-    try {
-      decoded = JSON.parse(text);
-    } catch (err) {
-      throw new Error(`workload identity token exchange: decoding response: ${errorMessage(err)}`, {
-        cause: err,
-      });
-    }
-    const { access_token, token_type, expires_in } = decoded ?? {};
+    const { access_token, token_type, expires_in } = decoded;
     if (typeof access_token !== "string" || access_token === "") {
       throw new Error("workload identity token exchange: the response carried no access_token");
     }
@@ -201,12 +191,11 @@ export class WorkloadIdentityCredentials implements Credentials {
     return { value: access_token, expiresAtMs: issuedAtMs + expires_in * 1000 };
   }
 
-  #exchangeError(status: number, body: string): ResponseError {
-    const err = new ResponseError(status, body.trim());
+  #exchangeError(err: ResponseError): ResponseError {
     // The server sends every refusal as the same OAuth invalid_grant, so the
     // hint covers each possible cause.
     const context =
-      oauthErrorCode(body) === "invalid_grant"
+      oauthErrorCode(err.body) === "invalid_grant"
         ? `workload identity token exchange refused for trust rule ${this.#trustRuleId} ` +
           "(the trust rule may not exist or may not match the identity token's issuer, audience, or claims, " +
           "or the identity token may have expired)"
