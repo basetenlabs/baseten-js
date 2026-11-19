@@ -2329,11 +2329,33 @@ export type components = {
       s3_region: string | null;
     };
     /**
+     * AuditFieldChangeV1
+     * @description A field's value before and after an update.
+     */
+    AuditFieldChange: {
+      /**
+       * Old
+       * @description The value before the update.
+       */
+      old: unknown;
+      /**
+       * New
+       * @description The value after the update.
+       */
+      new: unknown;
+    };
+    /**
      * AuditLogActorTypeV1
      * @description Kind of actor that performed an audited action.
      * @enum {string}
      */
-    AuditLogActorType: "USER" | "API_KEY" | "BASETEN_USER" | "BASETEN_SYSTEM" | "TOMBSTONE_USER";
+    AuditLogActorType:
+      | "USER"
+      | "API_KEY"
+      | "BASETEN_USER"
+      | "BASETEN_SYSTEM"
+      | "TOMBSTONE_USER"
+      | "SERVICE_ACCOUNT";
     /**
      * AuditLogActorV1
      * @description The actor that performed an audited action.
@@ -2359,13 +2381,31 @@ export type components = {
        * @default null
        */
       api_key_name: string | null;
+      /**
+       * Service Account Id
+       * @description ID of the acting service account, when the actor is a service account.
+       * @default null
+       */
+      service_account_id: string | null;
+      /**
+       * Service Account Name
+       * @description Current name of the acting service account, when the actor is a service account.
+       * @default null
+       */
+      service_account_name: string | null;
+      /**
+       * Trust Rule Id
+       * @description ID of the trust rule the acting workload identity federation token was exchanged through, when the actor is a service account.
+       * @default null
+       */
+      trust_rule_id: string | null;
     };
     /**
      * AuditLogApiKeyRevocationReasonV1
      * @description Reason an API key was revoked.
      * @enum {string}
      */
-    AuditLogApiKeyRevocationReason: "INACTIVITY";
+    AuditLogApiKeyRevocationReason: "INACTIVITY" | "CREDENTIAL_EXPOSURE";
     /**
      * AuditLogApiKeyTypeV1
      * @description Type of API key recorded on an API-key event.
@@ -2376,6 +2416,7 @@ export type components = {
       | "CREATOR_SERVICE_ACCOUNT"
       | "MANAGE_API_KEYS_SERVICE_ACCOUNT"
       | "INVOKE_ALL_MODELS_SERVICE_ACCOUNT"
+      | "INVOKE_ALL_DEDICATED_MODELS_SERVICE_ACCOUNT"
       | "INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT"
       | "INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT"
       | "EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT"
@@ -2432,6 +2473,7 @@ export type components = {
         | components["schemas"]["AuditLogEventApiKeyCreated"]
         | components["schemas"]["AuditLogEventApiKeyDeleted"]
         | components["schemas"]["AuditLogEventApiKeyLifetimeLimitsUpdated"]
+        | components["schemas"]["AuditLogEventOrganizationApiKeySettingsUpdated"]
         | components["schemas"]["AuditLogEventGatewayEndpointCreated"]
         | components["schemas"]["AuditLogEventGatewayEndpointUpdated"]
         | components["schemas"]["AuditLogEventGatewayEndpointDeleted"]
@@ -2465,7 +2507,16 @@ export type components = {
         | components["schemas"]["AuditLogEventVolumeUpdated"]
         | components["schemas"]["AuditLogEventTelemetryExportCreated"]
         | components["schemas"]["AuditLogEventTelemetryExportUpdated"]
-        | components["schemas"]["AuditLogEventTelemetryExportDeleted"];
+        | components["schemas"]["AuditLogEventTelemetryExportDeleted"]
+        | components["schemas"]["AuditLogEventServiceAccountCreated"]
+        | components["schemas"]["AuditLogEventServiceAccountUpdated"]
+        | components["schemas"]["AuditLogEventServiceAccountDeleted"]
+        | components["schemas"]["AuditLogEventIdentityProviderCreated"]
+        | components["schemas"]["AuditLogEventIdentityProviderUpdated"]
+        | components["schemas"]["AuditLogEventIdentityProviderDeleted"]
+        | components["schemas"]["AuditLogEventTrustRuleCreated"]
+        | components["schemas"]["AuditLogEventTrustRuleUpdated"]
+        | components["schemas"]["AuditLogEventTrustRuleDeleted"];
       /**
        * @description Surface that issued the action, if known.
        * @default null
@@ -3280,6 +3331,66 @@ export type components = {
       team_name: string;
     };
     /**
+     * AuditLogEventIdentityProviderCreatedV1
+     * @description An identity provider was added.
+     */
+    AuditLogEventIdentityProviderCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "IDENTITY_PROVIDER_CREATED";
+      /** Identity Provider Id */
+      identity_provider_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @description Null when the provider was added without one.
+       * @default null
+       */
+      description: string | null;
+      /** @description The provider's settings, as the identity provider resource returns them. */
+      predefined: components["schemas"]["AuditLogEventPredefinedIdentityProviderConfig"];
+    };
+    /**
+     * AuditLogEventIdentityProviderDeletedV1
+     * @description An identity provider was deleted.
+     */
+    AuditLogEventIdentityProviderDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "IDENTITY_PROVIDER_DELETED";
+      /** Identity Provider Id */
+      identity_provider_id: string;
+      /** Name */
+      name: string;
+    };
+    /**
+     * AuditLogEventIdentityProviderUpdatedV1
+     * @description An identity provider was updated.
+     */
+    AuditLogEventIdentityProviderUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "IDENTITY_PROVIDER_UPDATED";
+      /** Identity Provider Id */
+      identity_provider_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Changes
+       * @description The fields the update changed, keyed by field name.
+       */
+      changes: {
+        [key: string]: components["schemas"]["AuditFieldChange"];
+      };
+    };
+    /**
      * AuditLogEventModelDeletedV1
      * @description A model was deleted.
      */
@@ -3586,6 +3697,44 @@ export type components = {
       previous_name: string | null;
     };
     /**
+     * AuditLogEventOrganizationApiKeySettingsUpdatedV1
+     * @description An administrator changed which classes of API key the organization allows creating.
+     */
+    AuditLogEventOrganizationApiKeySettingsUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "ORGANIZATION_API_KEY_SETTINGS_UPDATED";
+      /** Organization Id */
+      organization_id: string;
+      /** Previous Allow Personal Api Keys */
+      previous_allow_personal_api_keys: boolean;
+      /** New Allow Personal Api Keys */
+      new_allow_personal_api_keys: boolean;
+      /** Previous Allow Service Account Api Keys */
+      previous_allow_service_account_api_keys: boolean;
+      /** New Allow Service Account Api Keys */
+      new_allow_service_account_api_keys: boolean;
+    };
+    /**
+     * AuditLogEventPredefinedIdentityProviderConfigV1
+     * @description Settings of a predefined identity provider, as recorded on an identity provider event. Not
+     *     itself an event payload.
+     */
+    AuditLogEventPredefinedIdentityProviderConfig: {
+      /**
+       * Kind
+       * @description Which predefined provider, for example `AWS_EKS`.
+       */
+      kind: string;
+      /**
+       * Issuer Url
+       * @description The `iss` claim of the provider's tokens.
+       */
+      issuer_url: string;
+    };
+    /**
      * AuditLogEventPromotionSettingsOverrideV1
      * @description Promotion settings overridden for one promotion. Null means the environment's value. Not
      *     itself a payload in the discriminated union.
@@ -3724,6 +3873,98 @@ export type components = {
       secret_name: string;
     };
     /**
+     * AuditLogEventServiceAccountCreatedV1
+     * @description A service account was created.
+     */
+    AuditLogEventServiceAccountCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "SERVICE_ACCOUNT_CREATED";
+      /** Service Account Id */
+      service_account_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @description Null when the account was created without one.
+       * @default null
+       */
+      description: string | null;
+      /**
+       * Owner Team Id
+       * @description The team that owns the account. Null for an organization account.
+       * @default null
+       */
+      owner_team_id: string | null;
+      preset_permissions: components["schemas"]["AuditLogEventServiceAccountPresetPermissions"];
+    };
+    /**
+     * AuditLogEventServiceAccountDeletedV1
+     * @description A service account was deleted.
+     */
+    AuditLogEventServiceAccountDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "SERVICE_ACCOUNT_DELETED";
+      /** Service Account Id */
+      service_account_id: string;
+      /** Name */
+      name: string;
+    };
+    /**
+     * AuditLogEventServiceAccountPresetPermissionsV1
+     * @description A service account's access, as recorded on a service account event. Not itself an event
+     *     payload.
+     */
+    AuditLogEventServiceAccountPresetPermissions: {
+      /**
+       * Api Key Type
+       * @description The API key type whose permissions the account has, as API key events record it.
+       */
+      api_key_type: string;
+      /**
+       * Model Ids
+       * @description Models the access is limited to; empty for all.
+       */
+      model_ids: string[];
+      /**
+       * Environment Names
+       * @description Environments the access is limited to, or may also manage; empty for none.
+       */
+      environment_names: string[];
+      /**
+       * Model Api Slugs
+       * @description Model APIs the access is limited to; empty for all.
+       */
+      model_api_slugs: string[];
+    };
+    /**
+     * AuditLogEventServiceAccountUpdatedV1
+     * @description A service account was updated. Disabling or enabling it is a change to `disabled`.
+     */
+    AuditLogEventServiceAccountUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "SERVICE_ACCOUNT_UPDATED";
+      /** Service Account Id */
+      service_account_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Changes
+       * @description The fields the update changed, keyed by field name.
+       */
+      changes: {
+        [key: string]: components["schemas"]["AuditFieldChange"];
+      };
+    };
+    /**
      * AuditLogEventSshCertificateSignedV1
      * @description An SSH certificate was signed for a workload.
      */
@@ -3792,6 +4033,83 @@ export type components = {
       enabled: boolean | null;
     };
     /**
+     * AuditLogEventTrustRuleCreatedV1
+     * @description A trust rule was created.
+     */
+    AuditLogEventTrustRuleCreated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "TRUST_RULE_CREATED";
+      /** Trust Rule Id */
+      trust_rule_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @description Null when the rule was created without one.
+       * @default null
+       */
+      description: string | null;
+      /** Identity Provider Id */
+      identity_provider_id: string;
+      /** Service Account Id */
+      service_account_id: string;
+      /**
+       * Condition
+       * @description The CEL expression a token's claims must satisfy.
+       */
+      condition: string;
+      /**
+       * Audience
+       * @description The `aud` claim a token must carry.
+       */
+      audience: string;
+      /**
+       * Max Access Token Lifetime Seconds
+       * @description The longest lifetime, in seconds, of an access token the rule issues.
+       */
+      max_access_token_lifetime_seconds: number;
+    };
+    /**
+     * AuditLogEventTrustRuleDeletedV1
+     * @description A trust rule was deleted.
+     */
+    AuditLogEventTrustRuleDeleted: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "TRUST_RULE_DELETED";
+      /** Trust Rule Id */
+      trust_rule_id: string;
+      /** Name */
+      name: string;
+    };
+    /**
+     * AuditLogEventTrustRuleUpdatedV1
+     * @description A trust rule was updated.
+     */
+    AuditLogEventTrustRuleUpdated: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      event_type: "TRUST_RULE_UPDATED";
+      /** Trust Rule Id */
+      trust_rule_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Changes
+       * @description The fields the update changed, keyed by field name.
+       */
+      changes: {
+        [key: string]: components["schemas"]["AuditFieldChange"];
+      };
+    };
+    /**
      * AuditLogEventTypeV1
      * @description Type of action recorded by an audit-log entry.
      * @enum {string}
@@ -3856,7 +4174,17 @@ export type components = {
       | "VOLUME_UPDATED"
       | "TELEMETRY_EXPORT_CREATED"
       | "TELEMETRY_EXPORT_UPDATED"
-      | "TELEMETRY_EXPORT_DELETED";
+      | "TELEMETRY_EXPORT_DELETED"
+      | "SERVICE_ACCOUNT_CREATED"
+      | "SERVICE_ACCOUNT_UPDATED"
+      | "SERVICE_ACCOUNT_DELETED"
+      | "IDENTITY_PROVIDER_CREATED"
+      | "IDENTITY_PROVIDER_UPDATED"
+      | "IDENTITY_PROVIDER_DELETED"
+      | "TRUST_RULE_CREATED"
+      | "TRUST_RULE_UPDATED"
+      | "TRUST_RULE_DELETED"
+      | "ORGANIZATION_API_KEY_SETTINGS_UPDATED";
     /**
      * AuditLogEventUserInvitedV1
      * @description A user was invited to the organization.
@@ -4149,7 +4477,8 @@ export type components = {
       | "USER_MANAGEMENT"
       | "DIRECTORY_GROUP_MANAGEMENT"
       | "SSH"
-      | "TELEMETRY_EXPORT";
+      | "TELEMETRY_EXPORT"
+      | "WORKLOAD_IDENTITY";
     /**
      * AuditLogSortDirectionV1
      * @description Sort order of returned entries, by creation time.
@@ -4417,6 +4746,12 @@ export type components = {
       region: components["schemas"]["Region"] | null;
       /** @description Effective request backpressure settings for the deployment. */
       request_backpressure_settings: components["schemas"]["RequestBackpressureSettings"];
+      /**
+       * Failure Reason
+       * @description Why the deployment failed. Set only when the status is DEPLOY_FAILED; null otherwise.
+       * @default null
+       */
+      failure_reason: string | null;
     };
     /**
      * RequestBackpressureSettingsV1
@@ -5439,6 +5774,68 @@ export type components = {
       phase_duration_ms: components["schemas"]["StartupPhasePercentiles"][];
     };
     /**
+     * DeploymentReplicaStatusV1
+     * @enum {string}
+     */
+    DeploymentReplicaStatus:
+      | "STARTING"
+      | "ACTIVE"
+      | "UNHEALTHY"
+      | "TERMINATING"
+      | "TERMINATED"
+      | "UNKNOWN";
+    /** DeploymentReplicaV1 */
+    DeploymentReplica: {
+      /**
+       * Id
+       * @description Pod-name suffix used for replica lookup and termination, usually five characters.
+       */
+      id: string;
+      /**
+       * Deployment Id
+       * @description ID of the replica's deployment.
+       */
+      deployment_id: string;
+      /**
+       * Deployment Name
+       * @description Name of the replica's deployment.
+       */
+      deployment_name: string;
+      /** @description Current replica lifecycle status. */
+      status: components["schemas"]["DeploymentReplicaStatus"];
+      /**
+       * Created At
+       * Format: date-time
+       * @description Replica creation time in ISO 8601 format.
+       */
+      created_at: string;
+      /**
+       * Terminated At
+       * @description Observed termination completion time in ISO 8601 format, or null if unavailable.
+       */
+      terminated_at: string | null;
+      /**
+       * Age Seconds
+       * @description Age in seconds since creation, frozen at termination.
+       */
+      age_seconds: number;
+      /**
+       * Restart Count
+       * @description Model container lifetime restart count, or null if unavailable.
+       */
+      restart_count: number | null;
+    };
+    /** DeploymentReplicasV1 */
+    DeploymentReplicas: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["DeploymentReplica"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
      * TerminateReplicaResponseV1
      * @description The response to a request to terminate a replica in a deployment.
      */
@@ -6047,8 +6444,8 @@ export type components = {
        * @description When the rule stops, in ISO 8601 format with a timezone, at most 7 days out
        */
       expires_at: string;
-      /** @description How requests are picked for shadowing */
-      sampling_mode: components["schemas"]["TrafficRoutingRuleShadowSamplingMode"];
+      /** @description How requests are picked for shadowing. Defaults to USER_SESSION. */
+      sampling_mode?: components["schemas"]["TrafficRoutingRuleShadowSamplingMode"];
       /**
        * Propagate Client Cancellation
        * @description Whether a shadow request is cancelled when the original client disconnects
@@ -6857,8 +7254,31 @@ export type components = {
      * @enum {string}
      */
     AvailabilityModel: "standard" | "spot";
+    /** TrainingBDNConfigResponseV1 */
+    TrainingBDNConfigResponse: {
+      /** Mounts */
+      mounts?: components["schemas"]["TrainingBDNMountResponse"][];
+    };
+    /** TrainingBDNMountResponseV1 */
+    TrainingBDNMountResponse: {
+      /** Source */
+      source: string;
+      /** Path */
+      path: string;
+      /**
+       * Include
+       * @description Relative glob patterns selecting files to mount; empty includes all files.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Relative glob patterns excluding files from the mount; exclusions win.
+       */
+      exclude?: string[];
+    };
     /** TrainingJobV1 */
     TrainingJob: {
+      bdn?: components["schemas"]["TrainingBDNConfigResponse"];
       /**
        * Id
        * @description Unique identifier of the training job.
@@ -7280,6 +7700,7 @@ export type components = {
      * @description Configuration for a training job.
      */
     CreateTrainingJob: {
+      bdn?: components["schemas"]["TrainingBDNConfig"];
       /**
        * @example {
        *       "base_image": "hello-world",
@@ -7460,6 +7881,34 @@ export type components = {
        * @example hf_token
        */
       name: string;
+    };
+    /**
+     * TrainingBDNConfigV1
+     * @description Read-only BDN mounts with the same reference semantics as inference.
+     */
+    TrainingBDNConfig: {
+      /** Mounts */
+      mounts?: components["schemas"]["TrainingBDNMount"][];
+    };
+    /**
+     * TrainingBDNMountV1
+     * @description A requested read-only BDN dataset mount.
+     */
+    TrainingBDNMount: {
+      /** Source */
+      source: string;
+      /** Path */
+      path: string;
+      /**
+       * Include
+       * @description Relative glob patterns selecting files to mount; empty includes all files.
+       */
+      include?: string[];
+      /**
+       * Exclude
+       * @description Relative glob patterns excluding files from the mount; exclusions win.
+       */
+      exclude?: string[];
     };
     /**
      * TrainingWeightAuthV1
@@ -7662,29 +8111,57 @@ export type components = {
     TrainingJobMetrics: {
       /**
        * Gpu Memory Usage Bytes
-       * @description A map of GPU rank to memory usage for the training job. For multinode jobs, this is the memory usage of the leader unless specified otherwise.
+       * @description A map of GPU rank to memory usage for the training job. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       gpu_memory_usage_bytes: {
         [key: string]: components["schemas"]["TrainingJobMetric"][];
       };
       /**
        * Gpu Utilization
-       * @description A map of GPU rank to fractional GPU utilization. For multinode jobs, this is the GPU utilization of the leader unless specified otherwise.
+       * @description A map of GPU rank to the share of time the GPU's streaming multiprocessors have work assigned, from 0 to 1. This counts any GPU work, not only tensor core math; see gpu_tensor_core_utilization for that. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       gpu_utilization: {
         [key: string]: components["schemas"]["TrainingJobMetric"][];
       };
       /**
+       * Gpu Temperature Celsius
+       * @description A map of GPU rank to GPU temperature in degrees Celsius. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_temperature_celsius: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Power Usage Watts
+       * @description A map of GPU rank to GPU power draw in watts. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_power_usage_watts: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Tensor Core Utilization
+       * @description A map of GPU rank to the share of time the GPU tensor cores are active, from 0 to 1. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_tensor_core_utilization: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Memory Bandwidth Utilization
+       * @description A map of GPU rank to the share of cycles GPU memory is actively reading or writing, from 0 to 1. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_memory_bandwidth_utilization: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
        * Cpu Usage
-       * @description The CPU usage measured in cores. For multinode jobs, this is the CPU usage of the leader unless specified otherwise.
+       * @description The CPU usage measured in cores. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       cpu_usage: components["schemas"]["TrainingJobMetric"][];
       /**
        * Cpu Memory Usage Bytes
-       * @description The CPU memory usage for the training job. For multinode jobs, this is the CPU memory usage of the leader unless specified otherwise.
+       * @description The CPU memory usage for the training job. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       cpu_memory_usage_bytes: components["schemas"]["TrainingJobMetric"][];
-      /** @description The storage usage for the ephemeral storage. For multinode jobs, this is the ephemeral storage usage of the leader unless specified otherwise. */
+      /** @description The storage usage for the ephemeral storage. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node. */
       ephemeral_storage: components["schemas"]["StorageMetrics"];
     };
     /**
@@ -7707,29 +8184,57 @@ export type components = {
     GetTrainingJobMetricsResponse: {
       /**
        * Gpu Memory Usage Bytes
-       * @description A map of GPU rank to memory usage for the training job. For multinode jobs, this is the memory usage of the leader unless specified otherwise.
+       * @description A map of GPU rank to memory usage for the training job. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       gpu_memory_usage_bytes: {
         [key: string]: components["schemas"]["TrainingJobMetric"][];
       };
       /**
        * Gpu Utilization
-       * @description A map of GPU rank to fractional GPU utilization. For multinode jobs, this is the GPU utilization of the leader unless specified otherwise.
+       * @description A map of GPU rank to the share of time the GPU's streaming multiprocessors have work assigned, from 0 to 1. This counts any GPU work, not only tensor core math; see gpu_tensor_core_utilization for that. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       gpu_utilization: {
         [key: string]: components["schemas"]["TrainingJobMetric"][];
       };
       /**
+       * Gpu Temperature Celsius
+       * @description A map of GPU rank to GPU temperature in degrees Celsius. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_temperature_celsius: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Power Usage Watts
+       * @description A map of GPU rank to GPU power draw in watts. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_power_usage_watts: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Tensor Core Utilization
+       * @description A map of GPU rank to the share of time the GPU tensor cores are active, from 0 to 1. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_tensor_core_utilization: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
+       * Gpu Memory Bandwidth Utilization
+       * @description A map of GPU rank to the share of cycles GPU memory is actively reading or writing, from 0 to 1. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
+       */
+      gpu_memory_bandwidth_utilization: {
+        [key: string]: components["schemas"]["TrainingJobMetric"][];
+      };
+      /**
        * Cpu Usage
-       * @description The CPU usage measured in cores. For multinode jobs, this is the CPU usage of the leader unless specified otherwise.
+       * @description The CPU usage measured in cores. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       cpu_usage: components["schemas"]["TrainingJobMetric"][];
       /**
        * Cpu Memory Usage Bytes
-       * @description The CPU memory usage for the training job. For multinode jobs, this is the CPU memory usage of the leader unless specified otherwise.
+       * @description The CPU memory usage for the training job. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node.
        */
       cpu_memory_usage_bytes: components["schemas"]["TrainingJobMetric"][];
-      /** @description The storage usage for the ephemeral storage. For multinode jobs, this is the ephemeral storage usage of the leader unless specified otherwise. */
+      /** @description The storage usage for the ephemeral storage. At the top level of a multinode job this is the leader node; under per_node_metrics it is that node. */
       ephemeral_storage: components["schemas"]["StorageMetrics"];
       /** @description The training job. */
       training_job: components["schemas"]["TrainingJob"];
@@ -8478,9 +8983,17 @@ export type components = {
       reuse_from_session_id?: string | null;
       /**
        * Base Checkpoint
-       * @description Optional Hugging Face checkpoint to start training from instead of the base model's weights. Form: hf://<org>/<repo>[@<revision>]. It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include its tokenizer files: the run's sampler and the SDK load the tokenizer and chat template from the checkpoint. A private or gated repository needs a Hugging Face token in the team secret hf_access_token. The revision is pinned to a commit when the run is created. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.
+       * @description Optional checkpoint to start training from instead of the base model's weights: a Hugging Face repo (hf://<org>/<repo>[@<revision>]), an object store path (s3://, gs://, r2://, cw://, or azure://), or a full Baseten Training checkpoint in the run's team (bt://<project>@<job_id>/<checkpoint>, with the checkpoint named). It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include tokenizer files: the run's sampler loads the tokenizer and chat template from the checkpoint. A Hugging Face revision is pinned to a commit when the run is created, and its files are checked then. Any other source is read again by each sampler and resumed run, so do not change it while the run is in use. Checkpoints from a run on a source outside Hugging Face cannot be deployed yet. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.
        */
       base_checkpoint?: string | null;
+      /**
+       * @description Optional credentials that read base_checkpoint. Only CUSTOM_SECRET is supported: set auth_secret_name to the team secret that holds a Hugging Face token for a Hugging Face repo, or the credentials for an object store. A Baseten Training checkpoint takes no auth. The run, its samplers, resumed runs, and checkpoint deployments all use this secret. When omitted, a Hugging Face repo is read with the team secret hf_access_token if it exists. Requires base_checkpoint.
+       * @example {
+       *       "auth_method": "CUSTOM_SECRET",
+       *       "auth_secret_name": "hf_read_my_checkpoint"
+       *     }
+       */
+      base_checkpoint_auth?: components["schemas"]["TrainingWeightAuth"] | null;
       /**
        * Sampler Num Replicas
        * @description Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.
@@ -8508,6 +9021,108 @@ export type components = {
       base_model: string;
       /** @description The user who owns the Loops run. */
       user: components["schemas"]["User"];
+    };
+    /**
+     * LoopsCheckpointV1
+     * @description A checkpoint saved by a Loops run.
+     */
+    LoopsCheckpoint: {
+      /**
+       * Checkpoint Id
+       * @description The ID of the checkpoint.
+       */
+      checkpoint_id: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description The timestamp of the checkpoint in ISO 8601 format.
+       */
+      created_at: string;
+      /**
+       * Checkpoint Type
+       * @description The type of checkpoint.
+       */
+      checkpoint_type: string;
+      /**
+       * Base Model
+       * @description The base model of the checkpoint.
+       */
+      base_model: string | null;
+      /**
+       * Lora Adapter Config
+       * @description The adapter config of the checkpoint.
+       */
+      lora_adapter_config: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * Size Bytes
+       * @description The size of the checkpoint in bytes.
+       */
+      size_bytes: number;
+      /**
+       * Sync Status
+       * @description Sync state of the checkpoint: SYNCING or COMPLETE.
+       * @default null
+       */
+      sync_status: string | null;
+      /**
+       * Id
+       * @description The checkpoint ID.
+       */
+      id: string;
+      /** @description The immutable LoRA config used to save this checkpoint. Null means the checkpoint is unsupported and cannot be loaded. */
+      lora_config: components["schemas"]["LoopsLoRAConfig"] | null;
+      /**
+       * Run Id
+       * @description The ID of the run that produced the checkpoint.
+       */
+      run_id: string;
+      /** @description Whether this checkpoint is loadable by the sampler or by the run. */
+      target: components["schemas"]["TrainerCheckpointTarget"];
+      /**
+       * Expires At
+       * @description When the checkpoint expires and is deleted, set from the TTL it was saved with. Null means it's kept until you delete it. A checkpoint that's still in use when it expires, for example deployed, is deleted once it's released.
+       */
+      expires_at: string | null;
+    };
+    /**
+     * LoopsLoRAConfigV1
+     * @description A published LoRA config: which modules the adapter targets and how experts are laid out.
+     */
+    LoopsLoRAConfig: {
+      /**
+       * Config Version
+       * @description The config version, like v1.
+       */
+      config_version: string;
+      /**
+       * Targets
+       * @description The module names the LoRA adapter targets.
+       */
+      targets: string[];
+      /**
+       * Expert Layout
+       * @description How routed-expert LoRA weights are laid out. Null when no experts are targeted.
+       * @default null
+       */
+      expert_layout: ("per_expert" | "shared_outer" | "shared_adapter") | null;
+    };
+    /**
+     * DeleteLoopsRunResponseV1
+     * @description A Loops run whose delete was accepted.
+     */
+    DeleteLoopsRunResponse: {
+      /**
+       * Id
+       * @description The deleted Loops run ID.
+       */
+      id: string;
+      /**
+       * Kept Checkpoints
+       * @description The run's checkpoints that were not deleted because something still uses them, such as a deployment. They stay usable until that stops.
+       */
+      kept_checkpoints: components["schemas"]["LoopsCheckpoint"][];
     };
     /**
      * GetLoopsRunResponseV1
@@ -8588,9 +9203,17 @@ export type components = {
       reuse_from_session_id?: string | null;
       /**
        * Base Checkpoint
-       * @description Optional Hugging Face checkpoint to start training from instead of the base model's weights. Form: hf://<org>/<repo>[@<revision>]. It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include its tokenizer files: the run's sampler and the SDK load the tokenizer and chat template from the checkpoint. A private or gated repository needs a Hugging Face token in the team secret hf_access_token. The revision is pinned to a commit when the run is created. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.
+       * @description Optional checkpoint to start training from instead of the base model's weights: a Hugging Face repo (hf://<org>/<repo>[@<revision>]), an object store path (s3://, gs://, r2://, cw://, or azure://), or a full Baseten Training checkpoint in the run's team (bt://<project>@<job_id>/<checkpoint>, with the checkpoint named). It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include tokenizer files: the run's sampler loads the tokenizer and chat template from the checkpoint. A Hugging Face revision is pinned to a commit when the run is created, and its files are checked then. Any other source is read again by each sampler and resumed run, so do not change it while the run is in use. Checkpoints from a run on a source outside Hugging Face cannot be deployed yet. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.
        */
       base_checkpoint?: string | null;
+      /**
+       * @description Optional credentials that read base_checkpoint. Only CUSTOM_SECRET is supported: set auth_secret_name to the team secret that holds a Hugging Face token for a Hugging Face repo, or the credentials for an object store. A Baseten Training checkpoint takes no auth. The run, its samplers, resumed runs, and checkpoint deployments all use this secret. When omitted, a Hugging Face repo is read with the team secret hf_access_token if it exists. Requires base_checkpoint.
+       * @example {
+       *       "auth_method": "CUSTOM_SECRET",
+       *       "auth_secret_name": "hf_read_my_checkpoint"
+       *     }
+       */
+      base_checkpoint_auth?: components["schemas"]["TrainingWeightAuth"] | null;
       /** @description Choose where this runs. 'default' lets Baseten choose. 'serverless' runs on Baseten's shared capacity, and fails instead of falling back when shared capacity can't serve the request. 'dedicated' gives it its own deployment, which you size and pay for. */
       scope?: components["schemas"]["LoopsPlacementScope"];
     };
@@ -8682,87 +9305,6 @@ export type components = {
       sampler: components["schemas"]["LoopsSampler"];
     };
     /**
-     * LoopsCheckpointV1
-     * @description A checkpoint saved by a Loops run.
-     */
-    LoopsCheckpoint: {
-      /**
-       * Checkpoint Id
-       * @description The ID of the checkpoint.
-       */
-      checkpoint_id: string;
-      /**
-       * Created At
-       * Format: date-time
-       * @description The timestamp of the checkpoint in ISO 8601 format.
-       */
-      created_at: string;
-      /**
-       * Checkpoint Type
-       * @description The type of checkpoint.
-       */
-      checkpoint_type: string;
-      /**
-       * Base Model
-       * @description The base model of the checkpoint.
-       */
-      base_model: string | null;
-      /**
-       * Lora Adapter Config
-       * @description The adapter config of the checkpoint.
-       */
-      lora_adapter_config: {
-        [key: string]: unknown;
-      } | null;
-      /**
-       * Size Bytes
-       * @description The size of the checkpoint in bytes.
-       */
-      size_bytes: number;
-      /**
-       * Sync Status
-       * @description Sync state of the checkpoint: SYNCING or COMPLETE.
-       * @default null
-       */
-      sync_status: string | null;
-      /**
-       * Id
-       * @description The checkpoint ID.
-       */
-      id: string;
-      /** @description The immutable LoRA config used to save this checkpoint. Null means the checkpoint is unsupported and cannot be loaded. */
-      lora_config: components["schemas"]["LoopsLoRAConfig"] | null;
-      /**
-       * Run Id
-       * @description The ID of the run that produced the checkpoint.
-       */
-      run_id: string;
-      /** @description Whether this checkpoint is loadable by the sampler or by the run. */
-      target: components["schemas"]["TrainerCheckpointTarget"];
-    };
-    /**
-     * LoopsLoRAConfigV1
-     * @description A published LoRA config: which modules the adapter targets and how experts are laid out.
-     */
-    LoopsLoRAConfig: {
-      /**
-       * Config Version
-       * @description The config version, like v1.
-       */
-      config_version: string;
-      /**
-       * Targets
-       * @description The module names the LoRA adapter targets.
-       */
-      targets: string[];
-      /**
-       * Expert Layout
-       * @description How routed-expert LoRA weights are laid out. Null when no experts are targeted.
-       * @default null
-       */
-      expert_layout: ("per_expert" | "shared_outer" | "shared_adapter") | null;
-    };
-    /**
      * ListLoopsCheckpointsResponseV1
      * @description Checkpoints matching the query filter.
      */
@@ -8835,6 +9377,34 @@ export type components = {
       deployment_id: string;
     };
     /**
+     * LoopsCheckpointTombstoneV1
+     * @description A Loops checkpoint whose delete was accepted.
+     */
+    LoopsCheckpointTombstone: {
+      /**
+       * Id
+       * @description The deleted checkpoint ID.
+       */
+      id: string;
+      /**
+       * Run Id
+       * @description The ID of the run that produced the checkpoint.
+       */
+      run_id: string;
+      /**
+       * Checkpoint Id
+       * @description The name the checkpoint was saved under.
+       */
+      checkpoint_id: string;
+      /** @description Whether the checkpoint was loadable by the sampler or by the run. */
+      target: components["schemas"]["TrainerCheckpointTarget"];
+      /**
+       * Path
+       * @description The checkpoint's bt:// path.
+       */
+      path: string;
+    };
+    /**
      * LoopsCheckpointFilesResponseV1
      * @description Response with presigned URLs for files under a Loops checkpoint.
      */
@@ -8900,6 +9470,14 @@ export type components = {
       source:
         | components["schemas"]["LoopsCheckpointS3Source"]
         | components["schemas"]["LoopsCheckpointVolumeSource"];
+    };
+    /** SetLoopsCheckpointTtlRequestV1 */
+    SetLoopsCheckpointTtlRequest: {
+      /**
+       * Ttl Seconds
+       * @description Seconds from now until the checkpoint expires and is deleted, from 3600 (1 hour) to 315360000 (10 years). Null removes the TTL, so the checkpoint is kept until you delete it.
+       */
+      ttl_seconds: number | null;
     };
     /**
      * LoopsDeploymentStatusV1
@@ -9250,12 +9828,12 @@ export type components = {
       gpu_type: string;
       /**
        * Baseline
-       * @description Baseline GPU allocation for the team. 0 if not configured.
+       * @description Configured minimum GPU allocation for the team. Not enforced. 0 if not configured.
        */
       baseline: number;
       /**
        * Limit
-       * @description Maximum concurrent GPUs of this type for this team
+       * @description The team's GPU quota for this type. It counts the team's on-demand jobs, plus its spot jobs when the organization has no separate on-demand quota. On-demand jobs can run past it by borrowing from the organization's shared pool, when one exists.
        */
       limit: number;
       /**
@@ -9265,7 +9843,7 @@ export type components = {
       usage_count: number;
       /**
        * Dedicated Usage Count
-       * @description Portion of usage_count from standard (non-spot) jobs.
+       * @description Portion of usage_count from on-demand (non-spot) jobs.
        * @default 0
        */
       dedicated_usage_count: number;
@@ -9288,14 +9866,25 @@ export type components = {
       gpu_type: string;
       /**
        * Baseline
-       * @description Baseline GPU allocation; jobs below this threshold are expected to run immediately. 0 if not configured.
+       * @description Configured minimum GPU allocation (`min_gpus`). 0 if not configured. Use `on_demand_quota` for the quota applied to on-demand jobs.
        */
       baseline: number;
       /**
        * Limit
-       * @description Maximum concurrent GPUs of this type for this org
+       * @description Configured maximum GPU allocation (`max_gpus`). Use `on_demand_quota` and `spot_quota` for the quotas applied to jobs.
        */
       limit: number;
+      /**
+       * On Demand Quota
+       * @description GPU quota for this type for on-demand (non-spot) jobs: the most GPUs they can use at once.
+       */
+      on_demand_quota: number;
+      /**
+       * Spot Quota
+       * @description GPU quota for this type for spot jobs. Spot shares this quota with on-demand jobs: spot can use up to the quota minus on-demand GPUs in use. Null if spot is not enabled for the organization.
+       * @default null
+       */
+      spot_quota: number | null;
       /**
        * Usage Count
        * @description GPUs currently in use by active training jobs
@@ -9303,13 +9892,13 @@ export type components = {
       usage_count: number;
       /**
        * Dedicated Usage Count
-       * @description Portion of usage_count from standard (non-spot) jobs, which run against the baseline.
+       * @description Portion of usage_count from on-demand (non-spot) jobs.
        * @default 0
        */
       dedicated_usage_count: number;
       /**
        * Spot Usage Count
-       * @description Portion of usage_count from spot jobs, which burst into the peak and may push usage above the limit.
+       * @description Portion of usage_count from spot jobs.
        * @default 0
        */
       spot_usage_count: number;
@@ -9321,20 +9910,26 @@ export type components = {
     GetTrainingGpuCapacityResponse: {
       /**
        * Gpu Capacities
-       * @description Org-level GPU capacity limits and current usage per GPU type
+       * @description Organization GPU quotas and current usage per GPU type
        */
       gpu_capacities: components["schemas"]["TrainingGpuCapacityItem"][];
       /**
        * Team Gpu Capacities
-       * @description Per-team GPU capacity limits and current usage per GPU type
+       * @description Per-team GPU quotas and current usage per GPU type
        */
       team_gpu_capacities?: components["schemas"]["TeamTrainingGpuCapacityItem"][];
+      /**
+       * Spot Enabled
+       * @description Whether the organization can submit spot training jobs.
+       * @default false
+       */
+      spot_enabled: boolean;
     };
     /**
      * PatchTeamTrainingGpuCapacityRequestV1
-     * @description A request to set the GPU capacity ceiling for a (team, gpu_type) pair.
+     * @description A request to set the GPU quota for a (team, gpu_type) pair.
      *
-     *     Creates the limit if one doesn't already exist for this team and GPU type,
+     *     Creates the quota if one doesn't already exist for this team and GPU type,
      *     otherwise updates it in place.
      */
     PatchTeamTrainingGpuCapacityRequest: {
@@ -9350,7 +9945,7 @@ export type components = {
       gpu_type: string;
       /**
        * Max Gpus
-       * @description Max concurrent GPUs of this type the team may use
+       * @description The team's GPU quota for this type. It counts the team's on-demand jobs, plus its spot jobs when the organization has no separate on-demand quota. On-demand jobs can run past it by borrowing from the organization's shared pool, when one exists.
        * @example 8
        * @example 16
        * @example 32
@@ -9359,10 +9954,10 @@ export type components = {
     };
     /**
      * PatchTeamTrainingGpuCapacityResponseV1
-     * @description Response for setting a team's GPU capacity ceiling.
+     * @description Response for setting a team's GPU quota.
      */
     PatchTeamTrainingGpuCapacityResponse: {
-      /** @description The updated per-team GPU capacity limit */
+      /** @description The updated per-team GPU quota */
       team_gpu_capacity: components["schemas"]["TeamTrainingGpuCapacityItem"];
     };
     /**
@@ -11051,7 +11646,7 @@ export type components = {
     DedicatedUsage: {
       /**
        * Subtotal
-       * @description Subtotal cost in dollars after applying credits used
+       * @description Usage charges in dollars before applying credits
        */
       subtotal: number | string;
       /**
@@ -11184,6 +11779,18 @@ export type components = {
        */
       subtotal: number | string;
       /**
+       * Team Id
+       * @description Team ID for multi-team organizations; otherwise null
+       * @default null
+       */
+      team_id: string | null;
+      /**
+       * Team Name
+       * @description Team name, including historical teams; null if unavailable
+       * @default null
+       */
+      team_name: string | null;
+      /**
        * Input Tokens
        * @description Total input tokens for this model
        */
@@ -11208,7 +11815,7 @@ export type components = {
     ModelApisUsage: {
       /**
        * Subtotal
-       * @description Subtotal cost in dollars after applying credits used
+       * @description Usage charges in dollars before applying credits
        */
       subtotal: number | string;
       /**
@@ -11218,12 +11825,12 @@ export type components = {
       credits_used: number | string;
       /**
        * Total
-       * @description Total cost in dollars
+       * @description Usage charges in dollars after applying credits, floored at zero
        */
       total: number | string;
       /**
        * Breakdown
-       * @description Per-model usage breakdown
+       * @description Per-model usage breakdown, split by team for multi-team organizations
        */
       breakdown?: components["schemas"]["ModelApiItem"][];
     };
@@ -11251,7 +11858,7 @@ export type components = {
     TrainingUsage: {
       /**
        * Subtotal
-       * @description Subtotal cost in dollars after applying credits used
+       * @description Usage charges in dollars before applying credits
        */
       subtotal: number | string;
       /**
@@ -11442,6 +12049,738 @@ export type components = {
        * @default null
        */
       aws_assume_role: components["schemas"]["AwsAssumeRole"] | null;
+      /**
+       * Allow Personal Api Keys
+       * @description Whether members can create new personal API keys. Existing keys keep working.
+       */
+      allow_personal_api_keys: boolean;
+      /**
+       * Allow Service Account Api Keys
+       * @description Whether new team and organization API keys can be created. Existing keys keep working.
+       */
+      allow_service_account_api_keys: boolean;
+    };
+    /**
+     * UpdateOrganizationRequestV1
+     * @description Partial update of the caller's organization settings. Omitted fields are unchanged.
+     */
+    UpdateOrganizationRequest: {
+      /**
+       * Allow Personal Api Keys
+       * @description Whether members can create new personal API keys. Null is not accepted.
+       */
+      allow_personal_api_keys?: boolean | null;
+      /**
+       * Allow Service Account Api Keys
+       * @description Whether new team and organization API keys can be created. Null is not accepted.
+       */
+      allow_service_account_api_keys?: boolean | null;
+    };
+    /**
+     * ServiceAccountPresetPermissionsV1
+     * @description A service account's access: one of the access types API keys have.
+     *
+     *     Temporary: mirrors API key access until fine-grained access control is available, and may be removed.
+     */
+    ServiceAccountPresetPermissions: {
+      /**
+       * @description What the service account may do. WORKSPACE_MANAGE_API_KEYS is for organization-level accounts only; every other type needs a team.
+       * @example WORKSPACE_MANAGE_ALL
+       */
+      type: components["schemas"]["ServiceAccountPresetType"];
+      /**
+       * Model Ids
+       * @description WORKSPACE_INVOKE and WORKSPACE_EXPORT_METRICS only. Models the account covers. Omit for every model in the team, including models added later.
+       * @default null
+       * @example [
+       *       "abcd1234"
+       *     ]
+       */
+      model_ids: string[] | null;
+      /**
+       * Environment Names
+       * @description WORKSPACE_INVOKE: environments the account may call; omit for all. With model_ids, each model must have each environment. WORKSPACE_MANAGE_ALL: restricted environments the account may also manage.
+       * @default null
+       * @example [
+       *       "production"
+       *     ]
+       */
+      environment_names: string[] | null;
+      /**
+       * Model Api Slugs
+       * @description WORKSPACE_INVOKE_MODEL_APIS only. Model APIs the account may call; omit for all.
+       * @default null
+       * @example [
+       *       "my-model-api"
+       *     ]
+       */
+      model_api_slugs: string[] | null;
+    };
+    /**
+     * ServiceAccountPresetTypeV1
+     * @description What a service account may do: the workspace API key categories, plus Model APIs.
+     *
+     *     Temporary: mirrors API key access until fine-grained access control is available, and may be removed.
+     * @enum {string}
+     */
+    ServiceAccountPresetType:
+      | "WORKSPACE_MANAGE_ALL"
+      | "WORKSPACE_INVOKE"
+      | "WORKSPACE_EXPORT_METRICS"
+      | "WORKSPACE_MANAGE_API_KEYS"
+      | "WORKSPACE_INVOKE_MODEL_APIS";
+    /**
+     * ServiceAccountV1
+     * @description A named service account that workload identity federation tokens act as.
+     */
+    ServiceAccount: {
+      /**
+       * Id
+       * @description Service account ID
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name, unique in the organization
+       */
+      name: string;
+      /**
+       * Description
+       * @description Description
+       * @default null
+       */
+      description: string | null;
+      /**
+       * Team Id
+       * @description The team that owns the account. Null for an organization account.
+       * @default null
+       */
+      team_id: string | null;
+      /** @description What the service account may do. Temporary; may be removed once fine-grained access control is available. */
+      preset_permissions: components["schemas"]["ServiceAccountPresetPermissions"];
+      /**
+       * Disabled
+       * @description Whether the account is disabled. A disabled account can't be used.
+       */
+      disabled: boolean;
+      /**
+       * Last Used At
+       * @description Last time a request authenticated as this account, to within an hour. Null until the first.
+       * @default null
+       */
+      last_used_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time the account was created
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description Time the account was last updated
+       */
+      updated_at: string;
+    };
+    /**
+     * ServiceAccountsV1
+     * @description A page of service accounts.
+     */
+    ServiceAccounts: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["ServiceAccount"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * ServiceAccountPresetPermissionsRequestV1
+     * @description A service account's access, as sent. Omit a list for no restriction; never send it empty.
+     */
+    ServiceAccountPresetPermissionsRequest: {
+      /**
+       * @description What the service account may do. WORKSPACE_MANAGE_API_KEYS is for organization-level accounts only; every other type needs a team.
+       * @example WORKSPACE_MANAGE_ALL
+       */
+      type: components["schemas"]["ServiceAccountPresetType"];
+      /**
+       * Model Ids
+       * @description WORKSPACE_INVOKE and WORKSPACE_EXPORT_METRICS only. Models the account covers. Omit for every model in the team, including models added later.
+       * @example [
+       *       "abcd1234"
+       *     ]
+       */
+      model_ids?: string[] | null;
+      /**
+       * Environment Names
+       * @description WORKSPACE_INVOKE: environments the account may call; omit for all. With model_ids, each model must have each environment. WORKSPACE_MANAGE_ALL: restricted environments the account may also manage.
+       * @example [
+       *       "production"
+       *     ]
+       */
+      environment_names?: string[] | null;
+      /**
+       * Model Api Slugs
+       * @description WORKSPACE_INVOKE_MODEL_APIS only. Model APIs the account may call; omit for all.
+       * @example [
+       *       "my-model-api"
+       *     ]
+       */
+      model_api_slugs?: string[] | null;
+    };
+    /**
+     * CreateServiceAccountRequestV1
+     * @description Request to create a service account.
+     */
+    CreateServiceAccountRequest: {
+      /**
+       * Name
+       * @description Name, unique in the organization. Can be changed later.
+       * @example ci-deployer
+       */
+      name: string;
+      /**
+       * Description
+       * @description Optional description, up to 1,024 characters
+       */
+      description?: string | null;
+      /**
+       * Team Id
+       * @description The team that owns the account. Omit for an organization account. Can't be changed.
+       */
+      team_id?: string | null;
+      /** @description What the service account may do. Can be changed later. Temporary; may be removed once fine-grained access control is available. */
+      preset_permissions: components["schemas"]["ServiceAccountPresetPermissionsRequest"];
+    };
+    /** DeletedServiceAccountV1 */
+    DeletedServiceAccount: {
+      /**
+       * Id
+       * @description ID of the deleted service account
+       */
+      id: string;
+      /**
+       * Deleted
+       * @description Always true
+       */
+      deleted: boolean;
+    };
+    /**
+     * UpdateServiceAccountRequestV1
+     * @description Request to update a service account. Only the fields sent change.
+     */
+    UpdateServiceAccountRequest: {
+      /**
+       * Name
+       * @description Name, unique in the organization
+       */
+      name?: string | null;
+      /**
+       * Description
+       * @description Description, up to 1,024 characters; null clears it
+       */
+      description?: string | null;
+      /**
+       * Disabled
+       * @description Disable the account to stop it being used, or enable it again
+       */
+      disabled?: boolean | null;
+      /** @description Replaces the account's access as a whole. Temporary; may be removed once fine-grained access control is available. */
+      preset_permissions?: components["schemas"]["ServiceAccountPresetPermissionsRequest"] | null;
+    };
+    /**
+     * PredefinedIdentityProviderKindV1
+     * @description An identity provider Baseten supports.
+     * @enum {string}
+     */
+    PredefinedIdentityProviderKind:
+      | "GITHUB_ACTIONS"
+      | "GCP"
+      | "BASETEN"
+      | "AWS_IAM"
+      | "AWS_EKS"
+      | "AZURE_MANAGED_IDENTITY_V1"
+      | "AZURE_MANAGED_IDENTITY_V2"
+      | "AZURE_AKS";
+    /** PredefinedIdentityProviderV1 */
+    PredefinedIdentityProvider: {
+      /** @description Pass as `kind` when adding the provider */
+      kind: components["schemas"]["PredefinedIdentityProviderKind"];
+      /**
+       * Name
+       * @description Display name
+       */
+      name: string;
+      /**
+       * Issuer Url
+       * @description The `iss` claim its tokens carry. Null when each account, tenant, or cluster has its own issuer, which you pass as `issuer_url` when adding the provider.
+       * @default null
+       */
+      issuer_url: string | null;
+      /**
+       * Issuer Url Example
+       * @description An example of the `issuer_url` to pass. Null when the issuer is fixed.
+       * @default null
+       */
+      issuer_url_example: string | null;
+    };
+    /** PredefinedIdentityProvidersV1 */
+    PredefinedIdentityProviders: {
+      /**
+       * Items
+       * @description Identity providers Baseten supports
+       */
+      items: components["schemas"]["PredefinedIdentityProvider"][];
+    };
+    /**
+     * IdentityProviderV1
+     * @description An OIDC issuer whose tokens the organization accepts for workload identity federation.
+     */
+    IdentityProvider: {
+      /**
+       * Id
+       * @description Identity provider ID
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name, unique in the organization
+       */
+      name: string;
+      /**
+       * Description
+       * @description Description
+       * @default null
+       */
+      description: string | null;
+      /** @description Settings of the predefined provider */
+      predefined: components["schemas"]["PredefinedIdentityProviderConfig"];
+      /**
+       * Created By
+       * @description ID of the user who added the provider
+       */
+      created_by: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time the provider was added
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description Time the provider was last updated
+       */
+      updated_at: string;
+    };
+    /**
+     * PredefinedIdentityProviderConfigV1
+     * @description Settings of an identity provider that Baseten defines.
+     */
+    PredefinedIdentityProviderConfig: {
+      /** @description Which predefined provider. Can't be changed. */
+      kind: components["schemas"]["PredefinedIdentityProviderKind"];
+      /**
+       * Issuer Url
+       * @description The `iss` claim of the provider's tokens. When adding AWS IAM, Amazon EKS, Azure managed identity, or Azure Kubernetes Service, pass your issuer in the format the predefined identity providers endpoint shows; it's unique in the organization. Can't be passed for other providers, or changed. Always set in responses.
+       * @default null
+       */
+      issuer_url: string | null;
+    };
+    /**
+     * IdentityProvidersV1
+     * @description A page of identity providers.
+     */
+    IdentityProviders: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["IdentityProvider"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * CreatePredefinedIdentityProviderConfigV1
+     * @description Settings of the predefined identity provider to add.
+     */
+    CreatePredefinedIdentityProviderConfig: {
+      /** @description Which predefined provider. Can't be changed. */
+      kind: components["schemas"]["PredefinedIdentityProviderKind"];
+      /**
+       * Issuer Url
+       * @description The `iss` claim of the provider's tokens. When adding AWS IAM, Amazon EKS, Azure managed identity, or Azure Kubernetes Service, pass your issuer in the format the predefined identity providers endpoint shows; it's unique in the organization. Can't be passed for other providers, or changed. Always set in responses.
+       */
+      issuer_url?: string | null;
+    };
+    /**
+     * CreateIdentityProviderRequestV1
+     * @description Request to add an identity provider.
+     */
+    CreateIdentityProviderRequest: {
+      /**
+       * Name
+       * @description Name, unique in the organization. Defaults to the provider's display name, so pass one when adding a second issuer of the same provider.
+       */
+      name?: string | null;
+      /**
+       * Description
+       * @description Optional description
+       */
+      description?: string | null;
+      /** @description The predefined provider to add */
+      predefined: components["schemas"]["CreatePredefinedIdentityProviderConfig"];
+    };
+    /**
+     * VerifyPredefinedIdentityProviderConfigV1
+     * @description Settings of the predefined identity provider to check.
+     */
+    VerifyPredefinedIdentityProviderConfig: {
+      /** @description Which predefined provider */
+      kind: components["schemas"]["PredefinedIdentityProviderKind"];
+      /**
+       * Issuer Url
+       * @description The issuer to check, for AWS IAM, Amazon EKS, Azure managed identity, and Azure Kubernetes Service, in the format the predefined identity providers endpoint shows
+       */
+      issuer_url?: string | null;
+    };
+    /**
+     * VerifyIdentityProviderRequestV1
+     * @description Request to check an identity provider before adding it.
+     */
+    VerifyIdentityProviderRequest: {
+      /** @description The predefined provider to check, as you'd pass it when adding it */
+      predefined: components["schemas"]["VerifyPredefinedIdentityProviderConfig"];
+    };
+    /**
+     * VerificationV1
+     * @description Whether a create request would pass the checks the server runs on it.
+     */
+    Verification: {
+      /**
+       * Valid
+       * @description Whether the input passes every check
+       */
+      valid: boolean;
+      /**
+       * Error
+       * @description Why the input fails, as creating it would report. Null when it's valid.
+       * @default null
+       */
+      error: string | null;
+    };
+    /** DeletedIdentityProviderV1 */
+    DeletedIdentityProvider: {
+      /**
+       * Id
+       * @description ID of the deleted identity provider
+       */
+      id: string;
+      /**
+       * Deleted
+       * @description Always true
+       */
+      deleted: boolean;
+    };
+    /**
+     * UpdateIdentityProviderRequestV1
+     * @description Request to update an identity provider. Only the fields sent change.
+     */
+    UpdateIdentityProviderRequest: {
+      /**
+       * Name
+       * @description Name, unique in the organization
+       */
+      name?: string | null;
+      /**
+       * Description
+       * @description Description; null clears it
+       */
+      description?: string | null;
+    };
+    /**
+     * AccessTrustRuleV1
+     * @description Which tokens from an identity provider may act as a service account.
+     */
+    AccessTrustRule: {
+      /**
+       * Id
+       * @description Trust rule ID. Workloads pass it when they exchange a token.
+       */
+      id: string;
+      /**
+       * Name
+       * @description Name, unique in the organization
+       */
+      name: string;
+      /**
+       * Description
+       * @description Description
+       * @default null
+       */
+      description: string | null;
+      /**
+       * Identity Provider Id
+       * @description The identity provider whose tokens it accepts
+       */
+      identity_provider_id: string;
+      /**
+       * Identity Provider Name
+       * @description Name of the identity provider
+       */
+      identity_provider_name: string;
+      /**
+       * Service Account Id
+       * @description The service account its tokens act as
+       */
+      service_account_id: string;
+      /**
+       * Service Account Name
+       * @description Name of the service account
+       */
+      service_account_name: string;
+      /**
+       * Team Id
+       * @description The service account's team. Null for an organization service account.
+       * @default null
+       */
+      team_id: string | null;
+      /**
+       * Team Name
+       * @description Name of the service account's team. Null for an organization service account.
+       * @default null
+       */
+      team_name: string | null;
+      /**
+       * Condition
+       * @description A CEL expression over the token's `claims` that must evaluate to true. It must pin a specific `claims.sub` in a top-level `&&` clause, plus any provider-required checks. Up to 4,096 characters.
+       * @example claims.repository_owner_id == '12345' && claims.sub.startsWith('repo:acme/models:') && claims.ref == 'refs/heads/main'
+       */
+      condition: string;
+      /**
+       * Audience
+       * @description The token's `aud` must equal this, or contain it when `aud` is a list. Up to 1,024 characters.
+       */
+      audience: string;
+      /**
+       * Max Access Token Lifetime Seconds
+       * @description Longest lifetime of a token the rule issues, in seconds
+       */
+      max_access_token_lifetime_seconds: number;
+      /**
+       * Last Used At
+       * @description Last time a request authenticated with a token the rule issued, to within an hour. Null until the first.
+       * @default null
+       */
+      last_used_at: string | null;
+      /**
+       * Created By
+       * @description ID of the user who created the rule
+       */
+      created_by: string;
+      /**
+       * Created At
+       * Format: date-time
+       * @description Time the rule was created
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       * @description Time the rule was last updated
+       */
+      updated_at: string;
+    };
+    /**
+     * AccessTrustRulesV1
+     * @description A page of trust rules.
+     */
+    AccessTrustRules: {
+      /**
+       * Items
+       * @description Items in this page.
+       */
+      items: components["schemas"]["AccessTrustRule"][];
+      /** @description Pagination metadata for the page. */
+      pagination: components["schemas"]["PaginationResponse"];
+    };
+    /**
+     * CreateAccessTrustRuleRequestV1
+     * @description Request to create a trust rule.
+     */
+    CreateAccessTrustRuleRequest: {
+      /**
+       * Name
+       * @description Name, unique in the organization. Can be changed later.
+       */
+      name: string;
+      /**
+       * Description
+       * @description Optional description
+       */
+      description?: string | null;
+      /**
+       * Identity Provider Id
+       * @description Whose tokens the rule accepts. Can't be changed.
+       */
+      identity_provider_id: string;
+      /**
+       * Service Account Id
+       * @description The service account its tokens act as. Can be changed later.
+       */
+      service_account_id: string;
+      /**
+       * Condition
+       * @description A CEL expression over the token's `claims` that must evaluate to true. It must pin a specific `claims.sub` in a top-level `&&` clause, plus any provider-required checks. Up to 4,096 characters. Can be changed later.
+       * @example claims.repository_owner_id == '12345' && claims.sub.startsWith('repo:acme/models:') && claims.ref == 'refs/heads/main'
+       */
+      condition: string;
+      /**
+       * Audience
+       * @description The token's `aud` must equal this, or contain it when `aud` is a list. Up to 1,024 characters. Can be changed later.
+       */
+      audience: string;
+      /**
+       * Max Access Token Lifetime Seconds
+       * @description Longest lifetime of a token the rule issues, 60 to 3600 seconds. Can be changed later.
+       */
+      max_access_token_lifetime_seconds?: number;
+    };
+    /**
+     * VerifyAccessTrustRuleRequestV1
+     * @description Request to check a trust rule's condition and audience before saving them.
+     */
+    VerifyAccessTrustRuleRequest: {
+      /**
+       * Identity Provider Id
+       * @description The identity provider the rule is for, which decides the claims it must pin
+       */
+      identity_provider_id: string;
+      /**
+       * Condition
+       * @description A CEL expression over the token's `claims` that must evaluate to true. It must pin a specific `claims.sub` in a top-level `&&` clause, plus any provider-required checks. Up to 4,096 characters.
+       * @example claims.repository_owner_id == '12345' && claims.sub.startsWith('repo:acme/models:') && claims.ref == 'refs/heads/main'
+       */
+      condition: string;
+      /**
+       * Audience
+       * @description The token's `aud` must equal this, or contain it when `aud` is a list. Up to 1,024 characters.
+       */
+      audience: string;
+    };
+    /** DeletedAccessTrustRuleV1 */
+    DeletedAccessTrustRule: {
+      /**
+       * Id
+       * @description ID of the deleted trust rule
+       */
+      id: string;
+      /**
+       * Deleted
+       * @description Always true
+       */
+      deleted: boolean;
+    };
+    /**
+     * UpdateAccessTrustRuleRequestV1
+     * @description Request to update a trust rule. Only the fields sent change.
+     */
+    UpdateAccessTrustRuleRequest: {
+      /**
+       * Name
+       * @description Name, unique in the organization
+       */
+      name?: string | null;
+      /**
+       * Description
+       * @description Description; null clears it
+       */
+      description?: string | null;
+      /**
+       * Condition
+       * @description A CEL expression over the token's `claims` that must evaluate to true. It must pin a specific `claims.sub` in a top-level `&&` clause, plus any provider-required checks. Up to 4,096 characters.
+       */
+      condition?: string | null;
+      /**
+       * Audience
+       * @description The token's `aud` must equal this, or contain it when `aud` is a list. Up to 1,024 characters.
+       */
+      audience?: string | null;
+      /**
+       * Max Access Token Lifetime Seconds
+       * @description Longest lifetime of a token the rule issues, 60 to 3600 seconds. Tokens already issued keep their lifetime.
+       */
+      max_access_token_lifetime_seconds?: number | null;
+      /**
+       * Service Account Id
+       * @description Moves the rule to another service account. Tokens already issued keep the old account until they expire.
+       */
+      service_account_id?: string | null;
+    };
+    /**
+     * TokenExchangeRequestV1
+     * @description An RFC 8693 token exchange request naming the trust rule to check as its audience.
+     */
+    TokenExchangeRequest: {
+      /**
+       * Grant Type
+       * @description Always `urn:ietf:params:oauth:grant-type:token-exchange`
+       * @example urn:ietf:params:oauth:grant-type:token-exchange
+       */
+      grant_type: string;
+      /**
+       * Subject Token
+       * @description The identity provider's JWT
+       * @example <identity provider JWT>
+       */
+      subject_token: string;
+      /**
+       * Subject Token Type
+       * @description `urn:ietf:params:oauth:token-type:jwt` or `urn:ietf:params:oauth:token-type:id_token`
+       * @example urn:ietf:params:oauth:token-type:jwt
+       */
+      subject_token_type: string;
+      /**
+       * Audience
+       * @description ID of the trust rule to check the JWT against
+       * @example abcd1234
+       */
+      audience: string;
+      /**
+       * Requested Token Type
+       * @description Optional; only `urn:ietf:params:oauth:token-type:access_token` is issued
+       */
+      requested_token_type?: string | null;
+      /**
+       * Access Token Lifetime Seconds
+       * @description Lifetime of the access token, in seconds. At most the rule's maximum.
+       */
+      access_token_lifetime_seconds?: number | null;
+    };
+    /** TokenExchangeResponseV1 */
+    TokenExchangeResponse: {
+      /**
+       * Access Token
+       * @description Send as `Authorization: Bearer`
+       */
+      access_token: string;
+      /**
+       * Issued Token Type
+       * @description Always `urn:ietf:params:oauth:token-type:access_token`
+       */
+      issued_token_type: string;
+      /**
+       * Token Type
+       * @description Always `Bearer`
+       */
+      token_type: string;
+      /**
+       * Expires In
+       * @description Seconds until the access token expires
+       */
+      expires_in: number;
     };
     /** GatewayEventTokensV1 */
     GatewayEventTokens: {
@@ -11693,62 +13032,111 @@ export type components = {
        */
       team_name: string;
     };
-    /** GridClassifierV1 */
-    GridClassifier: {
-      /**
-       * Id
-       * @description Stable classifier identifier.
-       * @example general-v1
-       */
-      id: string;
+    /**
+     * GridRouteAliasKindV1
+     * @enum {string}
+     */
+    GridRouteAliasKind: "CLAUDE_DESKTOP" | "ALIAS";
+    /** GridRouteAliasV1 */
+    GridRouteAlias: {
       /**
        * Name
-       * @description Display name of the classifier.
-       * @example General
+       * @description Name to send in the inference request's `model` field instead of the route's `name`.
        */
       name: string;
+      /** @description Purpose of the alias. CLAUDE_DESKTOP is for Claude Code desktop, which rejects model names without a `claude` substring. ALIAS is any other name the team's clients send for the route. */
+      kind: components["schemas"]["GridRouteAliasKind"];
     };
     /** GridRouteClassifierV1 */
     GridRouteClassifier: {
       /**
        * Id
        * @description Stable route classifier identifier.
-       * @example general-v1
+       * @example abc1234
        */
       id: string;
       /**
-       * Name
+       * Display Name
        * @description Display name of the route classifier.
        * @example General
        */
-      name: string;
+      display_name: string;
       /**
        * Supported Tradeoffs
        * @description Tradeoffs the route classifier supports. Empty when it supports all of them.
        */
       supported_tradeoffs: ("cost" | "balanced" | "intelligence")[];
       /**
-       * Decidable Models
-       * @description Model identities the route classifier picks from.
+       * Decidable Canonical Model Ids
+       * @description Canonical model ids the route classifier picks from.
        * @example [
        *       "zai-org/GLM-5.3",
        *       "anthropic/claude-opus-5-5"
        *     ]
        */
-      decidable_models: string[];
+      decidable_canonical_model_ids: string[];
     };
-    /** GridRouteRefV1 */
-    GridRouteRef: {
-      /**
-       * Id
-       * @description Stable route identifier.
-       */
-      id: string;
+    /** GridRouteMetadataV1 */
+    GridRouteMetadata: {
       /**
        * Slug
-       * @description Name of the route to send in the inference request's model field.
+       * @description Metadata slug, e.g. 'anthropic/claude-opus-4'; null for rows without one.
        */
-      slug: string;
+      slug: string | null;
+      /**
+       * Display Name
+       * @description Model display name, when available.
+       */
+      display_name: string | null;
+      /**
+       * Release Date
+       * @description Model release date. Month-only source dates use the first day of that month.
+       */
+      release_date: string | null;
+      /**
+       * Provider
+       * @description Provider key derived from the slug prefix, e.g. 'anthropic'; null for unprefixed slugs.
+       */
+      provider: string | null;
+      /**
+       * Context Window
+       * @description Total context window in tokens.
+       */
+      context_window: number | null;
+      /**
+       * Max Output Tokens
+       * @description Maximum output tokens per response.
+       */
+      max_output_tokens: number | null;
+      /**
+       * Input Modalities
+       * @description Accepted input modalities.
+       */
+      input_modalities: string[];
+      /**
+       * Tools
+       * @description Whether the model supports tool calling.
+       */
+      tools: boolean | null;
+      /**
+       * Reasoning Effort Levels
+       * @description Reasoning effort levels the model supports.
+       */
+      reasoning_effort_levels: string[] | null;
+      /**
+       * Parallel Tool Calls
+       * @description Whether the model supports parallel tool calls.
+       */
+      parallel_tool_calls: boolean | null;
+      /** @description API formats the model supports. */
+      supported_api_formats: components["schemas"]["ExploreMetadataAPIFormats"] | null;
+      /** @description Provider list prices in USD per 1M tokens, when available. */
+      cost: components["schemas"]["ExploreCost"] | null;
+      /**
+       * Api Formats
+       * @description API formats the route supports, most preferred first: `chat_completions`, `messages`, `responses` for a BASETEN_MODEL_API target and `messages`, `responses`, `chat_completions` for any other target, keeping only the formats the route supports. Never empty.
+       */
+      api_formats: ("messages" | "responses" | "chat_completions")[];
     };
     /** GridRouteTargetBasetenModelAPIV1 */
     GridRouteTargetBasetenModelAPI: {
@@ -11762,23 +13150,6 @@ export type components = {
        * @description Name of the target Model API.
        */
       model: string;
-    };
-    /** GridRouteTargetClassifierV1 */
-    GridRouteTargetClassifier: {
-      /**
-       * @description Target kind for a classifier-based route. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "CLASSIFIER";
-      /** @description Classifier that picks a route for each request. Null for routers created before classifiers could be selected. */
-      classifier: components["schemas"]["GridClassifier"] | null;
-      /** @description Route used when the classifier picks none. */
-      default_route: components["schemas"]["GridRouteRef"];
-      /**
-       * Allowed Routes
-       * @description Routes the classifier may pick, in creation order.
-       */
-      allowed_routes: components["schemas"]["GridRouteRef"][];
     };
     /** GridRouteTargetConnectionV1 */
     GridRouteTargetConnection: {
@@ -11823,9 +13194,19 @@ export type components = {
       id: string;
       /**
        * Name
-       * @description Name to send in the inference request's model field.
+       * @description Name to send in the inference request's `model` field. Unique within the team; immutable.
        */
       name: string;
+      /**
+       * Display Name
+       * @description Display label, defaulting to the route's name.
+       */
+      display_name: string;
+      /**
+       * Aliases
+       * @description The route's other names, one per purpose. Empty for routes created before aliases existed.
+       */
+      aliases?: components["schemas"]["GridRouteAlias"][];
       /**
        * Team Id
        * @description Identifier of the owning team.
@@ -11836,11 +13217,6 @@ export type components = {
        * @description Name of the owning team.
        */
       team_name: string;
-      /**
-       * Display Name
-       * @description Display label, defaulting to the route name.
-       */
-      display_name: string;
       /**
        * Description
        * @description Short description of the route, empty when unset.
@@ -11853,10 +13229,9 @@ export type components = {
       target:
         | components["schemas"]["GridRouteTargetBasetenModelAPI"]
         | components["schemas"]["GridRouteTargetConnection"]
-        | components["schemas"]["GridRouteTargetClassifier"]
         | components["schemas"]["GridRouteTargetIntelligent"];
-      /** @description Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked. */
-      metadata: components["schemas"]["ExploreMetadata"] | null;
+      /** @description Resolved model metadata; for an intelligent route, the envelope of its servable models' metadata. Null when nothing is linked or the metadata has no supported API formats. */
+      metadata: components["schemas"]["GridRouteMetadata"] | null;
       /**
        * Invoke Url
        * @description Base URL for inference requests using this route.
@@ -11892,35 +13267,6 @@ export type components = {
        */
       model: string;
     };
-    /** UpsertGridRouteTargetClassifierV1 */
-    UpsertGridRouteTargetClassifier: {
-      /**
-       * @description Target kind for a classifier-based route. (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "CLASSIFIER";
-      /**
-       * Classifier Id
-       * @description ID of the classifier that picks a route for each request.
-       * @example general-v1
-       */
-      classifier_id: string;
-      /**
-       * Allowed Route Ids
-       * @description IDs of the routes the classifier may pick. All must belong to the route's team and must not be routers themselves.
-       * @example [
-       *       "abc1234",
-       *       "def5678"
-       *     ]
-       */
-      allowed_route_ids: string[];
-      /**
-       * Default Route Id
-       * @description ID of the allowed route used when the classifier picks none.
-       * @example abc1234
-       */
-      default_route_id: string;
-    };
     /** UpsertGridRouteTargetConnectionV1 */
     UpsertGridRouteTargetConnection: {
       /**
@@ -11940,6 +13286,26 @@ export type components = {
        */
       connection_id: string;
     };
+    /** UpsertGridRouteTargetIntelligentV1 */
+    UpsertGridRouteTargetIntelligent: {
+      /**
+       * @description Target kind for an intelligent route: Baseten picks the model per request. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      type: "INTELLIGENT";
+      /**
+       * Route Classifier Id
+       * @description Identifier of the route classifier that picks the model. List them with GET /v1/grid/route_classifiers.
+       * @example abc1234
+       */
+      route_classifier_id: string;
+      /**
+       * GridRouteTradeoffV1
+       * @description How the classifier weighs cost against quality. Must be one of the classifier's supported tradeoffs.
+       * @enum {string}
+       */
+      tradeoff: "cost" | "balanced" | "intelligence";
+    };
     /** CreateGridRouteRequestV1 */
     CreateGridRouteRequest: {
       /**
@@ -11950,13 +13316,13 @@ export type components = {
       team_id?: string | null;
       /**
        * Display Name
-       * @description Display label. Omit to use the route name; null is not accepted.
+       * @description Display label. Omit to use the route's name; required for INTELLIGENT targets. Null is not accepted.
        * @example Assistant
        */
       display_name?: string | null;
       /**
        * Target
-       * @description Upstream target for the route. CONNECTION targets use the provider and credentials of a connection owned by the route's team.
+       * @description Upstream target for the route. CONNECTION targets use the provider and credentials of a connection owned by the route's team. INTELLIGENT targets need at least one of the route classifier's models, and one of its fallback models, servable by the team.
        * @example {
        *       "model": "zai-org/GLM-5.3",
        *       "type": "BASETEN_MODEL_API"
@@ -11965,7 +13331,7 @@ export type components = {
       target:
         | components["schemas"]["UpsertGridRouteTargetBasetenModelAPI"]
         | components["schemas"]["UpsertGridRouteTargetConnection"]
-        | components["schemas"]["UpsertGridRouteTargetClassifier"];
+        | components["schemas"]["UpsertGridRouteTargetIntelligent"];
       /**
        * Description
        * @description Short description of the route. Omit for no description; null is not accepted.
@@ -11985,7 +13351,8 @@ export type components = {
       | "XAI"
       | "VERTEX"
       | "OPENAI_COMPATIBLE"
-      | "BEDROCK";
+      | "BEDROCK"
+      | "AZURE";
     /** GridRouteUsageBucketV1 */
     GridRouteUsageBucket: {
       /**
@@ -12037,16 +13404,34 @@ export type components = {
        */
       provider: components["schemas"]["GridProvider"] | null;
       /**
-       * Intelligent Route
-       * @description Name of the intelligent route, as in `GET /v1/grid/routes`. Null when not grouping by INTELLIGENT_ROUTE.
+       * Intelligent Route Id
+       * @description ID of the intelligent route, as `id` in GET /v1/grid/routes. Null when not grouping by INTELLIGENT_ROUTE.
        * @default null
        */
-      intelligent_route: string | null;
+      intelligent_route_id: string | null;
+      /**
+       * Intelligent Route Display Name
+       * @description Display name of the intelligent route. Null when `intelligent_route_id` is null or the route cannot be resolved.
+       * @default null
+       */
+      intelligent_route_display_name: string | null;
       /**
        * @description Coding harness. Null when not grouping by HARNESS, when no harness was recorded (including usage from before harness tracking), or when the recorded harness is not recognized by this API version.
        * @default null
        */
       harness: components["schemas"]["GridRouteUsageHarness"] | null;
+      /**
+       * Api Key Prefix
+       * @description Prefix of the API key that made the requests, matching `GET /v1/api_keys`. Null when not grouping by API_KEY, for usage without an API key, and for usage recorded before API key tracking.
+       * @default null
+       */
+      api_key_prefix: string | null;
+      /**
+       * Api Key Name
+       * @description Name of the API key. Null when `api_key_prefix` is null or the key has no name.
+       * @default null
+       */
+      api_key_name: string | null;
       /**
        * Cost Usd
        * @description Estimated cost in USD, returned as an exact decimal string. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.
@@ -12099,7 +13484,8 @@ export type components = {
       | "MODEL"
       | "PROVIDER"
       | "INTELLIGENT_ROUTE"
-      | "HARNESS";
+      | "HARNESS"
+      | "API_KEY";
     /** GridRouteTombstoneV1 */
     GridRouteTombstone: {
       /**
@@ -12127,17 +13513,6 @@ export type components = {
        * @example Assistant
        */
       display_name?: string | null;
-      /**
-       * Target
-       * @description Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER configuration of a router route is mutable.
-       */
-      target?:
-        | (
-            | components["schemas"]["UpsertGridRouteTargetBasetenModelAPI"]
-            | components["schemas"]["UpsertGridRouteTargetConnection"]
-            | components["schemas"]["UpsertGridRouteTargetClassifier"]
-          )
-        | null;
     };
     /** GridHarnessDefaultsV1 */
     GridHarnessDefaults: {
@@ -12431,6 +13806,29 @@ export type components = {
        */
       secret_name: string;
     };
+    /** GridConnectionConfigAzureV1 */
+    GridConnectionConfigAzure: {
+      /**
+       * @description Provider kind for Microsoft Azure. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "AZURE";
+      /**
+       * Secret Id
+       * @description Identifier of the team secret holding the provider API key.
+       */
+      secret_id: string;
+      /**
+       * Secret Name
+       * @description Name of the team secret holding the provider API key.
+       */
+      secret_name: string;
+      /**
+       * Resource Name
+       * @description Name of the Azure AI Foundry or Azure OpenAI resource.
+       */
+      resource_name: string;
+    };
     /** GridConnectionConfigBedrockV1 */
     GridConnectionConfigBedrock: {
       /**
@@ -12551,7 +13949,8 @@ export type components = {
         | components["schemas"]["GridConnectionConfigOpenAI"]
         | components["schemas"]["GridConnectionConfigXAI"]
         | components["schemas"]["GridConnectionConfigVertex"]
-        | components["schemas"]["GridConnectionConfigBedrock"];
+        | components["schemas"]["GridConnectionConfigBedrock"]
+        | components["schemas"]["GridConnectionConfigAzure"];
       /**
        * Created At
        * Format: date-time
@@ -12604,6 +14003,26 @@ export type components = {
        * @example anthropic-key
        */
       secret_name: string;
+    };
+    /** UpsertGridConnectionConfigAzureV1 */
+    UpsertGridConnectionConfigAzure: {
+      /**
+       * @description Provider kind for Microsoft Azure. Route targets name a deployment, which must be named after its Azure model. Claude models (`claude-*`) use the Anthropic Messages API, and other models use the OpenAI-compatible APIs. (enum property replaced by openapi-typescript)
+       * @enum {string}
+       */
+      provider: "AZURE";
+      /**
+       * Secret Name
+       * @description Name of an existing secret, owned by the same team, that holds the provider API key.
+       * @example anthropic-key
+       */
+      secret_name: string;
+      /**
+       * Resource Name
+       * @description Name of the Azure AI Foundry or Azure OpenAI resource, the subdomain of `<resource_name>.openai.azure.com`.
+       * @example my-foundry-resource
+       */
+      resource_name: string;
     };
     /** UpsertGridConnectionConfigBedrockV1 */
     UpsertGridConnectionConfigBedrock: {
@@ -12707,7 +14126,8 @@ export type components = {
         | components["schemas"]["UpsertGridConnectionConfigOpenAI"]
         | components["schemas"]["UpsertGridConnectionConfigXAI"]
         | components["schemas"]["UpsertGridConnectionConfigVertex"]
-        | components["schemas"]["UpsertGridConnectionConfigBedrock"];
+        | components["schemas"]["UpsertGridConnectionConfigBedrock"]
+        | components["schemas"]["UpsertGridConnectionConfigAzure"];
     };
     /** GridConnectionTombstoneV1 */
     GridConnectionTombstone: {
@@ -12732,17 +14152,8 @@ export type components = {
         | components["schemas"]["UpsertGridConnectionConfigOpenAI"]
         | components["schemas"]["UpsertGridConnectionConfigXAI"]
         | components["schemas"]["UpsertGridConnectionConfigVertex"]
-        | components["schemas"]["UpsertGridConnectionConfigBedrock"];
-    };
-    /** GridClassifiersResponseV1 */
-    GridClassifiersResponse: {
-      /**
-       * Items
-       * @description Items in this page.
-       */
-      items: components["schemas"]["GridClassifier"][];
-      /** @description Pagination metadata for the page. */
-      pagination: components["schemas"]["PaginationResponse"];
+        | components["schemas"]["UpsertGridConnectionConfigBedrock"]
+        | components["schemas"]["UpsertGridConnectionConfigAzure"];
     };
     /** GridRouteClassifiersResponseV1 */
     GridRouteClassifiersResponse: {
@@ -15354,6 +16765,23 @@ export type components = {
        */
       min_duration_ms?: number | null;
     };
+    GetModelsDeploymentsReplicasParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Statuses
+       * @description Replica statuses to include. Repeat the statuses query parameter to filter by multiple statuses. Omit to include all statuses, including terminated replicas.
+       */
+      statuses?: components["schemas"]["DeploymentReplicaStatus"][];
+    };
     GetModelsEnvironmentsLogsParams: {
       /**
        * Start Epoch Millis
@@ -15483,6 +16911,23 @@ export type components = {
        * @description Only include startups that lasted at least this many milliseconds.
        */
       min_duration_ms?: number | null;
+    };
+    GetModelsEnvironmentsReplicasParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Statuses
+       * @description Replica statuses to include. Repeat the statuses query parameter to filter by multiple statuses. Omit to include all statuses, including terminated replicas.
+       */
+      statuses?: components["schemas"]["DeploymentReplicaStatus"][];
     };
     GetChainsAuditLogsParams: {
       /**
@@ -15937,6 +17382,11 @@ export type components = {
        * @description Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_model_api_inference_requests_total, baseten_model_api_incoming_inference_requests_total, and baseten_model_api_tokens_total. Unknown names are rejected; valid names that are not enabled for your organization are omitted from the response.
        */
       metrics?: string[];
+      /**
+       * Team Ids
+       * @description Return only metrics for these teams, repeated once per team. Defaults to all teams you can manage. Any unauthorized team causes a 403.
+       */
+      team_ids?: string[];
     };
     GetModelApisModelApiNameParams: {
       /**
@@ -16051,6 +17501,84 @@ export type components = {
        */
       email?: string | null;
     };
+    GetServiceAccountsParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Name
+       * @description Only the account with this name, ignoring case
+       */
+      name?: string | null;
+      /**
+       * Team Id
+       * @description Only this team's accounts
+       */
+      team_id?: string | null;
+      /**
+       * Disabled
+       * @description Only disabled or enabled accounts
+       */
+      disabled?: boolean | null;
+    };
+    GetAccessIdentityProvidersParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Name
+       * @description Only the provider with this name, ignoring case
+       */
+      name?: string | null;
+      /** @description Only this predefined provider's issuers */
+      predefined_kind?: components["schemas"]["PredefinedIdentityProviderKind"] | null;
+    };
+    GetAccessTrustRulesParams: {
+      /**
+       * Cursor
+       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
+       */
+      cursor?: string | null;
+      /**
+       * Limit
+       * @description Maximum number of items to return.
+       */
+      limit?: number;
+      /**
+       * Name
+       * @description Only the rule with this name, ignoring case
+       */
+      name?: string | null;
+      /**
+       * Identity Provider Id
+       * @description Only this provider's rules
+       */
+      identity_provider_id?: string | null;
+      /**
+       * Service Account Id
+       * @description Only rules for this service account
+       */
+      service_account_id?: string | null;
+      /**
+       * Team Id
+       * @description Only rules for this team's service accounts
+       */
+      team_id?: string | null;
+    };
     GetGatewayEventsParams: {
       /**
        * Start Time
@@ -16128,7 +17656,7 @@ export type components = {
       for_harnesses?: boolean;
       /**
        * Name
-       * @description Filter by exact route name. Preserved by the cursor; if repeated, must match the original filter.
+       * @description Filter by exact route name, the value to send in the inference request's `model` field. Matches a route's name or any of its aliases. Preserved by the cursor; if repeated, must match the original filter.
        */
       name?: string | null;
     };
@@ -16160,7 +17688,7 @@ export type components = {
       end_date?: string | null;
       /**
        * Group By
-       * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, INTELLIGENT_ROUTE, or HARNESS. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. INTELLIGENT_ROUTE returns only usage sent through an intelligent route, one row per intelligent route, or per intelligent route and model with MODEL. These rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. Defaults to MODEL.
+       * @description Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, INTELLIGENT_ROUTE, HARNESS, or API_KEY. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. INTELLIGENT_ROUTE returns only usage sent through an intelligent route, one row per intelligent route, or per intelligent route and model with MODEL. These rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. API_KEY includes usage without an API key, such as requests authenticated by a signed-in session, as a null group. Defaults to MODEL.
        */
       group_by?: components["schemas"]["GridRouteUsageDimension"][];
       /**
@@ -16183,6 +17711,11 @@ export type components = {
        * @description Return only usage for these harnesses, repeated once per harness. Omit to include all usage, including usage with no recorded harness.
        */
       harnesses?: components["schemas"]["GridRouteUsageHarness"][];
+      /**
+       * Api Key Prefixes
+       * @description Return only usage made with these API keys, repeated once per key prefix. Omit to include all usage, including usage without an API key.
+       */
+      api_key_prefixes?: string[];
     };
     GetGridTeamSettingsParams: {
       /**
@@ -16234,18 +17767,6 @@ export type components = {
        * @description Limit connections to this team. Without it, connections from every team where you can invoke routes.
        */
       team_id?: string | null;
-    };
-    GetGridClassifiersParams: {
-      /**
-       * Cursor
-       * @description Opaque cursor returned by a previous page. Omit to fetch the first page.
-       */
-      cursor?: string | null;
-      /**
-       * Limit
-       * @description Maximum number of items to return.
-       */
-      limit?: number;
     };
     GetGridRouteClassifiersParams: {
       /**
@@ -16677,9 +18198,11 @@ export type components = {
     user_defined_listing_id: string;
     version_tag: string;
     user_id: string;
+    service_account_id: string;
+    identity_provider_id: string;
+    trust_rule_id: string;
     route_id: string;
     connection_id: string;
-    classifier_id: string;
     route_classifier_id: string;
     machine_user_id: string;
     endpoint_id: string;
@@ -16835,6 +18358,7 @@ export type UpdateRollingDeployConfig = components["schemas"]["UpdateRollingDepl
 export type PrepareModelUploadRequest = components["schemas"]["PrepareModelUploadRequest"];
 export type AwsCredentials = components["schemas"]["AWSCredentials"];
 export type PrepareModelUploadResponse = components["schemas"]["PrepareModelUploadResponse"];
+export type AuditFieldChange = components["schemas"]["AuditFieldChange"];
 export type AuditLogActorType = components["schemas"]["AuditLogActorType"];
 export type AuditLogActor = components["schemas"]["AuditLogActor"];
 export type AuditLogApiKeyRevocationReason =
@@ -16899,6 +18423,12 @@ export type AuditLogEventGridMachineUserDeleted =
   components["schemas"]["AuditLogEventGridMachineUserDeleted"];
 export type AuditLogEventGridMachineUserUpdated =
   components["schemas"]["AuditLogEventGridMachineUserUpdated"];
+export type AuditLogEventIdentityProviderCreated =
+  components["schemas"]["AuditLogEventIdentityProviderCreated"];
+export type AuditLogEventIdentityProviderDeleted =
+  components["schemas"]["AuditLogEventIdentityProviderDeleted"];
+export type AuditLogEventIdentityProviderUpdated =
+  components["schemas"]["AuditLogEventIdentityProviderUpdated"];
 export type AuditLogEventModelDeleted = components["schemas"]["AuditLogEventModelDeleted"];
 export type AuditLogEventModelDeployed = components["schemas"]["AuditLogEventModelDeployed"];
 export type AuditLogEventModelDeploymentActivated =
@@ -16920,6 +18450,10 @@ export type AuditLogEventModelDeploymentRetried =
 export type AuditLogEventModelPromotionControlAction =
   components["schemas"]["AuditLogEventModelPromotionControlAction"];
 export type AuditLogEventModelRenamed = components["schemas"]["AuditLogEventModelRenamed"];
+export type AuditLogEventOrganizationApiKeySettingsUpdated =
+  components["schemas"]["AuditLogEventOrganizationApiKeySettingsUpdated"];
+export type AuditLogEventPredefinedIdentityProviderConfig =
+  components["schemas"]["AuditLogEventPredefinedIdentityProviderConfig"];
 export type AuditLogEventPromotionSettingsOverride =
   components["schemas"]["AuditLogEventPromotionSettingsOverride"];
 export type AuditLogEventProviderConnectionCreated =
@@ -16936,6 +18470,14 @@ export type AuditLogEventRequireGroupBasedAdminsEnabled =
   components["schemas"]["AuditLogEventRequireGroupBasedAdminsEnabled"];
 export type AuditLogEventSecretDeleted = components["schemas"]["AuditLogEventSecretDeleted"];
 export type AuditLogEventSecretUpdated = components["schemas"]["AuditLogEventSecretUpdated"];
+export type AuditLogEventServiceAccountCreated =
+  components["schemas"]["AuditLogEventServiceAccountCreated"];
+export type AuditLogEventServiceAccountDeleted =
+  components["schemas"]["AuditLogEventServiceAccountDeleted"];
+export type AuditLogEventServiceAccountPresetPermissions =
+  components["schemas"]["AuditLogEventServiceAccountPresetPermissions"];
+export type AuditLogEventServiceAccountUpdated =
+  components["schemas"]["AuditLogEventServiceAccountUpdated"];
 export type AuditLogEventSshCertificateSigned =
   components["schemas"]["AuditLogEventSshCertificateSigned"];
 export type AuditLogEventTelemetryExportCreated =
@@ -16944,6 +18486,9 @@ export type AuditLogEventTelemetryExportDeleted =
   components["schemas"]["AuditLogEventTelemetryExportDeleted"];
 export type AuditLogEventTelemetryExportUpdated =
   components["schemas"]["AuditLogEventTelemetryExportUpdated"];
+export type AuditLogEventTrustRuleCreated = components["schemas"]["AuditLogEventTrustRuleCreated"];
+export type AuditLogEventTrustRuleDeleted = components["schemas"]["AuditLogEventTrustRuleDeleted"];
+export type AuditLogEventTrustRuleUpdated = components["schemas"]["AuditLogEventTrustRuleUpdated"];
 export type AuditLogEventType = components["schemas"]["AuditLogEventType"];
 export type AuditLogEventUserInvited = components["schemas"]["AuditLogEventUserInvited"];
 export type AuditLogEventUserJoinedOrganization =
@@ -17038,6 +18583,9 @@ export type StartupSortField = components["schemas"]["StartupSortField"];
 export type StartupPercentiles = components["schemas"]["StartupPercentiles"];
 export type StartupPhasePercentiles = components["schemas"]["StartupPhasePercentiles"];
 export type StartupSummary = components["schemas"]["StartupSummary"];
+export type DeploymentReplicaStatus = components["schemas"]["DeploymentReplicaStatus"];
+export type DeploymentReplica = components["schemas"]["DeploymentReplica"];
+export type DeploymentReplicas = components["schemas"]["DeploymentReplicas"];
 export type TerminateReplicaResponse = components["schemas"]["TerminateReplicaResponse"];
 export type SignSshCertificateRequest = components["schemas"]["SignSSHCertificateRequest"];
 export type SignSshCertificateResponse = components["schemas"]["SignSSHCertificateResponse"];
@@ -17101,6 +18649,8 @@ export type UpdateChainletEnvironmentInstanceTypeResponse =
 export type UpsertTrainingProject = components["schemas"]["UpsertTrainingProject"];
 export type UpsertTrainingProjectRequest = components["schemas"]["UpsertTrainingProjectRequest"];
 export type AvailabilityModel = components["schemas"]["AvailabilityModel"];
+export type TrainingBdnConfigResponse = components["schemas"]["TrainingBDNConfigResponse"];
+export type TrainingBdnMountResponse = components["schemas"]["TrainingBDNMountResponse"];
 export type TrainingJob = components["schemas"]["TrainingJob"];
 export type TrainingProjectSummary = components["schemas"]["TrainingProjectSummary"];
 export type TrainingProject = components["schemas"]["TrainingProject"];
@@ -17124,6 +18674,8 @@ export type GcpServiceAccountJsonDockerAuth =
 export type InteractiveSessionConfig = components["schemas"]["InteractiveSessionConfig"];
 export type RegistrySecretDockerAuth = components["schemas"]["RegistrySecretDockerAuth"];
 export type SecretReference = components["schemas"]["SecretReference"];
+export type TrainingBdnConfig = components["schemas"]["TrainingBDNConfig"];
+export type TrainingBdnMount = components["schemas"]["TrainingBDNMount"];
 export type TrainingWeightAuth = components["schemas"]["TrainingWeightAuth"];
 export type CreateTrainingJobRequest = components["schemas"]["CreateTrainingJobRequest"];
 export type CreateTrainingJobResponse = components["schemas"]["CreateTrainingJobResponse"];
@@ -17176,6 +18728,9 @@ export type ListLoopsRunsResponse = components["schemas"]["ListLoopsRunsResponse
 export type CreateLoopsRunRequest = components["schemas"]["CreateLoopsRunRequest"];
 export type CreateLoopsRunResponse = components["schemas"]["CreateLoopsRunResponse"];
 export type DeactivateLoopsRunResponse = components["schemas"]["DeactivateLoopsRunResponse"];
+export type LoopsCheckpoint = components["schemas"]["LoopsCheckpoint"];
+export type LoopsLoRaConfig = components["schemas"]["LoopsLoRAConfig"];
+export type DeleteLoopsRunResponse = components["schemas"]["DeleteLoopsRunResponse"];
 export type GetLoopsRunResponse = components["schemas"]["GetLoopsRunResponse"];
 export type LoopsPlacementScope = components["schemas"]["LoopsPlacementScope"];
 export type CreateLoopsTrainerRequest = components["schemas"]["CreateLoopsTrainerRequest"];
@@ -17185,8 +18740,6 @@ export type CreateLoopsSamplerResponse = components["schemas"]["CreateLoopsSampl
 export type DeactivateLoopsSamplerResponse =
   components["schemas"]["DeactivateLoopsSamplerResponse"];
 export type GetLoopsSamplerResponse = components["schemas"]["GetLoopsSamplerResponse"];
-export type LoopsCheckpoint = components["schemas"]["LoopsCheckpoint"];
-export type LoopsLoRaConfig = components["schemas"]["LoopsLoRAConfig"];
 export type ListLoopsCheckpointsResponse = components["schemas"]["ListLoopsCheckpointsResponse"];
 export type ValidateLoopsCheckpointRequest =
   components["schemas"]["ValidateLoopsCheckpointRequest"];
@@ -17194,10 +18747,12 @@ export type ValidateLoopsCheckpointResponse =
   components["schemas"]["ValidateLoopsCheckpointResponse"];
 export type DeployLoopsCheckpointRequest = components["schemas"]["DeployLoopsCheckpointRequest"];
 export type DeployLoopsCheckpointResponse = components["schemas"]["DeployLoopsCheckpointResponse"];
+export type LoopsCheckpointTombstone = components["schemas"]["LoopsCheckpointTombstone"];
 export type LoopsCheckpointFilesResponse = components["schemas"]["LoopsCheckpointFilesResponse"];
 export type LoopsCheckpointS3Source = components["schemas"]["LoopsCheckpointS3Source"];
 export type LoopsCheckpointVolumeSource = components["schemas"]["LoopsCheckpointVolumeSource"];
 export type LoopsCheckpointSourceResponse = components["schemas"]["LoopsCheckpointSourceResponse"];
+export type SetLoopsCheckpointTtlRequest = components["schemas"]["SetLoopsCheckpointTtlRequest"];
 export type LoopsDeploymentStatus = components["schemas"]["LoopsDeploymentStatus"];
 export type LoopsDeployment = components["schemas"]["LoopsDeployment"];
 export type ListLoopsDeploymentsResponse = components["schemas"]["ListLoopsDeploymentsResponse"];
@@ -17299,6 +18854,42 @@ export type UserInfo = components["schemas"]["UserInfo"];
 export type UsersResponse = components["schemas"]["UsersResponse"];
 export type AwsAssumeRole = components["schemas"]["AwsAssumeRole"];
 export type OrganizationInfo = components["schemas"]["OrganizationInfo"];
+export type UpdateOrganizationRequest = components["schemas"]["UpdateOrganizationRequest"];
+export type ServiceAccountPresetPermissions =
+  components["schemas"]["ServiceAccountPresetPermissions"];
+export type ServiceAccountPresetType = components["schemas"]["ServiceAccountPresetType"];
+export type ServiceAccount = components["schemas"]["ServiceAccount"];
+export type ServiceAccounts = components["schemas"]["ServiceAccounts"];
+export type ServiceAccountPresetPermissionsRequest =
+  components["schemas"]["ServiceAccountPresetPermissionsRequest"];
+export type CreateServiceAccountRequest = components["schemas"]["CreateServiceAccountRequest"];
+export type DeletedServiceAccount = components["schemas"]["DeletedServiceAccount"];
+export type UpdateServiceAccountRequest = components["schemas"]["UpdateServiceAccountRequest"];
+export type PredefinedIdentityProviderKind =
+  components["schemas"]["PredefinedIdentityProviderKind"];
+export type PredefinedIdentityProvider = components["schemas"]["PredefinedIdentityProvider"];
+export type PredefinedIdentityProviders = components["schemas"]["PredefinedIdentityProviders"];
+export type IdentityProvider = components["schemas"]["IdentityProvider"];
+export type PredefinedIdentityProviderConfig =
+  components["schemas"]["PredefinedIdentityProviderConfig"];
+export type IdentityProviders = components["schemas"]["IdentityProviders"];
+export type CreatePredefinedIdentityProviderConfig =
+  components["schemas"]["CreatePredefinedIdentityProviderConfig"];
+export type CreateIdentityProviderRequest = components["schemas"]["CreateIdentityProviderRequest"];
+export type VerifyPredefinedIdentityProviderConfig =
+  components["schemas"]["VerifyPredefinedIdentityProviderConfig"];
+export type VerifyIdentityProviderRequest = components["schemas"]["VerifyIdentityProviderRequest"];
+export type Verification = components["schemas"]["Verification"];
+export type DeletedIdentityProvider = components["schemas"]["DeletedIdentityProvider"];
+export type UpdateIdentityProviderRequest = components["schemas"]["UpdateIdentityProviderRequest"];
+export type AccessTrustRule = components["schemas"]["AccessTrustRule"];
+export type AccessTrustRules = components["schemas"]["AccessTrustRules"];
+export type CreateAccessTrustRuleRequest = components["schemas"]["CreateAccessTrustRuleRequest"];
+export type VerifyAccessTrustRuleRequest = components["schemas"]["VerifyAccessTrustRuleRequest"];
+export type DeletedAccessTrustRule = components["schemas"]["DeletedAccessTrustRule"];
+export type UpdateAccessTrustRuleRequest = components["schemas"]["UpdateAccessTrustRuleRequest"];
+export type TokenExchangeRequest = components["schemas"]["TokenExchangeRequest"];
+export type TokenExchangeResponse = components["schemas"]["TokenExchangeResponse"];
 export type GatewayEventTokens = components["schemas"]["GatewayEventTokens"];
 export type GatewayEvent = components["schemas"]["GatewayEvent"];
 export type GatewayEventsResponse = components["schemas"]["GatewayEventsResponse"];
@@ -17309,22 +18900,22 @@ export type ExploreMetadata = components["schemas"]["ExploreMetadata"];
 export type ExploreMetadataResponse = components["schemas"]["ExploreMetadataResponse"];
 export type CreateGridTokenRequest = components["schemas"]["CreateGridTokenRequest"];
 export type GridToken = components["schemas"]["GridToken"];
-export type GridClassifier = components["schemas"]["GridClassifier"];
+export type GridRouteAliasKind = components["schemas"]["GridRouteAliasKind"];
+export type GridRouteAlias = components["schemas"]["GridRouteAlias"];
 export type GridRouteClassifier = components["schemas"]["GridRouteClassifier"];
-export type GridRouteRef = components["schemas"]["GridRouteRef"];
+export type GridRouteMetadata = components["schemas"]["GridRouteMetadata"];
 export type GridRouteTargetBasetenModelApi =
   components["schemas"]["GridRouteTargetBasetenModelAPI"];
-export type GridRouteTargetClassifier = components["schemas"]["GridRouteTargetClassifier"];
 export type GridRouteTargetConnection = components["schemas"]["GridRouteTargetConnection"];
 export type GridRouteTargetIntelligent = components["schemas"]["GridRouteTargetIntelligent"];
 export type GridRoute = components["schemas"]["GridRoute"];
 export type GridRoutesResponse = components["schemas"]["GridRoutesResponse"];
 export type UpsertGridRouteTargetBasetenModelApi =
   components["schemas"]["UpsertGridRouteTargetBasetenModelAPI"];
-export type UpsertGridRouteTargetClassifier =
-  components["schemas"]["UpsertGridRouteTargetClassifier"];
 export type UpsertGridRouteTargetConnection =
   components["schemas"]["UpsertGridRouteTargetConnection"];
+export type UpsertGridRouteTargetIntelligent =
+  components["schemas"]["UpsertGridRouteTargetIntelligent"];
 export type CreateGridRouteRequest = components["schemas"]["CreateGridRouteRequest"];
 export type GridProvider = components["schemas"]["GridProvider"];
 export type GridRouteUsageBucket = components["schemas"]["GridRouteUsageBucket"];
@@ -17358,6 +18949,7 @@ export type GridConnectionBedrockAccessKeysAuth =
 export type GridConnectionBedrockApiKeyAuth =
   components["schemas"]["GridConnectionBedrockApiKeyAuth"];
 export type GridConnectionConfigAnthropic = components["schemas"]["GridConnectionConfigAnthropic"];
+export type GridConnectionConfigAzure = components["schemas"]["GridConnectionConfigAzure"];
 export type GridConnectionConfigBedrock = components["schemas"]["GridConnectionConfigBedrock"];
 export type GridConnectionConfigOpenAi = components["schemas"]["GridConnectionConfigOpenAI"];
 export type GridConnectionConfigVertex = components["schemas"]["GridConnectionConfigVertex"];
@@ -17370,6 +18962,8 @@ export type UpsertGridConnectionBedrockApiKeyAuth =
   components["schemas"]["UpsertGridConnectionBedrockApiKeyAuth"];
 export type UpsertGridConnectionConfigAnthropic =
   components["schemas"]["UpsertGridConnectionConfigAnthropic"];
+export type UpsertGridConnectionConfigAzure =
+  components["schemas"]["UpsertGridConnectionConfigAzure"];
 export type UpsertGridConnectionConfigBedrock =
   components["schemas"]["UpsertGridConnectionConfigBedrock"];
 export type UpsertGridConnectionConfigOpenAi =
@@ -17380,7 +18974,6 @@ export type UpsertGridConnectionConfigXai = components["schemas"]["UpsertGridCon
 export type CreateGridConnectionRequest = components["schemas"]["CreateGridConnectionRequest"];
 export type GridConnectionTombstone = components["schemas"]["GridConnectionTombstone"];
 export type UpdateGridConnectionRequest = components["schemas"]["UpdateGridConnectionRequest"];
-export type GridClassifiersResponse = components["schemas"]["GridClassifiersResponse"];
 export type GridRouteClassifiersResponse = components["schemas"]["GridRouteClassifiersResponse"];
 export type GridMachineUser = components["schemas"]["GridMachineUser"];
 export type GridMachineUsersResponse = components["schemas"]["GridMachineUsersResponse"];
@@ -17507,6 +19100,8 @@ export type GetModelsDeploymentsStartupsParams =
   components["schemas"]["GetModelsDeploymentsStartupsParams"];
 export type GetModelsDeploymentsStartupsSummaryParams =
   components["schemas"]["GetModelsDeploymentsStartupsSummaryParams"];
+export type GetModelsDeploymentsReplicasParams =
+  components["schemas"]["GetModelsDeploymentsReplicasParams"];
 export type GetModelsEnvironmentsLogsParams =
   components["schemas"]["GetModelsEnvironmentsLogsParams"];
 export type GetModelsEnvironmentsMetricsParams =
@@ -17515,6 +19110,8 @@ export type GetModelsEnvironmentsStartupsParams =
   components["schemas"]["GetModelsEnvironmentsStartupsParams"];
 export type GetModelsEnvironmentsStartupsSummaryParams =
   components["schemas"]["GetModelsEnvironmentsStartupsSummaryParams"];
+export type GetModelsEnvironmentsReplicasParams =
+  components["schemas"]["GetModelsEnvironmentsReplicasParams"];
 export type GetChainsAuditLogsParams = components["schemas"]["GetChainsAuditLogsParams"];
 export type GetChainsDeploymentsChainletsLogsParams =
   components["schemas"]["GetChainsDeploymentsChainletsLogsParams"];
@@ -17547,6 +19144,10 @@ export type GetBillingModelApisParams = components["schemas"]["GetBillingModelAp
 export type GetBillingUsageSummaryParams = components["schemas"]["GetBillingUsageSummaryParams"];
 export type GetBillingToolCallUsageParams = components["schemas"]["GetBillingToolCallUsageParams"];
 export type GetUsersParams = components["schemas"]["GetUsersParams"];
+export type GetServiceAccountsParams = components["schemas"]["GetServiceAccountsParams"];
+export type GetAccessIdentityProvidersParams =
+  components["schemas"]["GetAccessIdentityProvidersParams"];
+export type GetAccessTrustRulesParams = components["schemas"]["GetAccessTrustRulesParams"];
 export type GetGatewayEventsParams = components["schemas"]["GetGatewayEventsParams"];
 export type GetExploreMetadataParams = components["schemas"]["GetExploreMetadataParams"];
 export type GetGridRoutesParams = components["schemas"]["GetGridRoutesParams"];
@@ -17557,7 +19158,6 @@ export type GetGridTeamSettingsUsersParams =
 export type GetGridTeamSettingsUsersUserIdParams =
   components["schemas"]["GetGridTeamSettingsUsersUserIdParams"];
 export type GetGridConnectionsParams = components["schemas"]["GetGridConnectionsParams"];
-export type GetGridClassifiersParams = components["schemas"]["GetGridClassifiersParams"];
 export type GetGridRouteClassifiersParams = components["schemas"]["GetGridRouteClassifiersParams"];
 export type GetGridMachineUsersParams = components["schemas"]["GetGridMachineUsersParams"];
 export type GetSandboxMetricsParams = components["schemas"]["GetSandboxMetricsParams"];
