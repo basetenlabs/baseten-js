@@ -1,6 +1,6 @@
 import type { AccessToken, AccessTokenOptions, Credentials } from "./credentials";
 import { ManagementClient } from "./management";
-import { ResponseError } from "./managementapi";
+import { ResponseError, type TokenExchangeRequest } from "./managementapi";
 import { TokenCache, type Token } from "./tokenauth";
 import { applyUserAgentHeader } from "./userAgent";
 
@@ -165,7 +165,7 @@ export class WorkloadIdentityCredentials implements Credentials {
           subject_token: assertion,
           subject_token_type: JWT_TOKEN_TYPE,
           audience: this.#trustRuleId,
-        }),
+        } satisfies TokenExchangeRequest),
         signal,
         // The body carries the identity token, so it must not follow a
         // redirect to wherever that points.
