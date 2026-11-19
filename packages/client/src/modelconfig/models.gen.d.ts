@@ -40,12 +40,7 @@ export type ModelCache = ModelRepo[];
 /**
  * Authentication method for downloading weights from the source.
  */
-export type WeightsAuthMethod =
-  | "CUSTOM_SECRET"
-  | "AWS_OIDC"
-  | "GCP_OIDC"
-  | "HF_OIDC"
-  | "AWS_ASSUME_ROLE";
+export type WeightsAuthMethod = "CUSTOM_SECRET" | "AWS_OIDC" | "GCP_OIDC" | "AWS_ASSUME_ROLE";
 /**
  * Configure Baseten Delivery Network (BDN) for model weight delivery with multi-tier caching.
  */
@@ -187,10 +182,6 @@ export interface ModelConfig {
    */
   trt_llm?: TRTLLMConfiguration | null;
   /**
-   * BEIv3 encoder serving without an engine-build job. Hugging Face checkpoints use runtime weights mounts. Requires explicit restart and stop-traffic health thresholds of 1–60 seconds.
-   */
-  bei?: BEIConfiguration | null;
-  /**
    * Configuration for deploying from training checkpoints.
    */
   training_checkpoints?: CheckpointList | null;
@@ -319,7 +310,7 @@ export interface Resources {
    */
   memory?: string;
   /**
-   * The accelerator type for your instance. To request multiple accelerators, use the ':' operator (e.g. L4:4).
+   * The GPU type for your instance. To request multiple GPUs, use the ':' operator (e.g. L4:4).
    */
   accelerator?: string | null;
   /**
@@ -411,11 +402,11 @@ export interface HealthChecks {
    */
   restart_check_delay_seconds?: number | null;
   /**
-   * The time in seconds after which an unhealthy instance is restarted. With trt_llm, defaults to 60 and must be <= 60. Otherwise defaults to platform-determined value when not set.
+   * The time in seconds after which an unhealthy instance is restarted. Defaults to platform-determined value when not set.
    */
   restart_threshold_seconds?: number | null;
   /**
-   * The time in seconds after which traffic is stopped to an unhealthy instance. With trt_llm, defaults to 30 and must be <= 30. Otherwise defaults to platform-determined value when not set.
+   * The time in seconds after which traffic is stopped to an unhealthy instance. Defaults to platform-determined value when not set.
    */
   stop_traffic_threshold_seconds?: number | null;
   /**
@@ -489,7 +480,7 @@ export interface DockerServer {
    */
   start_command?: string | null;
   /**
-   * The port where the server runs. Port 8080 is reserved when Truss installs its internal reverse proxy; no_build deployments can use 8080.
+   * The port where the server runs. Port 8080 is reserved by Baseten's internal reverse proxy and cannot be used.
    */
   server_port: number;
   /**
@@ -620,10 +611,6 @@ export interface WeightsAuth {
    * Baseten secret name containing credentials for accessing the source.
    */
   auth_secret_name?: string | null;
-  /**
-   * Hugging Face repository (namespace/name) or username for OIDC token exchange.
-   */
-  hf_oidc_resource?: string | null;
   [k: string]: unknown;
 }
 /**
@@ -865,25 +852,6 @@ export interface VersionsOverrides1 {
   bei_version?: string | null;
   bei_bert_version?: string | null;
   v2_llm_version?: string | null;
-  [k: string]: unknown;
-}
-export interface BEIConfiguration {
-  backend: "nvidia" | "tpu";
-  version_override?: string | null;
-  /**
-   * @minItems 1
-   */
-  configuration: [BEIModelConfiguration, ...BEIModelConfiguration[]];
-  [k: string]: unknown;
-}
-export interface BEIModelConfiguration {
-  /**
-   * Hugging Face repository to download through weights, or an absolute path to manually mounted weights.
-   */
-  checkpoint: string;
-  revision?: string | null;
-  served_model_name?: string | null;
-  quantization?: "none" | "fp8" | "mxfp8" | "nvfp4";
   [k: string]: unknown;
 }
 export interface CheckpointList {
