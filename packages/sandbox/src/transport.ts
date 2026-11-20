@@ -1,3 +1,5 @@
+import { defaultFetch } from "@basetenlabs/client";
+
 /** Options that decide which fetch requests are sent with. */
 export interface TransportOptions {
   fetch?: typeof fetch;
@@ -6,8 +8,8 @@ export interface TransportOptions {
 
 /**
  * The fetch a client and its clones send every request with, chosen on the
- * first request: the caller's fetch when given, otherwise the global fetch,
- * with HTTP/2 added on Node when possible.
+ * first request: the caller's fetch when given, otherwise defaultFetch, with
+ * HTTP/2 added on Node when possible.
  */
 export class Transport {
   private readonly options: TransportOptions;
@@ -24,15 +26,13 @@ export class Transport {
 
   private async select(): Promise<typeof fetch> {
     if (this.options.fetch !== undefined) return this.options.fetch;
-    // Resolved per call so a fetch replaced after construction is still used.
-    const globalFetch: typeof fetch = (input, init) => globalThis.fetch(input, init);
-    if (this.options.nodeUndici === false || !isNode()) return globalFetch;
+    if (this.options.nodeUndici === false || !isNode()) return defaultFetch;
     const undici = undiciForNodeHttp2();
     if (typeof undici === "string") {
       if (this.options.nodeUndici === true) {
         throw new Error(`nodeUndici is true, but undici cannot be used: ${undici}`);
       }
-      return globalFetch;
+      return defaultFetch;
     }
     // Never closed, same as Node's own default Agent, which neither undici nor
     // Node ever closes: idle connections close after undici's 4s keep-alive
@@ -43,7 +43,7 @@ export class Transport {
       connectionWindowSize: HTTP2_CONNECTION_WINDOW_BYTES,
     });
     // Node's fetch accepts a dispatcher, which its RequestInit type omits.
-    return (input, init) => globalThis.fetch(input, { ...init, dispatcher } as RequestInit);
+    return (input, init) => defaultFetch(input, { ...init, dispatcher } as RequestInit);
   }
 }
 

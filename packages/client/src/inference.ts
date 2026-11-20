@@ -1,5 +1,5 @@
 import { ApiClient } from "./inferenceapi";
-import { applyUserAgentHeader } from "./userAgent";
+import { applyUserAgentHeader } from "./common";
 
 /** Options for {@link InferenceClient}. */
 export interface InferenceClientOptions {
@@ -21,7 +21,10 @@ export interface InferenceClientOptions {
    */
   baseUrlOverride?: string;
 
-  /** Custom fetch implementation. Defaults to globalThis.fetch. */
+  /**
+   * Custom fetch implementation. Defaults to defaultFetch, which does not
+   * follow redirects. A custom fetch should also not follow redirects.
+   */
   fetch?: typeof fetch;
 
   /** Additional headers to send on every request. */
