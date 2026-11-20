@@ -105,6 +105,7 @@ export class WorkloadIdentityCredentials implements Credentials {
     if (options.identityToken !== undefined && typeof options.identityToken !== "function") {
       throw new Error("identityToken must be a function returning the identity token");
     }
+    if (options.identityTokenFile === "") throw new Error("identityTokenFile must not be empty");
     if (!options.trustRuleId) throw new Error("trustRuleId is required");
     const refreshLeewayMs = options.refreshLeewayMs ?? DEFAULT_REFRESH_LEEWAY_MS;
     if (!(refreshLeewayMs >= 0)) throw new Error("refreshLeewayMs must not be negative");
@@ -113,8 +114,19 @@ export class WorkloadIdentityCredentials implements Credentials {
     if (!(exchangeTimeoutMs > 0)) throw new Error("exchangeTimeoutMs must be positive");
     checkMaxDelay("exchangeTimeoutMs", exchangeTimeoutMs);
     this.#trustRuleId = options.trustRuleId;
-    this.#identityToken =
-      options.identityToken ?? identityTokenFromFile(options.identityTokenFile!);
+    if (options.identityToken !== undefined) {
+      const getter = options.identityToken;
+      this.#identityToken = async (getOptions) => {
+        try {
+          return await getter(getOptions);
+        } catch (err) {
+          throw new Error(`getting identity token: ${errorMessage(err)}`, { cause: err });
+        }
+      };
+    } else {
+      // Its errors already name the file.
+      this.#identityToken = identityTokenFromFile(options.identityTokenFile!);
+    }
     const baseUrl = (options.baseUrl ?? ManagementClient.defaultBaseUrl()).replace(/\/+$/, "");
     this.#baseUrl = baseUrl;
     const customFetch = options.fetch;
@@ -140,12 +152,7 @@ export class WorkloadIdentityCredentials implements Credentials {
   }
 
   async #exchange(signal: AbortSignal): Promise<Token> {
-    let assertion: string;
-    try {
-      assertion = (await this.#identityToken({ signal })).trim();
-    } catch (err) {
-      throw new Error(`getting identity token: ${errorMessage(err)}`, { cause: err });
-    }
+    const assertion = (await this.#identityToken({ signal })).trim();
     if (assertion === "") throw new Error("getting identity token: the identity token is empty");
     const headers: Record<string, string> = {};
     applyUserAgentHeader(headers);

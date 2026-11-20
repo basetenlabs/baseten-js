@@ -61,7 +61,8 @@ function validateAuthOptions(
   credentials: Credentials | undefined,
   headers: Record<string, string> | undefined,
 ): void {
-  if (apiKey !== undefined && credentials !== undefined) {
+  // An empty apiKey next to credentials counts as unset, as in Go.
+  if (apiKey !== undefined && apiKey !== "" && credentials !== undefined) {
     throw new Error("apiKey and credentials are mutually exclusive");
   }
   if (apiKey === undefined && credentials === undefined) {

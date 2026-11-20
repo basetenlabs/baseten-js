@@ -140,7 +140,7 @@ describe("WorkloadIdentityCredentials", () => {
       const server = fakeBaseten();
       await expect(
         credentials(server, { identityTokenFile: join(dir, "missing") }).accessToken(),
-      ).rejects.toThrow("reading identity token file");
+      ).rejects.toThrow(/^reading identity token file: /);
       const empty = join(dir, "empty");
       writeFileSync(empty, " \n");
       await expect(credentials(server, { identityTokenFile: empty }).accessToken()).rejects.toThrow(
@@ -237,6 +237,11 @@ describe("WorkloadIdentityCredentials", () => {
       "exactly one of",
     ],
     ["no trust rule", { trustRuleId: "" }, "trustRuleId is required"],
+    [
+      "an empty identity token file path",
+      { identityToken: undefined, identityTokenFile: "" },
+      "identityTokenFile must not be empty",
+    ],
     ["a negative margin", { refreshLeewayMs: -1 }, "must not be negative"],
     [
       "an identity token that is not a function",
@@ -375,6 +380,18 @@ describe("clients with credentials", () => {
   ])("reject %s", (_name, options, message) => {
     expect(() => new ManagementClient(options)).toThrow(message);
     expect(() => new InferenceClient({ modelId: "m", ...options })).toThrow(message);
+  });
+
+  it("treat an empty apiKey next to credentials as unset, as Go does", async () => {
+    const server = fakeBaseten();
+    const options = {
+      apiKey: "",
+      credentials: credentials(server),
+      baseUrlOverride: BASE_URL,
+      fetch: server.fetch,
+    };
+    await new ManagementClient(options).api.getOrganizationsMe();
+    expect(server.seenAuth).toEqual(["Bearer access-1"]);
   });
 
   it("keep sending the API key as before", async () => {
