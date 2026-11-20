@@ -7,6 +7,7 @@ export default defineConfig({
     inferenceapi: "src/inferenceapi/index.ts",
     modelconfig: "src/modelconfig/index.ts",
     sandboxapi: "src/sandboxapi/index.ts",
+    internal: "src/internal.ts",
   },
   platform: "neutral",
   dts: true,

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TokenSource, authenticatedFetch } from "../src/auth";
+import { TokenSource, authenticatedFetch, isTokenRevoked } from "../src/auth";
 
 const NOW = Date.parse("2026-01-01T00:00:00Z");
 
@@ -64,6 +64,61 @@ describe("TokenSource", () => {
     expect(new URL(request!.url).pathname).toBe("/v1/token");
     expect(request!.headers.get("authorization")).toBe("Api-Key test-key");
     expect(await request!.json()).toEqual({ scopes: ["sandboxes"] });
+  });
+
+  it("mints with credentials", async () => {
+    const server = mintServer();
+    const tokens = new TokenSource({
+      credentials: {
+        accessToken: async () => ({ token: "access", expiresAt: new Date(NOW + 3600_000) }),
+      },
+      fetch: server.fetch,
+    });
+    expect(await tokens.token()).toBe("token-1");
+    expect(server.requests[0]!.headers.get("authorization")).toBe("Bearer access");
+  });
+
+  it("replaces an access token Baseten refused on the next mint", async () => {
+    const refused: (string | undefined)[] = [];
+    let issued = 0;
+    const server = mintServer({
+      respond: (mint) =>
+        mint === 1
+          ? new Response("refused", {
+              status: 401,
+              headers: { "www-authenticate": 'Bearer realm="baseten", error="invalid_token"' },
+            })
+          : undefined,
+    });
+    const tokens = new TokenSource({
+      credentials: {
+        accessToken: async ({ refusedToken }) => {
+          refused.push(refusedToken);
+          return { token: `access-${++issued}`, expiresAt: new Date(NOW + 3600_000) };
+        },
+      },
+      fetch: server.fetch,
+    });
+    await expect(tokens.token()).rejects.toThrow();
+    expect(await tokens.token()).toBe("token-2");
+    expect(refused).toEqual([undefined, "access-1"]);
+    expect(server.requests[1]!.headers.get("authorization")).toBe("Bearer access-2");
+  });
+
+  it("passes the mint's signal to the credentials", async () => {
+    let signal: AbortSignal | undefined;
+    const server = mintServer();
+    const tokens = new TokenSource({
+      credentials: {
+        accessToken: async (options) => {
+          signal = options.signal;
+          return { token: "access", expiresAt: new Date(NOW + 3600_000) };
+        },
+      },
+      fetch: server.fetch,
+    });
+    expect(await tokens.token()).toBe("token-1");
+    expect(signal).toBeInstanceOf(AbortSignal);
   });
 
   it("refreshes within a minute of expiry", async () => {
@@ -165,7 +220,31 @@ describe("TokenSource", () => {
           tokenProvider: async () => "provided",
           fetch: mintServer().fetch,
         }),
-    ).toThrow("apiKey must be empty when tokenProvider is set");
+    ).toThrow("only one of apiKey, credentials, and tokenProvider may be set");
+  });
+
+  it.each<[string, Omit<ConstructorParameters<typeof TokenSource>[0], "fetch">, string]>([
+    [
+      "an API key alongside credentials",
+      { apiKey: "k", credentials: { accessToken: async () => ({}) as never } },
+      "only one of",
+    ],
+    [
+      "credentials alongside a token provider",
+      { credentials: { accessToken: async () => ({}) as never }, tokenProvider: async () => "t" },
+      "only one of",
+    ],
+    ["nothing", {}, "one of apiKey, credentials, or tokenProvider is required"],
+    [
+      "credentials alongside an Authorization header",
+      {
+        credentials: { accessToken: async () => ({}) as never },
+        headers: { authorization: "Bearer other" },
+      },
+      "headers must not set Authorization when credentials is set",
+    ],
+  ])("rejects %s", (_name, options, message) => {
+    expect(() => new TokenSource({ ...options, fetch: mintServer().fetch })).toThrow(message);
   });
 
   it("returns no token for an empty API key without a provider", async () => {
@@ -312,6 +391,22 @@ describe("authenticatedFetch", () => {
     } as RequestInit);
     expect(response.status).toBe(401);
     expect(server.tokensSent).toEqual(["Bearer token-1"]);
+    // Not sent again, but the revoked token is still dropped, so the next
+    // request does not reuse it.
+    expect(await tokens.token()).toBe("token-2");
+  });
+
+  it("keeps a Request's own headers", async () => {
+    const base = capturingFetch();
+    const tokens = new TokenSource({
+      apiKey: "",
+      tokenProvider: async () => "provided",
+      fetch: base.fetch,
+    });
+    const request = new Request("https://example.com/x", { headers: { "X-Custom": "v" } });
+    await authenticatedFetch(base.fetch, tokens)(request);
+    expect(base.headers().get("authorization")).toBe("Bearer provided");
+    expect(base.headers().get("x-custom")).toBe("v");
   });
 
   it("sends no Authorization without a token", async () => {
@@ -319,5 +414,21 @@ describe("authenticatedFetch", () => {
     const tokens = new TokenSource({ apiKey: "", fetch: base.fetch });
     await authenticatedFetch(base.fetch, tokens)("https://example.com/x");
     expect(base.headers().has("authorization")).toBe(false);
+  });
+});
+
+describe("isTokenRevoked", () => {
+  it.each([
+    ["a revoked token", 401, { "x-blaxel-error-code": "TOKEN_REVOKED" }, true],
+    [
+      "an invalid_token challenge",
+      401,
+      { "www-authenticate": 'Bearer error="invalid_token"' },
+      false,
+    ],
+    ["a plain 401", 401, {}, false],
+    ["a 403", 403, { "x-blaxel-error-code": "TOKEN_REVOKED" }, false],
+  ])("reports %s", (_name, status, headers, want) => {
+    expect(isTokenRevoked(new Response(null, { status, headers }))).toBe(want);
   });
 });

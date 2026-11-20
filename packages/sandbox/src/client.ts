@@ -1,4 +1,4 @@
-import { ManagementClient } from "@basetenlabs/client";
+import { type Credentials, ManagementClient } from "@basetenlabs/client";
 import type { ApiClient as ManagementApiClient } from "@basetenlabs/client/managementapi";
 import { authenticatedFetch, type SandboxTokenProvider, TokenSource } from "./auth";
 import type { CallOptions, SandboxRetryOptions } from "./common";
@@ -26,14 +26,24 @@ import { VolumeClient } from "./volumes";
 /** Options for {@link SandboxClient}. */
 export interface SandboxClientOptions {
   /**
-   * API key for authentication. Empty, together with {@link tokenProvider},
-   * is the advanced opt-out of API key authentication.
+   * API key for authentication. Exactly one of apiKey, {@link credentials},
+   * and {@link tokenProvider} is required. Empty counts as unset beside
+   * either of the others; alone, it is the advanced opt-out from sending
+   * Authorization.
    */
-  apiKey: string;
+  apiKey?: string;
 
   /**
-   * Returns the bearer token for each request, instead of one derived from
-   * the API key, which must then be empty.
+   * Supplies short-lived access tokens instead of an API key, for example
+   * `WorkloadIdentityCredentials` from `@basetenlabs/client`. Sandbox tokens
+   * are requested with them. The credentials get their access tokens through
+   * their own `fetch` and `baseUrl`, not this client's.
+   */
+  credentials?: Credentials;
+
+  /**
+   * Returns the bearer token for each request, instead of one requested with
+   * an API key or credentials.
    */
   tokenProvider?: SandboxTokenProvider;
 
@@ -410,6 +420,7 @@ export class SandboxClient {
   #newTokens(): TokenSource {
     return new TokenSource({
       apiKey: this.#options.apiKey,
+      credentials: this.#options.credentials,
       tokenProvider: this.#options.tokenProvider,
       managementBaseUrlOverride: this.#options.baseUrlOverride,
       fetch: this.#transport.fetch,
@@ -434,6 +445,7 @@ export class SandboxClient {
     // clone changing either mints its own.
     if (
       mine.apiKey === theirs.apiKey &&
+      mine.credentials === theirs.credentials &&
       mine.tokenProvider === theirs.tokenProvider &&
       mine.baseUrlOverride === theirs.baseUrlOverride &&
       mine.headers === theirs.headers &&
