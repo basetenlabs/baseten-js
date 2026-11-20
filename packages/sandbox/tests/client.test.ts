@@ -65,7 +65,7 @@ function workloadIdentityCredentials(): WorkloadIdentityCredentials {
   return new WorkloadIdentityCredentials({
     trustRuleId: "rule-1",
     identityToken: () => "jwt",
-    baseUrl: "https://exchange.test",
+    baseUrlOverride: "https://exchange.test",
     fetch: (async () =>
       Response.json({
         access_token: `access-${++exchanges}`,

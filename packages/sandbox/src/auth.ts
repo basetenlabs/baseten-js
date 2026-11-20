@@ -5,6 +5,7 @@ import {
   TokenCache,
   withBearer,
 } from "@basetenlabs/client/internal";
+import { sleep } from "./retry";
 
 /**
  * Returns the bearer token to send on a request. Called for every request.
@@ -174,22 +175,4 @@ export function isTokenRevoked(response: Response): boolean {
   // Both the control plane and sandboxes send this header, while their bodies
   // differ.
   return response.status === 401 && response.headers.get("x-blaxel-error-code") === "TOKEN_REVOKED";
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason);
-      return;
-    }
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(signal!.reason);
-    };
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
 }

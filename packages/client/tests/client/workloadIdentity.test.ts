@@ -70,7 +70,7 @@ function credentials(
 ): WorkloadIdentityCredentials {
   return new WorkloadIdentityCredentials({
     trustRuleId: "rule-1",
-    baseUrl: BASE_URL,
+    baseUrlOverride: BASE_URL,
     fetch: server.fetch,
     ...(options.identityTokenFile === undefined && { identityToken: () => "idp-jwt" }),
     ...options,
@@ -90,9 +90,9 @@ describe("WorkloadIdentityCredentials", () => {
   it("exchanges the identity token and caches the access token", async () => {
     const server = fakeBaseten();
     const creds = credentials(server);
-    const token = await creds.accessToken();
+    const token = await creds.accessToken({});
     expect(token).toEqual({ token: "access-1", expiresAt: new Date(NOW + 3600_000) });
-    expect((await creds.accessToken()).token).toBe("access-1");
+    expect((await creds.accessToken({})).token).toBe("access-1");
     expect(server.exchanges()).toBe(1);
     expect(server.assertions).toEqual(["idp-jwt"]);
   });
@@ -100,21 +100,21 @@ describe("WorkloadIdentityCredentials", () => {
   it("refreshes five minutes before expiry by default", async () => {
     const server = fakeBaseten();
     const creds = credentials(server);
-    await creds.accessToken();
+    await creds.accessToken({});
     vi.setSystemTime(NOW + 55 * 60_000 - 1);
-    expect((await creds.accessToken()).token).toBe("access-1");
+    expect((await creds.accessToken({})).token).toBe("access-1");
     vi.setSystemTime(NOW + 55 * 60_000);
-    expect((await creds.accessToken()).token).toBe("access-2");
+    expect((await creds.accessToken({})).token).toBe("access-2");
   });
 
   it("caps the refresh margin at half the token's lifetime", async () => {
     const server = fakeBaseten({ expiresIn: 60 });
     const creds = credentials(server, { refreshLeewayMs: 10 * 60_000 });
-    await creds.accessToken();
+    await creds.accessToken({});
     vi.setSystemTime(NOW + 29_000);
-    expect((await creds.accessToken()).token).toBe("access-1");
+    expect((await creds.accessToken({})).token).toBe("access-1");
     vi.setSystemTime(NOW + 30_000);
-    expect((await creds.accessToken()).token).toBe("access-2");
+    expect((await creds.accessToken({})).token).toBe("access-2");
   });
 
   it("re-reads the identity token file on every exchange", async () => {
@@ -124,10 +124,10 @@ describe("WorkloadIdentityCredentials", () => {
       writeFileSync(file, "jwt-1\n");
       const server = fakeBaseten();
       const creds = credentials(server, { identityTokenFile: file });
-      await creds.accessToken();
+      await creds.accessToken({});
       writeFileSync(file, "jwt-2");
       vi.setSystemTime(NOW + 3600_000);
-      expect((await creds.accessToken()).token).toBe("access-2");
+      expect((await creds.accessToken({})).token).toBe("access-2");
       expect(server.assertions).toEqual(["jwt-1", "jwt-2"]);
     } finally {
       rmSync(dir, { recursive: true });
@@ -139,13 +139,13 @@ describe("WorkloadIdentityCredentials", () => {
     try {
       const server = fakeBaseten();
       await expect(
-        credentials(server, { identityTokenFile: join(dir, "missing") }).accessToken(),
+        credentials(server, { identityTokenFile: join(dir, "missing") }).accessToken({}),
       ).rejects.toThrow(/^reading identity token file: /);
       const empty = join(dir, "empty");
       writeFileSync(empty, " \n");
-      await expect(credentials(server, { identityTokenFile: empty }).accessToken()).rejects.toThrow(
-        "the file is empty",
-      );
+      await expect(
+        credentials(server, { identityTokenFile: empty }).accessToken({}),
+      ).rejects.toThrow("the file is empty");
       expect(server.exchanges()).toBe(0);
     } finally {
       rmSync(dir, { recursive: true });
@@ -154,7 +154,7 @@ describe("WorkloadIdentityCredentials", () => {
 
   async function exchangeError(response: Response): Promise<ResponseError> {
     const err = await credentials(fakeBaseten({ exchange: () => response }))
-      .accessToken()
+      .accessToken({})
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ResponseError);
     return err as ResponseError;
@@ -186,7 +186,7 @@ describe("WorkloadIdentityCredentials", () => {
 
   it("reports a non-JSON success", async () => {
     const server = fakeBaseten({ exchange: () => new Response("<html>ok</html>") });
-    await expect(credentials(server).accessToken()).rejects.toThrow("expected a JSON response");
+    await expect(credentials(server).accessToken({})).rejects.toThrow("expected a JSON response");
   });
 
   it.each([
@@ -195,7 +195,7 @@ describe("WorkloadIdentityCredentials", () => {
     ["no expiry", { access_token: "a", token_type: "Bearer", expires_in: 0 }, "expires_in"],
   ])("rejects a success with %s", async (_name, body, message) => {
     const server = fakeBaseten({ exchange: () => Response.json(body) });
-    await expect(credentials(server).accessToken()).rejects.toThrow(message);
+    await expect(credentials(server).accessToken({})).rejects.toThrow(message);
   });
 
   it("shares one exchange across concurrent callers", async () => {
@@ -203,7 +203,11 @@ describe("WorkloadIdentityCredentials", () => {
     const released = new Promise<void>((resolve) => (release = resolve));
     const server = fakeBaseten({ exchange: () => released.then(() => undefined) });
     const creds = credentials(server);
-    const pending = Promise.all([creds.accessToken(), creds.accessToken(), creds.accessToken()]);
+    const pending = Promise.all([
+      creds.accessToken({}),
+      creds.accessToken({}),
+      creds.accessToken({}),
+    ]);
     release();
     expect((await pending).map((t) => t.token)).toEqual(["access-1", "access-1", "access-1"]);
     expect(server.exchanges()).toBe(1);
@@ -222,7 +226,7 @@ describe("WorkloadIdentityCredentials", () => {
     vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
     vi.setSystemTime(NOW);
     const server = fakeBaseten({ exchange: () => new Promise<Response>(() => {}) });
-    const stalled = expect(credentials(server).accessToken()).rejects.toThrow(
+    const stalled = expect(credentials(server).accessToken({})).rejects.toThrow(
       "workload identity token exchange timed out after 10s",
     );
     await vi.advanceTimersByTimeAsync(10_000);

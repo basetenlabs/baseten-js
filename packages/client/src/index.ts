@@ -6,10 +6,9 @@ export type { ManagementClientOptions } from "./management";
 export { SandboxClient } from "./sandbox";
 export type { SandboxClientOptions } from "./sandbox";
 export {
-  identityTokenFromFile,
   WorkloadIdentityCredentials,
-  type IdentityTokenGetter,
-  type IdentityTokenOptions,
+  type IdentityTokenProvider,
+  type IdentityTokenProviderContext,
   type WorkloadIdentityCredentialsOptions,
 } from "./workloadIdentity";
 export * as inferenceapi from "./inferenceapi";

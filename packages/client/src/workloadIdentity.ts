@@ -12,14 +12,16 @@ const DEFAULT_REFRESH_LEEWAY_MS = 5 * 60_000;
 // As in the Go SDK.
 const EXCHANGE_TIMEOUT_MS = 10_000;
 
-/** Options for {@link IdentityTokenGetter}. */
-export interface IdentityTokenOptions {
+/** Passed to an {@link IdentityTokenProvider}. */
+export interface IdentityTokenProviderContext {
   /** Aborts when the exchange the token is for times out. */
   signal: AbortSignal;
 }
 
 /** Returns the identity provider's JWT. Called on every exchange. */
-export type IdentityTokenGetter = (options: IdentityTokenOptions) => Promise<string> | string;
+export type IdentityTokenProvider = (
+  context: IdentityTokenProviderContext,
+) => Promise<string> | string;
 
 /**
  * Options for {@link WorkloadIdentityCredentials}. Credentials are supplied
@@ -33,7 +35,7 @@ export interface WorkloadIdentityCredentialsOptions {
    * Returns the identity provider's JWT. Exactly one of identityToken and
    * {@link identityTokenFile} is required.
    */
-  identityToken?: IdentityTokenGetter;
+  identityToken?: IdentityTokenProvider;
 
   /**
    * A file holding the identity provider's JWT, for example a projected
@@ -48,7 +50,7 @@ export interface WorkloadIdentityCredentialsOptions {
    * https://api.baseten.co. Must point at the same environment as the client
    * using these credentials, since an access token is valid only there.
    */
-  baseUrl?: string;
+  baseUrlOverride?: string;
 
   /**
    * Custom fetch implementation for the exchange. Defaults to
@@ -90,7 +92,7 @@ export interface WorkloadIdentityCredentialsOptions {
  */
 export class WorkloadIdentityCredentials implements Credentials {
   readonly #trustRuleId: string;
-  readonly #identityToken: IdentityTokenGetter;
+  readonly #identityToken: IdentityTokenProvider;
   readonly #baseUrl: string;
   readonly #fetch: typeof fetch;
   readonly #cache: TokenCache;
@@ -122,7 +124,10 @@ export class WorkloadIdentityCredentials implements Credentials {
       // Its errors already name the file.
       this.#identityToken = identityTokenFromFile(options.identityTokenFile!);
     }
-    const baseUrl = (options.baseUrl ?? ManagementClient.defaultBaseUrl()).replace(/\/+$/, "");
+    const baseUrl = (options.baseUrlOverride ?? ManagementClient.defaultBaseUrl()).replace(
+      /\/+$/,
+      "",
+    );
     this.#baseUrl = baseUrl;
     const customFetch = options.fetch;
     // Resolved per call so a fetch replaced after construction is still used.
@@ -140,9 +145,9 @@ export class WorkloadIdentityCredentials implements Credentials {
    * one when none is cached or the cached one is within the refresh leeway of
    * expiry.
    */
-  async accessToken(options?: AccessTokenOptions): Promise<AccessToken> {
-    if (options?.refusedToken !== undefined) this.#cache.invalidate(options.refusedToken);
-    const token = await this.#cache.token(options?.signal);
+  async accessToken(options: AccessTokenOptions): Promise<AccessToken> {
+    if (options.refusedToken !== undefined) this.#cache.invalidate(options.refusedToken);
+    const token = await this.#cache.token(options.signal);
     return { token: token.value, expiresAt: new Date(token.expiresAtMs) };
   }
 
@@ -207,12 +212,8 @@ export class WorkloadIdentityCredentials implements Credentials {
   }
 }
 
-/**
- * Returns an {@link IdentityTokenGetter} that reads the identity provider's
- * JWT from a file on every call, since such files are rotated in place.
- * Node only.
- */
-export function identityTokenFromFile(path: string): IdentityTokenGetter {
+// Re-read on every call, since such files are rotated in place. Node only.
+function identityTokenFromFile(path: string): IdentityTokenProvider {
   return async () => {
     // Reached through getBuiltinModule rather than an import of node:fs, so
     // the package still loads in browsers and edge runtimes.
