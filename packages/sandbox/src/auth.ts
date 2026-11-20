@@ -1,5 +1,10 @@
-import { type Credentials, ManagementClient } from "@basetenlabs/client";
-import { abortable, TokenCache, withBearer } from "@basetenlabs/client/internal";
+import { type Credentials, ManagementClient, managementapi } from "@basetenlabs/client";
+import {
+  abortable,
+  authenticatedTransport,
+  TokenCache,
+  withBearer,
+} from "@basetenlabs/client/internal";
 
 /**
  * Returns the bearer token to send on a request. Called for every request.
@@ -81,14 +86,27 @@ export class TokenSource {
     if (tokenProvider !== undefined) {
       this.provider = tokenProvider;
     } else if (given === 1) {
+      const baseUrl = options.managementBaseUrlOverride ?? ManagementClient.defaultBaseUrl();
+      // Built once, so a token Baseten refused on one mint is replaced on the
+      // next instead of being handed out again.
+      const transport = authenticatedTransport(
+        {
+          ...(credentials === undefined ? { apiKey } : { credentials }),
+          fetch: options.fetch,
+          headers: options.headers,
+        },
+        baseUrl,
+      );
+      const transportFetch = transport.fetch ?? options.fetch;
       this.cache = new TokenCache({
         mint: async (signal) => {
-          const api = new ManagementClient({
-            ...(credentials === undefined ? { apiKey } : { credentials }),
-            baseUrlOverride: options.managementBaseUrlOverride,
-            fetch: (input, init) => options.fetch(input, { ...init, signal }),
-            headers: options.headers,
-          }).api;
+          // The signal goes in above the credentials, so it also stops their
+          // wait for an access token.
+          const api = new managementapi.ApiClient({
+            baseUrl,
+            headers: transport.headers,
+            fetch: (input, init) => transportFetch(input, { ...init, signal }),
+          });
           const minted = await api.postToken({ request: { scopes: ["sandboxes"] } });
           return { value: minted.token, expiresAtMs: Date.parse(minted.expires_at) };
         },

@@ -6,4 +6,5 @@
  * @internal
  * @module
  */
+export { authenticatedTransport } from "./credentials";
 export { abortable, type Token, TokenCache, type TokenCacheOptions, withBearer } from "./tokenauth";

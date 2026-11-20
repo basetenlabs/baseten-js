@@ -78,6 +78,49 @@ describe("TokenSource", () => {
     expect(server.requests[0]!.headers.get("authorization")).toBe("Bearer access");
   });
 
+  it("replaces an access token Baseten refused on the next mint", async () => {
+    const refused: (string | undefined)[] = [];
+    let issued = 0;
+    const server = mintServer({
+      respond: (mint) =>
+        mint === 1
+          ? new Response("refused", {
+              status: 401,
+              headers: { "www-authenticate": 'Bearer realm="baseten", error="invalid_token"' },
+            })
+          : undefined,
+    });
+    const tokens = new TokenSource({
+      credentials: {
+        accessToken: async ({ refusedToken }) => {
+          refused.push(refusedToken);
+          return { token: `access-${++issued}`, expiresAt: new Date(NOW + 3600_000) };
+        },
+      },
+      fetch: server.fetch,
+    });
+    await expect(tokens.token()).rejects.toThrow();
+    expect(await tokens.token()).toBe("token-2");
+    expect(refused).toEqual([undefined, "access-1"]);
+    expect(server.requests[1]!.headers.get("authorization")).toBe("Bearer access-2");
+  });
+
+  it("passes the mint's signal to the credentials", async () => {
+    let signal: AbortSignal | undefined;
+    const server = mintServer();
+    const tokens = new TokenSource({
+      credentials: {
+        accessToken: async (options) => {
+          signal = options.signal;
+          return { token: "access", expiresAt: new Date(NOW + 3600_000) };
+        },
+      },
+      fetch: server.fetch,
+    });
+    expect(await tokens.token()).toBe("token-1");
+    expect(signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("refreshes within a minute of expiry", async () => {
     const server = mintServer({ lifetimeMs: 120_000 });
     const tokens = new TokenSource({ apiKey: "test-key", fetch: server.fetch });
