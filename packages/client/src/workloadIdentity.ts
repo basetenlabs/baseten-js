@@ -9,7 +9,8 @@ const TOKEN_EXCHANGE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchan
 const JWT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:jwt";
 
 const DEFAULT_REFRESH_LEEWAY_MS = 5 * 60_000;
-const DEFAULT_EXCHANGE_TIMEOUT_MS = 10_000;
+// As in the Go SDK.
+const EXCHANGE_TIMEOUT_MS = 10_000;
 
 /** Options for {@link IdentityTokenGetter}. */
 export interface IdentityTokenOptions {
@@ -62,9 +63,6 @@ export interface WorkloadIdentityCredentialsOptions {
    * minutes. Either way it is capped at half the token's lifetime.
    */
   refreshLeewayMs?: number;
-
-  /** Bounds one exchange, which every caller waiting for a token shares. Defaults to 10 seconds. */
-  exchangeTimeoutMs?: number;
 }
 
 /**
@@ -110,9 +108,6 @@ export class WorkloadIdentityCredentials implements Credentials {
     const refreshLeewayMs = options.refreshLeewayMs ?? DEFAULT_REFRESH_LEEWAY_MS;
     if (!(refreshLeewayMs >= 0)) throw new Error("refreshLeewayMs must not be negative");
     checkMaxDelay("refreshLeewayMs", refreshLeewayMs);
-    const exchangeTimeoutMs = options.exchangeTimeoutMs ?? DEFAULT_EXCHANGE_TIMEOUT_MS;
-    if (!(exchangeTimeoutMs > 0)) throw new Error("exchangeTimeoutMs must be positive");
-    checkMaxDelay("exchangeTimeoutMs", exchangeTimeoutMs);
     this.#trustRuleId = options.trustRuleId;
     if (options.identityToken !== undefined) {
       const getter = options.identityToken;
@@ -135,7 +130,7 @@ export class WorkloadIdentityCredentials implements Credentials {
     this.#cache = new TokenCache({
       mint: (signal) => this.#exchange(signal),
       refreshLeewayMs,
-      mintTimeoutMs: exchangeTimeoutMs,
+      mintTimeoutMs: EXCHANGE_TIMEOUT_MS,
       mintName: "workload identity token exchange",
     });
   }
