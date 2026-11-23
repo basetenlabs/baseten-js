@@ -270,6 +270,22 @@ describe("SandboxProcess", () => {
     expect(requests[0]!.path).toBe("/process/p/logs/stream");
   });
 
+  it("streams a long log line across many chunks, ended by \\r\\n split across two", async () => {
+    const { response } = streamed([
+      "stdout:",
+      ...Array(64).fill("x".repeat(1024)),
+      "\r",
+      "\nstdout:y",
+    ]);
+    const { sandbox } = fakeSandbox(() => response);
+    const lines = [];
+    for await (const line of sandbox.process.streamLogs({ identifier: "p" })) lines.push(line);
+    expect(lines).toEqual([
+      { stream: "stdout", text: "x".repeat(65536) },
+      { stream: "stdout", text: "y" },
+    ]);
+  });
+
   it("cancels the log stream when iteration ends early", async () => {
     const { response, cancelled } = streamed(["stdout:a\n", "stdout:b\n", "stdout:c\n"]);
     const { sandbox } = fakeSandbox(() => response);

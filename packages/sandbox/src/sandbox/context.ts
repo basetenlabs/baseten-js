@@ -49,9 +49,12 @@ export async function* responseLines(response: Response): AsyncGenerator<string,
       const result = await reader.read();
       if (result.done) break;
       buffer += result.value;
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop()!;
-      yield* lines;
+      // Split only when a line ends, so a long line isn't rescanned per chunk.
+      if (result.value.includes("\n")) {
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop()!;
+        yield* lines;
+      }
     }
     done = true;
     if (buffer !== "") yield buffer;
