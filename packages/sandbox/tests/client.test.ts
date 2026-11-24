@@ -1,3 +1,4 @@
+import { WorkloadIdentityCredentials } from "@basetenlabs/client";
 import { describe, expect, it } from "vitest";
 import {
   Sandbox,
@@ -16,19 +17,23 @@ interface Recorded {
 }
 
 // Serves /v1/token, minting "token-1", "token-2", ..., and hands every other
-// request to route. Records every request but the mints.
+// request to route. Records every request but the mints, whose Authorization
+// is recorded apart.
 function fakeServer(route: (request: Recorded) => unknown): {
   fetch: typeof fetch;
   requests: Recorded[];
   mints: () => number;
+  mintAuthorizations: (string | null)[];
 } {
   const requests: Recorded[] = [];
+  const mintAuthorizations: (string | null)[] = [];
   let mints = 0;
   const fetchImpl = async (input: string | URL | Request, init?: RequestInit) => {
     const request = new Request(input, init);
     const url = new URL(request.url);
     if (url.pathname === "/v1/token") {
       mints++;
+      mintAuthorizations.push(request.headers.get("authorization"));
       return Response.json({
         token: `token-${mints}`,
         expires_at: new Date(Date.now() + 300_000).toISOString(),
@@ -50,7 +55,24 @@ function fakeServer(route: (request: Recorded) => unknown): {
     const status = { POST: 201, DELETE: 202 }[request.method] ?? 200;
     return Response.json(routed, { status });
   };
-  return { fetch: fetchImpl as typeof fetch, requests, mints: () => mints };
+  return { fetch: fetchImpl as typeof fetch, requests, mints: () => mints, mintAuthorizations };
+}
+
+// Credentials whose exchanges go to their own fake endpoint, each issuing
+// "access-1", "access-2", ...
+function workloadIdentityCredentials(): WorkloadIdentityCredentials {
+  let exchanges = 0;
+  return new WorkloadIdentityCredentials({
+    trustRuleId: "rule-1",
+    identityToken: () => "jwt",
+    baseUrlOverride: "https://exchange.test",
+    fetch: (async () =>
+      Response.json({
+        access_token: `access-${++exchanges}`,
+        token_type: "Bearer",
+        expires_in: 3600,
+      })) as typeof fetch,
+  });
 }
 
 function apiSandbox(name: string, extra: Record<string, unknown> = {}) {
@@ -471,6 +493,63 @@ describe("SandboxClient", () => {
     const server = fakeServer(() => apiSandbox("sb-1"));
     const client = new SandboxClient({ apiKey: "test-key", fetch: server.fetch });
     const clone = client.withOptions({ apiKey: "other-key" });
+    await client.getInfo({ name: "sb-1" });
+    await clone.getInfo({ name: "sb-1" });
+    expect(server.mints()).toBe(2);
+    expect(server.requests.map((r) => r.authorization)).toEqual([
+      "Bearer token-1",
+      "Bearer token-2",
+    ]);
+  });
+
+  it("requests sandbox tokens with credentials", async () => {
+    const server = fakeServer((request) =>
+      request.path.startsWith("/filesystem/")
+        ? { path: "/tmp/x", content: "hello" }
+        : apiSandbox("sb-1"),
+    );
+    const client = new SandboxClient({
+      credentials: workloadIdentityCredentials(),
+      fetch: server.fetch,
+    });
+    const sandbox = await client.get({ name: "sb-1" });
+    await sandbox.fs.read({ path: "/tmp/x" });
+    expect(server.mintAuthorizations).toEqual(["Bearer access-1"]);
+    expect(server.requests.map((r) => r.authorization)).toEqual([
+      "Bearer token-1",
+      "Bearer token-1",
+    ]);
+  });
+
+  it("rejects credentials alongside an Authorization header at construction", () => {
+    expect(
+      () =>
+        new SandboxClient({
+          credentials: workloadIdentityCredentials(),
+          headers: { Authorization: "Bearer other" },
+        }),
+    ).toThrow("headers must not set Authorization when credentials is set");
+  });
+
+  it("shares the cached token with a clone with the same credentials", async () => {
+    const server = fakeServer(() => apiSandbox("sb-1"));
+    const client = new SandboxClient({
+      credentials: workloadIdentityCredentials(),
+      fetch: server.fetch,
+    });
+    const clone = client.withOptions({ teamId: "team-2" });
+    await client.getInfo({ name: "sb-1" });
+    await clone.getInfo({ name: "sb-1" });
+    expect(server.mints()).toBe(1);
+  });
+
+  it("mints a separate token for a clone with other credentials", async () => {
+    const server = fakeServer(() => apiSandbox("sb-1"));
+    const client = new SandboxClient({
+      credentials: workloadIdentityCredentials(),
+      fetch: server.fetch,
+    });
+    const clone = client.withOptions({ credentials: workloadIdentityCredentials() });
     await client.getInfo({ name: "sb-1" });
     await clone.getInfo({ name: "sb-1" });
     expect(server.mints()).toBe(2);

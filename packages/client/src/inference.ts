@@ -1,10 +1,22 @@
 import { ApiClient } from "./inferenceapi";
-import { applyUserAgentHeader } from "./userAgent";
+import { authenticatedTransport, type Credentials } from "./credentials";
 
 /** Options for {@link InferenceClient}. */
 export interface InferenceClientOptions {
-  /** API key for authentication. */
-  apiKey: string;
+  /**
+   * API key for authentication. Exactly one of apiKey and
+   * {@link credentials} is required. Empty is an advanced opt-out from
+   * sending Authorization.
+   */
+  apiKey?: string;
+
+  /**
+   * Supplies short-lived access tokens instead of an API key, for example
+   * {@link WorkloadIdentityCredentials}. A token is fetched for every
+   * request, and sent as "Authorization: Bearer <token>" to the client's own
+   * base URL only.
+   */
+  credentials?: Credentials;
 
   /** Model ID. Mutually exclusive with chainId. */
   modelId?: string;
@@ -63,13 +75,7 @@ export class InferenceClient {
         chainId: options.chainId,
         environment: options.environment,
       });
-    const headers: Record<string, string> = { ...options.headers };
-    // Empty apiKey is an advanced opt-out from sending Authorization.
-    if (options.apiKey !== "") {
-      headers["Authorization"] = `Api-Key ${options.apiKey}`;
-    }
-    applyUserAgentHeader(headers);
-    this._api = new ApiClient({ baseUrl, headers, fetch: options.fetch });
+    this._api = new ApiClient({ baseUrl, ...authenticatedTransport(options, baseUrl) });
   }
 
   /** The options this client was constructed with. */
