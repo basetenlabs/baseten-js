@@ -252,8 +252,6 @@ describe("WorkloadIdentityCredentials", () => {
       { identityToken: "jwt" as never },
       "identityToken must be a function",
     ],
-    ["an infinite margin", { refreshLeewayMs: Infinity }, "refreshLeewayMs must be a finite"],
-    ["a margin past setTimeout's limit", { refreshLeewayMs: 2 ** 31 }, "no greater than"],
   ])("rejects %s", (_name, options, message) => {
     expect(
       () =>

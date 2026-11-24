@@ -109,7 +109,6 @@ export class WorkloadIdentityCredentials implements Credentials {
     if (!options.trustRuleId) throw new Error("trustRuleId is required");
     const refreshLeewayMs = options.refreshLeewayMs ?? DEFAULT_REFRESH_LEEWAY_MS;
     if (!(refreshLeewayMs >= 0)) throw new Error("refreshLeewayMs must not be negative");
-    checkMaxDelay("refreshLeewayMs", refreshLeewayMs);
     this.#trustRuleId = options.trustRuleId;
     if (options.identityToken !== undefined) {
       const getter = options.identityToken;
@@ -232,17 +231,6 @@ function identityTokenFromFile(path: string): IdentityTokenProvider {
     if (token === "") throw new Error(`reading identity token file ${path}: the file is empty`);
     return token;
   };
-}
-
-// setTimeout fires after 1 ms when given a delay above this.
-const MAX_TIMEOUT_MS = 2_147_483_647;
-
-function checkMaxDelay(name: string, ms: number): void {
-  if (!Number.isFinite(ms) || ms > MAX_TIMEOUT_MS) {
-    throw new Error(
-      `${name} must be a finite number of milliseconds no greater than ${MAX_TIMEOUT_MS}`,
-    );
-  }
 }
 
 function oauthErrorCode(body: string): unknown {

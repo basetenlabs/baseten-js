@@ -37,7 +37,7 @@ export interface SandboxClientOptions {
    * Supplies short-lived access tokens instead of an API key, for example
    * `WorkloadIdentityCredentials` from `@basetenlabs/client`. Sandbox tokens
    * are requested with them. The credentials get their access tokens through
-   * their own `fetch` and `baseUrl`, not this client's.
+   * their own `fetch` and `baseUrlOverride`, not this client's.
    */
   credentials?: Credentials;
 
